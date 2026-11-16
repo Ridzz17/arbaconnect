@@ -64,42 +64,94 @@
       ? Math.round((selectedOutlet.creditRemaining / selectedOutlet.creditLimit) * 100)
       : 100;
 
+    var activeRole = (appState.currentUser && appState.currentUser.role === 'super-admin')
+      ? (appState.currentRole || 'super-admin')
+      : (appState.currentUser ? appState.currentUser.role : 'executive');
+    var isSalesRole = activeRole === 'field-sales';
+    var isSalesOpsRole = activeRole === 'sales-ops';
+
+    var crmTitle = isSalesRole
+      ? 'Daftar Apotek Langganan & Rute Kunjungan Saya (' + (appState.currentUser ? appState.currentUser.name : 'Sales') + ')'
+      : isSalesOpsRole
+      ? 'Data Pelanggan Apotek, Evaluasi Plafon Kredit & Tagihan Konsinyasi'
+      : 'Direktori Kemitraan Apotek, Plafon Kredit & Barang Titipan Solo Raya';
+
+    var crmSubtitle = isSalesRole
+      ? 'Lihat sisa barang titipan (konsinyasi) di apotek rayon Anda, cek nomor WA Apoteker, lihat urutan rute kunjungan terdekat, atau buka aplikasi input nota.'
+      : isSalesOpsRole
+      ? 'Pantau kelancaran bayar apotek, evaluasi skor kelayakan plafon kredit, tagih barang titipan yang sudah laku, dan geser stok yang macet.'
+      : 'Pusat data seluruh apotek dan toko obat mitra CV Arba\'in, pemantauan batas plafon kredit, serta perputaran barang konsinyasi.';
+
     var html = `
       <div class="flex flex-col w-full gap-space-lg">
-        <!-- Header Title & Action Toolbar -->
+        <!-- Header Title & Action Toolbar (Disesuaikan dengan Role Pengguna) -->
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div class="flex flex-col">
             <div class="flex items-center gap-2 text-on-surface-variant text-xs mb-1 font-medium">
-              <span>Sistem Distribusi Solo Raya</span>
+              <span>Distribusi Herbal Solo Raya</span>
               <span aria-hidden="true">·</span>
-              <span class="text-primary font-semibold">Direktori B2B CRM</span>
+              <span class="text-primary font-semibold">${isSalesRole ? 'Rute &amp; Apotek Pegangan Sales' : isSalesOpsRole ? 'Administrasi Penjualan &amp; Piutang' : 'Manajemen Kemitraan Apotek'}</span>
               <span aria-hidden="true">·</span>
-              <span>Relasi Apotek &amp; Ritel</span>
+              <span>Sistem Titip Jual (Konsinyasi)</span>
             </div>
             <h1 class="text-2xl text-on-surface tracking-tight font-bold">
-              Direktori CRM Pelanggan B2B &amp; Kemitraan Outlet
+              ${crmTitle}
             </h1>
             <p class="text-sm text-on-surface-variant max-w-4xl mt-0.5">
-              Basis data kemitraan apotek, minimarket, plafon kredit, dan rute sales lapangan CV Arba'in di Solo Raya.
+              ${crmSubtitle}
             </p>
           </div>
-          <div class="flex items-center gap-2.5 flex-wrap">
+          <div class="flex items-center gap-2 flex-wrap">
             <button
-              id="btn-import-crm-csv"
-              class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-surface-container-low text-primary hover:bg-surface-container text-xs font-semibold transition-colors border border-border-subtle/50 cursor-pointer"
+              id="btn-crm-rebalancer"
+              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer border"
+              style="background:#fffbeb; color:#b45309; border-color:#fcd34d;"
               type="button"
-              title="Impor / Migrasi Data Awal Pelanggan B2B dari CSV"
+              title="Rekomendasi Tarik & Geser Stok Titipan yang Macet / Hampir Kedaluwarsa ke Apotek Lain yang Laris"
             >
-              <span class="material-symbols-outlined text-[16px]">upload_file</span>
-              <span>Migrasi / Impor CSV</span>
+              <span class="material-symbols-outlined text-[16px]">swap_driving_apps_wheel</span>
+              <span>Tarik &amp; Geser Stok Macet (${(window.ArbaStore.getConsignmentRebalanceRecommendations() || []).length})</span>
             </button>
+            ${!isSalesRole ? `
+              <button
+                id="btn-crm-credit-score"
+                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer border"
+                style="background:#f5f3ff; color:#6d28d9; border-color:#ddd6fe;"
+                type="button"
+                title="Penilaian Kelayakan Plafon Kredit & Kesehatan Bayar Apotek (Skor 0-100)"
+              >
+                <span class="material-symbols-outlined text-[16px]">analytics</span>
+                <span>Skor Kelayakan Kredit</span>
+              </button>
+            ` : ''}
+            <button
+              id="btn-crm-tsp-map"
+              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer border"
+              style="background:#ecfdf5; color:#047857; border-color:#a7f3d0;"
+              type="button"
+              title="Peta Lokasi Apotek & Urutan Rute Kunjungan Terdekat (Hemat Jarak & BBM)"
+            >
+              <span class="material-symbols-outlined text-[16px]">route</span>
+              <span>${isSalesRole ? 'Peta Urutan Rute Saya' : 'Peta &amp; Rute Kunjungan'}</span>
+            </button>
+            ${!isSalesRole ? `
+              <button
+                id="btn-import-crm-csv"
+                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low text-primary hover:bg-surface-container text-xs font-semibold transition-colors border border-border-subtle/50 cursor-pointer"
+                type="button"
+                title="Impor Data Awal Apotek dari File CSV"
+              >
+                <span class="material-symbols-outlined text-[16px]">upload_file</span>
+                <span>Impor Data CSV</span>
+              </button>
+            ` : ''}
             <button
               id="btn-export-crm-csv"
-              class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container text-xs font-semibold transition-colors border border-border-subtle/50 cursor-pointer"
+              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container text-xs font-semibold transition-colors border border-border-subtle/50 cursor-pointer"
               type="button"
             >
               <span class="material-symbols-outlined text-[16px]">file_download</span>
-              <span>Ekspor Data CRM</span>
+              <span>Unduh Data Apotek</span>
             </button>
             <button
               id="btn-new-outlet"
@@ -107,7 +159,7 @@
               type="button"
             >
               <span class="material-symbols-outlined text-[16px]">add_business</span>
-              <span>+ Daftarkan Outlet Baru</span>
+              <span>${isSalesRole ? '+ Usulkan Apotek Baru' : '+ Daftarkan Apotek Baru'}</span>
             </button>
           </div>
         </div>
@@ -609,7 +661,34 @@
                   </div>
                 </div>
 
-                <!-- Credit Line & Terms Visualizer -->
+                <!-- Credit Line & Terms Visualizer + Skor Kelayakan Kredit Apotek -->
+                ${(function () {
+                  var aiSc = window.ArbaStore.getOutletCreditScoring ? window.ArbaStore.getOutletCreditScoring(selectedOutlet.id) : null;
+                  if (!aiSc) return '';
+                  return `
+                    <div class="p-3 rounded-xl border text-xs mb-1" style="background:${aiSc.badgeBg}; border-color:${aiSc.badgeColor}40;">
+                      <div class="flex items-center justify-between mb-1">
+                        <span class="font-bold flex items-center gap-1" style="color:${aiSc.badgeColor};">
+                          <span class="material-symbols-outlined text-[15px]">auto_awesome</span>
+                          Skor Kelayakan Kredit: <b>${aiSc.score}/100</b>
+                        </span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-white/80" style="color:${aiSc.badgeColor};">${aiSc.tier}</span>
+                      </div>
+                      <div class="text-[11px] text-slate-700 leading-snug ${isSalesRole ? '' : 'mb-2'}">${aiSc.recommendation}</div>
+                      ${!isSalesRole ? `
+                        <button
+                          id="btn-drawer-apply-ai-credit"
+                          type="button"
+                          class="w-full py-1.5 px-3 rounded-lg text-[11px] font-bold text-white cursor-pointer border-0 flex items-center justify-center gap-1"
+                          style="background:${aiSc.badgeColor};"
+                        >
+                          <span class="material-symbols-outlined text-[14px]">bolt</span>
+                          <span>Sesuaikan Plafon ke Rekomendasi (${window.ArbaUtils.formatRupiah(aiSc.suggestedLimit)})</span>
+                        </button>
+                      ` : ''}
+                    </div>
+                  `;
+                })()}
                 <div class="space-y-2 text-xs">
                   <div class="flex justify-between items-center text-body-sm font-body-sm">
                     <span class="text-on-surface-variant">Plafon Kredit Disetujui:</span>
@@ -809,6 +888,35 @@
     if (btnNew) {
       btnNew.addEventListener('click', function () {
         openNewOutletModal();
+      });
+    }
+
+    // Advance Buttons: Consignment Rebalancer, AI Credit Scoring, & TSP Map
+    var btnRebalancer = container.querySelector('#btn-crm-rebalancer');
+    if (btnRebalancer && window.ArbaAdvanced) {
+      btnRebalancer.addEventListener('click', function () {
+        window.ArbaAdvanced.openConsignmentRebalancerModal();
+      });
+    }
+
+    var btnCreditScore = container.querySelector('#btn-crm-credit-score');
+    if (btnCreditScore && window.ArbaAdvanced) {
+      btnCreditScore.addEventListener('click', function () {
+        window.ArbaAdvanced.openCreditScoringModal();
+      });
+    }
+
+    var btnTspMap = container.querySelector('#btn-crm-tsp-map');
+    if (btnTspMap && window.ArbaAdvanced) {
+      btnTspMap.addEventListener('click', function () {
+        window.ArbaAdvanced.openTspRouteOptimizerModal();
+      });
+    }
+
+    var btnDrawerAiCredit = container.querySelector('#btn-drawer-apply-ai-credit');
+    if (btnDrawerAiCredit && selectedOutlet) {
+      btnDrawerAiCredit.addEventListener('click', function () {
+        window.ArbaStore.applyRecommendedCreditPolicy(selectedOutlet.id);
       });
     }
 

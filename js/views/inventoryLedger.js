@@ -77,20 +77,27 @@
       return entry.type === state.activeLedgerFilter;
     });
 
+    var activeRole = (appState.currentUser && appState.currentUser.role === 'super-admin')
+      ? (appState.currentRole || 'super-admin')
+      : (appState.currentUser ? appState.currentUser.role : 'inventory');
+    var isWarehouseRole = activeRole === 'inventory';
+
     var html = `
       <div class="flex flex-col w-full gap-space-lg">
-        <!-- Top Bar / Action Center -->
+        <!-- Top Bar / Action Center (Disesuaikan dengan Role Gudang vs Direksi) -->
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-surface-container-lowest p-5 rounded-xl border border-border-subtle/60">
           <div class="flex flex-col gap-0.5 min-w-0">
             <div class="flex items-center gap-2 text-primary text-xs uppercase tracking-wider font-semibold">
               <span class="material-symbols-outlined text-[15px]">warehouse</span>
-              <span>Gudang CV Arba'in · Standar CDOB &amp; FEFO</span>
+              <span>${isWarehouseRole ? 'Operasional Gudang Utama Kartasura · Urutan Keluar Kedaluwarsa Terdekat (FEFO)' : 'Pengawasan Stok Gudang &amp; Kepatuhan CDOB/BPOM'}</span>
             </div>
             <h1 class="text-xl text-on-surface tracking-tight font-bold">
-              Kelola Stok Real-Time &amp; Buku Besar Stok (Stock Ledger)
+              ${isWarehouseRole ? 'Stok Fisik Gudang, Kontrol Barang Bawaan Sales &amp; Buku Besar Stok' : 'Pemantauan Stok Gudang, Batas Stok Aman (ROP) &amp; Buku Besar Mutasi'}
             </h1>
             <p class="text-xs text-on-surface-variant max-w-xl">
-              Audit mutasi inventaris atomik, kalkulasi otomatis Reorder Point (ROP), &amp; kontrol FEFO batch
+              ${isWarehouseRole
+                ? 'Catat barang masuk dari pabrik, cetak stiker QR nomor batch, pantau batas stok minimum (ROP), dan hitung fisik barang bawaan sales sore hari.'
+                : 'Pantau ketersediaan stok herbal, status kedaluwarsa batch FEFO, riwayat keluar-masuk barang, dan audit selisih bawaan sales.'}
             </p>
           </div>
 
@@ -102,20 +109,42 @@
                 id="btn-inbound-batch"
                 class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary-container text-white text-xs font-semibold whitespace-nowrap transition-colors shadow-xs active:scale-95 cursor-pointer border-0"
                 type="button"
-                title="Input penerimaan batch herbal baru masuk gudang"
+                title="Catat barang masuk dari pabrik atau supplier ke Gudang Kartasura"
               >
                 <span class="material-symbols-outlined text-[16px]">add_box</span>
-                <span>+ Penerimaan Batch</span>
+                <span>+ Catat Barang Masuk</span>
+              </button>
+
+              <button
+                id="btn-qr-batch-modal"
+                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors cursor-pointer border"
+                style="background:#ecfdf5; color:#047857; border-color:#a7f3d0;"
+                type="button"
+                title="Scan QR Botol/Karton atau Cetak Stiker Nomor Batch Gudang"
+              >
+                <span class="material-symbols-outlined text-[15px]">qr_code_scanner</span>
+                <span>Scan &amp; Cetak Stiker QR</span>
+              </button>
+
+              <button
+                id="btn-chain-audit-modal"
+                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors cursor-pointer border"
+                style="background:#f5f3ff; color:#6d28d9; border-color:#ddd6fe;"
+                type="button"
+                title="Periksa Keaslian Catatan Keluar-Masuk Stok & Cetak Sertifikat Audit CDOB"
+              >
+                <span class="material-symbols-outlined text-[15px]">verified_user</span>
+                <span>Cek Keaslian Stok (CDOB)</span>
               </button>
 
               <button
                 id="btn-adjust-opname"
                 class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
                 type="button"
-                title="Penyesuaian selisih fisik opname berkala"
+                title="Koreksi selisih hasil hitung fisik (Stok Opname) di gudang"
               >
                 <span class="material-symbols-outlined text-[15px] text-on-surface-variant">tune</span>
-                <span>Penyesuaian Opname</span>
+                <span>Koreksi Stok Opname</span>
               </button>
             </div>
 
@@ -904,6 +933,22 @@
     if (btnPrint) {
       btnPrint.addEventListener('click', function () {
         openPrintModal();
+      });
+    }
+
+    // Advance: QR Batch Scanner & Label Generator Modal
+    var btnQrBatch = container.querySelector('#btn-qr-batch-modal');
+    if (btnQrBatch && window.ArbaAdvanced) {
+      btnQrBatch.addEventListener('click', function () {
+        window.ArbaAdvanced.openQrBatchModal({ initialTab: 'labels' });
+      });
+    }
+
+    // Advance: Blockchain-Style SHA-256 Chain Audit Modal
+    var btnChainAudit = container.querySelector('#btn-chain-audit-modal');
+    if (btnChainAudit && window.ArbaAdvanced) {
+      btnChainAudit.addEventListener('click', function () {
+        window.ArbaAdvanced.openLedgerChainAuditModal();
       });
     }
 

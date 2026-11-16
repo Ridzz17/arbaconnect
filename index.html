@@ -54,7 +54,7 @@
           </svg>
           <div class="header-brand-text">
             <span class="brand-title">ArbaConnect</span>
-            <span class="brand-subtitle">CV Arba'in Logistics ERP</span>
+            <span class="brand-subtitle" id="header-brand-subtitle">Sistem Distribusi &amp; Stok Herbal CV Arba'in</span>
           </div>
         </div>
 
@@ -64,7 +64,7 @@
           <input
             type="text"
             id="global-search-input"
-            placeholder="Cari SKU Herbal, Apotek Mitra, atau Faktur..."
+            placeholder="Cari Produk Herbal, Nama Apotek, atau Nomor Faktur..."
             autocomplete="off"
           />
           <button id="search-clear-btn" class="clear-btn hidden" type="button" title="Hapus Pencarian">
@@ -78,12 +78,12 @@
           <!-- Role Perspective Switcher (Khusus Super Admin) -->
           <div class="role-switcher-container" id="role-switcher-wrapper">
             <span class="material-symbols-outlined role-icon">tune</span>
-            <select id="role-perspective-select" class="role-select" title="Ganti Role Perspektif" aria-label="Ganti Role Perspektif">
-              <option value="super-admin">Super Admin (All Access)</option>
-              <option value="executive">Direksi &amp; Manajemen</option>
-              <option value="field-sales">Field Sales (PWA)</option>
+            <select id="role-perspective-select" class="role-select" title=" Simulasi Tampilan Per Divisi (Khusus Super Admin)" aria-label="Simulasi Tampilan Per Divisi">
+              <option value="super-admin">Super Admin (Akses Penuh)</option>
+              <option value="executive">Direktur &amp; Manajemen</option>
+              <option value="field-sales">Sales Lapangan (Aplikasi HP)</option>
               <option value="inventory">Admin Gudang &amp; Stok</option>
-              <option value="sales-ops">Admin Sales &amp; Verifikasi</option>
+              <option value="sales-ops">Admin Penjualan &amp; Faktur</option>
             </select>
             <span class="material-symbols-outlined dropdown-arrow">expand_more</span>
           </div>
@@ -178,61 +178,61 @@
           </div>
 
           <nav class="sidebar-nav">
-            <!-- 1. Executive Dashboard -->
-            <button class="nav-button active" data-path="executive-dashboard" type="button" title="Executive Dashboard">
+            <!-- 1. Dasbor Direksi & Manajemen -->
+            <button class="nav-button active" data-path="executive-dashboard" type="button" title="Dasbor Direksi &amp; Pemantauan Bisnis">
               <div class="nav-button-content">
                 <span class="material-symbols-outlined text-[20px] shrink-0">dashboard</span>
-                <span class="nav-label">Executive Dashboard</span>
+                <span class="nav-label" data-default-label="Dasbor Direksi">Dasbor Direksi</span>
               </div>
             </button>
 
-            <!-- 2. Inventory & Stock Ledger -->
-            <button class="nav-button" data-path="inventory-stock-ledger" type="button" title="Inventory &amp; Stock Ledger">
+            <!-- 2. Gudang & Buku Besar Stok FEFO -->
+            <button class="nav-button" data-path="inventory-stock-ledger" type="button" title="Gudang &amp; Catatan Keluar-Masuk Stok (FEFO)">
               <div class="nav-button-content">
                 <span class="material-symbols-outlined text-[20px] shrink-0">inventory_2</span>
-                <span class="nav-label">Inventory &amp; Stock Ledger</span>
+                <span class="nav-label" data-default-label="Gudang &amp; Stok FEFO">Gudang &amp; Stok FEFO</span>
               </div>
               <span id="badge-inventory" class="nav-badge-pill hidden">0</span>
             </button>
 
-            <!-- 3. B2B CRM Directory -->
-            <button class="nav-button" data-path="b2b-crm-directory" type="button" title="B2B CRM &amp; Directory">
+            <!-- 3. Data Apotek & Konsinyasi -->
+            <button class="nav-button" data-path="b2b-crm-directory" type="button" title="Data Mitra Apotek, Plafon Kredit &amp; Barang Titipan">
               <div class="nav-button-content">
                 <span class="material-symbols-outlined text-[20px] shrink-0">store</span>
-                <span class="nav-label">B2B CRM &amp; Directory</span>
+                <span class="nav-label" data-default-label="Data Apotek &amp; Konsinyasi">Data Apotek &amp; Konsinyasi</span>
               </div>
             </button>
 
-            <!-- 4. Order Approval Queue -->
-            <button class="nav-button" data-path="order-approval-queue" type="button" title="Order Approval Queue">
+            <!-- 4. Verifikasi Faktur & Pengiriman -->
+            <button class="nav-button" data-path="order-approval-queue" type="button" title="Verifikasi Faktur Pesanan &amp; Jadwal Kirim Armada">
               <div class="nav-button-content">
                 <span class="material-symbols-outlined text-[20px] shrink-0">fact_check</span>
-                <span class="nav-label">Order Approval Queue</span>
+                <span class="nav-label" data-default-label="Verifikasi Faktur &amp; Kirim">Verifikasi Faktur &amp; Kirim</span>
               </div>
               <span id="badge-orders" class="nav-badge-pill hidden">0</span>
             </button>
 
-            <!-- 5. Field Sales PWA Preview -->
-            <button class="nav-button" data-path="field-sales-pwa-preview" type="button" title="Field Sales PWA Preview">
+            <!-- 5. Aplikasi Sales Lapangan -->
+            <button class="nav-button" data-path="field-sales-pwa-preview" type="button" title="Aplikasi Harian Sales Lapangan (Input Nota &amp; Kunjungan)">
               <div class="nav-button-content">
                 <span class="material-symbols-outlined text-[20px] shrink-0">smartphone</span>
-                <span class="nav-label">Field Sales PWA Preview</span>
+                <span class="nav-label" data-default-label="Aplikasi Sales Lapangan">Aplikasi Sales Lapangan</span>
               </div>
             </button>
 
-            <!-- 6. Manajemen Semua User (Khusus Super Admin) -->
-            <button class="nav-button" data-path="user-management" type="button" title="Manajemen Semua User &amp; RBAC (Super Admin)">
+            <!-- 6. Kelola Semua Akun Pegawai (Khusus Super Admin) -->
+            <button class="nav-button" data-path="user-management" type="button" title="Kelola Semua Akun Pegawai &amp; Hak Akses (Super Admin)">
               <div class="nav-button-content">
                 <span class="material-symbols-outlined text-[20px] shrink-0">manage_accounts</span>
-                <span class="nav-label">Manajemen Semua User</span>
+                <span class="nav-label" data-default-label="Kelola Semua User">Kelola Semua User</span>
               </div>
             </button>
 
-            <!-- 7. Edit Detail User & Ganti Password -->
-            <button class="nav-button" data-path="user-profile-settings" type="button" title="Edit Detail User &amp; Ganti Password">
+            <!-- 7. Profil Saya & Ganti Password -->
+            <button class="nav-button" data-path="user-profile-settings" type="button" title="Edit Profil Saya &amp; Ganti Password">
               <div class="nav-button-content">
                 <span class="material-symbols-outlined text-[20px] shrink-0">person_edit</span>
-                <span class="nav-label">Profil &amp; Ganti Password</span>
+                <span class="nav-label" data-default-label="Profil &amp; Ganti Password">Profil &amp; Ganti Password</span>
               </div>
             </button>
           </nav>
@@ -263,6 +263,8 @@
 
       <!-- App Content Wrapper -->
       <div id="app-content-wrapper" class="app-content-wrapper">
+        <!-- Dynamic Role-Specific Context & Guidance Strip -->
+        <div id="role-context-strip" class="px-6 pt-4 pb-0"></div>
         <main id="main-view-container" class="main-view-container"></main>
 
         <!-- Application Footer -->
@@ -291,6 +293,7 @@
     <script src="js/offlineSync.js"></script>
     <script src="js/store.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/advancedFeatures.js"></script>
     <script src="js/views/executiveDashboard.js"></script>
     <script src="js/views/inventoryLedger.js"></script>
     <script src="js/views/b2bCrm.js"></script>
