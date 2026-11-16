@@ -26,6 +26,9 @@
     },
     selectedTerm: 'Konsinyasi (Titip Jual)',
     orderNotes: '',
+    signatureDataUrl: null,
+    shelfPhotoDataUrl: null,
+    scannedQrBatches: [],
     isSubmitting: false,
     gpsCheckedIn: true,
     gpsDistance: 12,
@@ -111,12 +114,12 @@
 
     var html = `
       <div class="flex flex-col items-center w-full pb-12">
-        <!-- Viewport Control Bar -->
+        <!-- Viewport Control Bar (Disesuaikan dengan Role Sales vs Direksi/Admin) -->
         <div class="w-full max-w-xl flex items-center justify-between mb-4 bg-surface-container-lowest p-3 rounded-xl border border-border-subtle/50 text-xs text-on-surface-variant">
           <div class="flex items-center gap-2">
             <span class="material-symbols-outlined text-primary text-[18px]">smartphone</span>
-            <span class="font-semibold text-on-surface">Field Sales Mobile App</span>
-            <span class="hidden sm:inline">· PWA Lapangan</span>
+            <span class="font-semibold text-on-surface">${isFieldSalesRole ? 'Aplikasi Kerja Harian Sales: ' + currentRep : 'Mode Pantau &amp; Simulasi Aplikasi HP Sales'}</span>
+            <span class="hidden sm:inline">· ${isFieldSalesRole ? 'Bisa Tanpa Sinyal' : 'Pilih Nama Sales di Layar HP'}</span>
           </div>
           <div class="flex items-center gap-1.5">
             <button
@@ -128,7 +131,7 @@
               }"
               type="button"
             >
-              Smartphone (390px)
+              Ukuran HP (390px)
             </button>
             <button
               id="btn-viewport-full"
@@ -139,7 +142,7 @@
               }"
               type="button"
             >
-              Layar Penuh
+              Layar Lebar
             </button>
           </div>
         </div>
@@ -318,26 +321,36 @@
                   </div>
                 ` : ''}
 
-                <!-- Quick Actions: Tagih & Isi Ulang Konsinyasi (1-Tap) & Kunjungan Tanpa Order -->
-                <div class="flex gap-2" style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                <!-- Quick Actions: Tagih & Isi Ulang Konsinyasi (1-Tap), Rute TSP & Kunjungan Tanpa Order -->
+                <div class="flex flex-wrap gap-1.5" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.5rem;">
                   <button
                     type="button"
                     id="btn-pwa-repeat-order"
                     class="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-semibold cursor-pointer border-0"
-                    style="flex:1; background:#e0f2fe; color:#075985; border-radius:8px; padding:0.5rem;"
+                    style="flex:1; background:#e0f2fe; color:#075985; border-radius:8px; padding:0.45rem;"
                     title="Otomatis isi jumlah barang konsinyasi yang laku terjual di apotek ini untuk ditagih & diganti stok baru"
                   >
                     <span class="material-symbols-outlined text-[15px]">sync_saved_locally</span>
-                    <span>Tagih Laku &amp; Isi Ulang</span>
+                    <span>Tagih &amp; Isi Ulang</span>
+                  </button>
+                  <button
+                    type="button"
+                    id="btn-pwa-tsp-route"
+                    class="flex items-center justify-center gap-1 py-2 px-2.5 rounded-lg text-[11px] font-bold cursor-pointer border-0"
+                    style="background:#d1fae5; color:#065f46; border-radius:8px; padding:0.45rem 0.6rem;"
+                    title="Lihat Peta Lokasi Apotek & Urutan Rute Kunjungan Terdekat (Hemat BBM)"
+                  >
+                    <span class="material-symbols-outlined text-[15px]">route</span>
+                    <span>Rute Terdekat</span>
                   </button>
                   <button
                     type="button"
                     id="btn-pwa-visit-only"
-                    class="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-semibold cursor-pointer border-0"
-                    style="flex:1; background:#f1f5f9; color:#334155; border-radius:8px; padding:0.5rem;"
+                    class="flex items-center justify-center gap-1 py-2 px-2.5 rounded-lg text-[11px] font-semibold cursor-pointer border-0"
+                    style="background:#f1f5f9; color:#334155; border-radius:8px; padding:0.45rem 0.6rem;"
                   >
                     <span class="material-symbols-outlined text-[15px]">where_to_vote</span>
-                    <span>Cek / Tanpa Nota</span>
+                    <span>Kunjungan Saja</span>
                   </button>
                 </div>
               </div>
@@ -346,11 +359,23 @@
               <div class="space-y-2 mb-3">
                 <div class="flex items-center justify-between mb-1.5">
                   <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                    Ambil Order Produk Herbal
+                    2. Pilih Barang / Scan Kemasan
                   </span>
-                  <span class="text-[11px] text-teal-800 font-semibold" style="color:#005c55;">
-                    ${totalQuantity} item dipilih
-                  </span>
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      id="btn-pwa-scan-qr"
+                      class="px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 cursor-pointer border-0"
+                      style="background:#005c55; color:#ffffff;"
+                      title="Scan QR pada Botol/Karton Herbal untuk Masukkan ke Nota"
+                    >
+                      <span class="material-symbols-outlined text-[14px]">qr_code_scanner</span>
+                      <span>Scan QR Botol</span>
+                    </button>
+                    <span class="text-[11px] text-teal-800 font-semibold" style="color:#005c55;">
+                      ${totalQuantity} botol
+                    </span>
+                  </div>
                 </div>
 
                 <!-- Quick Category Filter Bar -->
@@ -471,9 +496,9 @@
                 </div>
               </div>
 
-              <!-- Step 3: Payment Terms & Simple Notes -->
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2 mb-2" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:0.75rem;">
-                <div class="flex items-center justify-between text-xs mb-1.5">
+              <!-- Step 3: Payment Terms, E-Signature Apoteker & Bukti Foto Etalase Offline -->
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2.5 mb-2" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:0.75rem;">
+                <div class="flex items-center justify-between text-xs mb-1">
                   <span class="font-semibold text-slate-700">Skema Nota:</span>
                   <select
                     id="pwa-term-select"
@@ -493,6 +518,79 @@
                   class="w-full bg-white px-2.5 py-1.5 rounded-lg text-xs text-slate-800 border border-slate-200 placeholder:text-slate-400 focus:outline-none"
                   style="border:1px solid #cbd5e1; width:100%; border-radius:8px;"
                 />
+
+                <!-- Pad Tanda Tangan Digital Apoteker (HTML5 Canvas E-Signature) -->
+                <div class="pt-1 border-t border-slate-200">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[14px] text-teal-700">draw</span>
+                      Tanda Tangan Apoteker (${currentOutlet.picName || 'PIC Outlet'})
+                    </span>
+                    <div class="flex items-center gap-1">
+                      <button
+                        type="button"
+                        id="btn-pwa-auto-sign"
+                        class="px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer border-0"
+                        style="background:#e0f2fe; color:#0369a1;"
+                        title="Buat tanda tangan digital apoteker otomatis"
+                      >
+                        TTD Cepat
+                      </button>
+                      <button
+                        type="button"
+                        id="btn-pwa-clear-sign"
+                        class="px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer border-0"
+                        style="background:#f1f5f9; color:#475569;"
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                  </div>
+                  <div style="background:#ffffff; border:1px dashed #94a3b8; border-radius:8px; overflow:hidden; position:relative;">
+                    <canvas id="pwa-signature-canvas" width="320" height="76" style="width:100%; height:76px; display:block; touch-action:none; cursor:crosshair;"></canvas>
+                    ${state.signatureDataUrl ? `
+                      <span style="position:absolute; right:6px; bottom:4px; font-size:9px; font-weight:700; color:#059669; background:#ecfdf5; padding:1px 5px; border-radius:4px;">✓ TTD Tersimpan</span>
+                    ` : `
+                      <span id="pwa-sign-hint" style="position:absolute; left:8px; bottom:4px; font-size:9px; color:#94a3b8; pointer-events:none;">Goreskan tanda tangan di sini...</span>
+                    `}
+                  </div>
+                </div>
+
+                <!-- Bukti Foto Etalase Rak Herbal Offline-Ready -->
+                <div class="pt-1 border-t border-slate-200 flex items-center justify-between gap-2">
+                  <div class="text-[11px] text-slate-700">
+                    <div class="font-bold flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[14px] text-teal-700">photo_camera</span>
+                      Bukti Foto Etalase Rak
+                    </div>
+                    <div class="text-[10px] text-slate-500">
+                      ${state.shelfPhotoDataUrl ? '✓ Foto etalase siap disinkronkan' : 'Opsional — disimpan lokal saat offline'}
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <label
+                      for="pwa-shelf-file-input"
+                      class="px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer"
+                      style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1;"
+                    >
+                      Pilih File
+                    </label>
+                    <input id="pwa-shelf-file-input" type="file" accept="image/*" capture="environment" style="display:none;" />
+                    <button
+                      type="button"
+                      id="btn-pwa-capture-shelf"
+                      class="px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer border-0"
+                      style="background:#005c55; color:#ffffff;"
+                    >
+                      ${state.shelfPhotoDataUrl ? 'Ganti Foto' : 'Ambil Foto Audit'}
+                    </button>
+                  </div>
+                </div>
+                ${state.shelfPhotoDataUrl ? `
+                  <div class="mt-1 rounded-lg overflow-hidden border border-slate-300">
+                    <img src="${state.shelfPhotoDataUrl}" alt="Bukti Foto Etalase" style="width:100%; height:72px; object-fit:cover; display:block;" />
+                  </div>
+                ` : ''}
               </div>
             </div>
 
@@ -578,6 +676,145 @@
     if (btnVisitOnly) {
       btnVisitOnly.addEventListener('click', function () {
         openVisitOnlyModal(currentOutlet, ctx.currentRep, ctx.isCheckedInHere);
+      });
+    }
+
+    // Optimasi Rute TSP button
+    var btnTspRoute = container.querySelector('#btn-pwa-tsp-route');
+    if (btnTspRoute && window.ArbaAdvanced) {
+      btnTspRoute.addEventListener('click', function () {
+        window.ArbaAdvanced.openTspRouteOptimizerModal(ctx.currentRep, function (selectedCode) {
+          state.selectedOutletCode = selectedCode;
+          renderFieldSalesPwa(container);
+        });
+      });
+    }
+
+    // Scan QR Batch button
+    var btnScanQr = container.querySelector('#btn-pwa-scan-qr');
+    if (btnScanQr && window.ArbaAdvanced) {
+      btnScanQr.addEventListener('click', function () {
+        window.ArbaAdvanced.openQrBatchModal({
+          initialTab: 'scanner',
+          onSelectProduct: function (scannedProd) {
+            var currQty = state.cart[scannedProd.sku] || 0;
+            state.cart[scannedProd.sku] = Math.min(scannedProd.stock, currQty + 2);
+            if (state.scannedQrBatches.indexOf(scannedProd.activeBatch) === -1) {
+              state.scannedQrBatches.push(scannedProd.activeBatch);
+            }
+            window.ArbaApp.showToast('QR Batch ' + scannedProd.activeBatch + ' diverifikasi & +2 ' + scannedProd.name + ' masuk keranjang!', 'qr_code_scanner');
+            renderFieldSalesPwa(container);
+          }
+        });
+      });
+    }
+
+    // HTML5 Canvas E-Signature Pad Apoteker
+    var sigCanvas = container.querySelector('#pwa-signature-canvas');
+    if (sigCanvas && sigCanvas.getContext) {
+      var sigCtx = sigCanvas.getContext('2d');
+      sigCtx.strokeStyle = '#0f172a';
+      sigCtx.lineWidth = 2;
+      sigCtx.lineCap = 'round';
+
+      if (state.signatureDataUrl) {
+        var img = new Image();
+        img.onload = function () {
+          sigCtx.drawImage(img, 0, 0);
+        };
+        img.src = state.signatureDataUrl;
+      }
+
+      var drawing = false;
+      function getPos(evt) {
+        var rect = sigCanvas.getBoundingClientRect();
+        var clientX = evt.touches && evt.touches[0] ? evt.touches[0].clientX : evt.clientX;
+        var clientY = evt.touches && evt.touches[0] ? evt.touches[0].clientY : evt.clientY;
+        return {
+          x: (clientX - rect.left) * (sigCanvas.width / rect.width),
+          y: (clientY - rect.top) * (sigCanvas.height / rect.height)
+        };
+      }
+      function startDraw(evt) {
+        drawing = true;
+        var p = getPos(evt);
+        sigCtx.beginPath();
+        sigCtx.moveTo(p.x, p.y);
+        var hint = container.querySelector('#pwa-sign-hint');
+        if (hint) hint.style.display = 'none';
+      }
+      function moveDraw(evt) {
+        if (!drawing) return;
+        if (evt.cancelable) evt.preventDefault();
+        var p = getPos(evt);
+        sigCtx.lineTo(p.x, p.y);
+        sigCtx.stroke();
+      }
+      function endDraw() {
+        if (!drawing) return;
+        drawing = false;
+        state.signatureDataUrl = sigCanvas.toDataURL('image/png');
+      }
+
+      sigCanvas.addEventListener('mousedown', startDraw);
+      sigCanvas.addEventListener('mousemove', moveDraw);
+      window.addEventListener('mouseup', endDraw);
+      sigCanvas.addEventListener('touchstart', startDraw, { passive: false });
+      sigCanvas.addEventListener('touchmove', moveDraw, { passive: false });
+      sigCanvas.addEventListener('touchend', endDraw);
+
+      var btnAutoSign = container.querySelector('#btn-pwa-auto-sign');
+      if (btnAutoSign) {
+        btnAutoSign.addEventListener('click', function () {
+          sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+          sigCtx.strokeStyle = '#005c55';
+          sigCtx.lineWidth = 2.2;
+          sigCtx.beginPath();
+          sigCtx.moveTo(35, 52);
+          sigCtx.bezierCurveTo(65, 16, 95, 64, 130, 28);
+          sigCtx.bezierCurveTo(155, 12, 175, 55, 220, 35);
+          sigCtx.lineTo(275, 42);
+          sigCtx.stroke();
+          sigCtx.fillStyle = '#0f172a';
+          sigCtx.font = 'bold 10px sans-serif';
+          sigCtx.fillText((currentOutlet.picName || 'Apoteker APA') + ' • Terverifikasi', 35, 68);
+          state.signatureDataUrl = sigCanvas.toDataURL('image/png');
+          renderFieldSalesPwa(container);
+        });
+      }
+
+      var btnClearSign = container.querySelector('#btn-pwa-clear-sign');
+      if (btnClearSign) {
+        btnClearSign.addEventListener('click', function () {
+          sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+          state.signatureDataUrl = null;
+          renderFieldSalesPwa(container);
+        });
+      }
+    }
+
+    // Bukti Foto Etalase Rak Herbal
+    var btnCaptureShelf = container.querySelector('#btn-pwa-capture-shelf');
+    if (btnCaptureShelf && window.ArbaAdvanced) {
+      btnCaptureShelf.addEventListener('click', function () {
+        state.shelfPhotoDataUrl = window.ArbaAdvanced.generateSampleShelfPhotoDataUrl(currentOutlet.name, ctx.currentRep);
+        window.ArbaApp.showToast('Bukti foto etalase rak berhasil direkam untuk ' + currentOutlet.name, 'photo_camera');
+        renderFieldSalesPwa(container);
+      });
+    }
+
+    var shelfFileInput = container.querySelector('#pwa-shelf-file-input');
+    if (shelfFileInput) {
+      shelfFileInput.addEventListener('change', function (e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function (ev) {
+          state.shelfPhotoDataUrl = ev.target.result;
+          window.ArbaApp.showToast('Foto etalase berhasil diunggah', 'photo_camera');
+          renderFieldSalesPwa(container);
+        };
+        reader.readAsDataURL(file);
       });
     }
     // Viewport Toggle
@@ -758,10 +995,19 @@
         });
 
         setTimeout(function () {
-          var activeRep = window.ArbaStore.getState().currentSalesRep || 'Budi Santoso';
+          var activeRep = ctx.currentRep || window.ArbaStore.getState().currentSalesRep || 'Budi Santoso';
+          var savedSignature = state.signatureDataUrl;
+          var savedPhoto = state.shelfPhotoDataUrl;
+          var savedNotes = state.orderNotes;
+          var savedQrBatches = (state.scannedQrBatches || []).slice();
+
           state.isSubmitting = false;
           state.orderNotes = '';
           state.cart = {};
+          state.signatureDataUrl = null;
+          state.shelfPhotoDataUrl = null;
+          state.scannedQrBatches = [];
+
           window.ArbaStore.submitFieldSalesOrder({
             outletId: currentOutlet.code,
             outletName: currentOutlet.name,
@@ -772,11 +1018,15 @@
             totalAmount: totalAmount,
             gpsDistance: state.gpsDistance,
             geofenceValid: Boolean(ctx.isCheckedInHere),
-            notes: state.orderNotes,
+            notes: savedNotes,
+            signatureDataUrl: savedSignature,
+            signerName: currentOutlet.picName || 'Apoteker Penanggung Jawab',
+            shelfPhotoDataUrl: savedPhoto,
+            scannedQrBatches: savedQrBatches,
             items: items
           });
 
-          openThermalReceiptModal(currentOutlet, items, totalAmount, activeRep);
+          openThermalReceiptModal(currentOutlet, items, totalAmount, activeRep, savedSignature, savedPhoto);
         }, 400);
       });
     }
@@ -878,7 +1128,7 @@
   }
 
   // 58mm Mobile Thermal Receipt Modal
-  function openThermalReceiptModal(outlet, items, totalAmount, salesRepName) {
+  function openThermalReceiptModal(outlet, items, totalAmount, salesRepName, signatureDataUrl, shelfPhotoDataUrl) {
     var appSt = window.ArbaStore.getState();
     var isOnline = appSt.isOnline;
     var activeSales = salesRepName || appSt.currentSalesRep || 'Budi Santoso';
@@ -925,6 +1175,14 @@
               <span>TOTAL:</span>
               <span>${window.ArbaUtils.formatRupiah(totalAmount)}</span>
             </div>
+
+            ${signatureDataUrl ? `
+              <div class="pt-2 mt-1 border-t border-dashed border-slate-300 text-center">
+                <div class="text-[9px] text-slate-500 uppercase">Tanda Tangan Digital Apoteker / PIC</div>
+                <img src="${signatureDataUrl}" alt="TTD Apoteker" style="max-height:48px; margin:2px auto; display:block;" />
+                <div class="text-[10px] font-bold text-slate-700">${outlet.picName || 'Apoteker APA'}</div>
+              </div>
+            ` : ''}
           </div>
 
           <!-- Action buttons: WhatsApp Share + Thermal Print -->

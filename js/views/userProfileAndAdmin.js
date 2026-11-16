@@ -15,21 +15,21 @@
   window.ArbaViews = window.ArbaViews || {};
 
   var ROLE_LABELS = {
-    'super-admin': { label: 'Super Admin (All Access)', bg: '#ffe4e6', text: '#be123c', icon: 'admin_panel_settings' },
-    'executive': { label: 'Direktur & Manajemen', bg: '#e6f4f1', text: '#005c55', icon: 'monitoring' },
-    'inventory': { label: 'Admin Gudang & Stok', bg: '#e0f2fe', text: '#0369a1', icon: 'warehouse' },
-    'sales-ops': { label: 'Admin Penjualan & Verifikasi', bg: '#f3e8ff', text: '#6d28d9', icon: 'fact_check' },
-    'field-sales': { label: 'Sales Lapangan (PWA)', bg: '#fef3c7', text: '#b45309', icon: 'smartphone' }
+    'super-admin': { label: 'Super Admin (Akses Penuh)', bg: '#ffe4e6', text: '#be123c', icon: 'admin_panel_settings' },
+    'executive': { label: 'Direktur & Manajemen Puncak', bg: '#e6f4f1', text: '#005c55', icon: 'monitoring' },
+    'inventory': { label: 'Admin Gudang & Logistik FEFO', bg: '#e0f2fe', text: '#0369a1', icon: 'warehouse' },
+    'sales-ops': { label: 'Admin Penjualan & Piutang', bg: '#f3e8ff', text: '#6d28d9', icon: 'fact_check' },
+    'field-sales': { label: 'Sales Lapangan (Kanvas)', bg: '#fef3c7', text: '#b45309', icon: 'smartphone' }
   };
 
   var ALL_MODULES = [
-    { path: 'executive-dashboard', name: 'Executive Dashboard', icon: 'dashboard', desc: 'KPI Eksekutif, Forecasting & Alarm Dual-Warna' },
-    { path: 'inventory-stock-ledger', name: 'Inventory & Stock Ledger', icon: 'inventory_2', desc: 'Katalog Batch FEFO, Buku Besar & Anti-Fraud Gudang' },
-    { path: 'b2b-crm-directory', name: 'B2B CRM & Directory', icon: 'store', desc: 'Direktori >1.000 Apotek Konsinyasi & Plafon Kredit' },
-    { path: 'order-approval-queue', name: 'Order Approval Queue', icon: 'fact_check', desc: 'Verifikasi Faktur PWA, Surat Jalan & Manifest Armada' },
-    { path: 'field-sales-pwa-preview', name: 'Field Sales PWA', icon: 'smartphone', desc: 'Aplikasi Sales Lapangan Offline-First & Check-in GPS' },
-    { path: 'user-management', name: 'Manajemen Semua User (Super Admin)', icon: 'manage_accounts', desc: 'Kelola seluruh akun, role, hak akses & reset password' },
-    { path: 'user-profile-settings', name: 'Edit Profil & Ganti Password', icon: 'person_edit', desc: 'Pengaturan profil pribadi & keamanan kata sandi' }
+    { path: 'executive-dashboard', name: 'Dasbor Direksi & Pemantauan Bisnis', icon: 'dashboard', desc: 'Omset bulanan, peringatan stok & kedaluwarsa, serta perkiraan produksi pabrik' },
+    { path: 'inventory-stock-ledger', name: 'Gudang & Buku Besar Stok FEFO', icon: 'inventory_2', desc: 'Stok fisik Gudang Kartasura, urutan batch kedaluwarsa terdekat, & cek bawaan sales' },
+    { path: 'b2b-crm-directory', name: 'Data Apotek Mitra & Konsinyasi', icon: 'store', desc: 'Daftar pelanggan apotek, batas plafon kredit, & pantauan barang titip jual' },
+    { path: 'order-approval-queue', name: 'Verifikasi Faktur & Pengiriman', icon: 'fact_check', desc: 'Pemeriksaan faktur pesanan dari sales, alokasi barang, & surat jalan armada' },
+    { path: 'field-sales-pwa-preview', name: 'Aplikasi Kerja Sales Lapangan', icon: 'smartphone', desc: 'Absen lokasi GPS di apotek, input nota barang, tanda tangan apoteker & foto rak' },
+    { path: 'user-management', name: 'Kelola Semua Akun Pegawai (Super Admin)', icon: 'manage_accounts', desc: 'Tambah/edit pegawai, reset password, & atur hak akses halaman tiap divisi' },
+    { path: 'user-profile-settings', name: 'Profil Saya & Ganti Password', icon: 'person_edit', desc: 'Halaman pengaturan biodata pegawai, ganti password login & PIN offline' }
   ];
 
   var adminState = {

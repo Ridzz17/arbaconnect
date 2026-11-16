@@ -953,6 +953,57 @@ function applyMutationOnCentralState(state, mutation) {
       }
       break;
     }
+
+    case 'REBALANCE_CONSIGNMENT': {
+      const src = findOutlet(state, p.sourceOutletId);
+      const dst = findOutlet(state, p.targetOutletId);
+      const qty = Number(p.transferQty) || 0;
+      if (src && dst && qty > 0) {
+        const srcItem = (src.consignmentItems || []).find((c) => c.sku === p.sku);
+        if (srcItem && (srcItem.remainingQty || 0) >= qty) {
+          srcItem.remainingQty = Math.max(0, srcItem.remainingQty - qty);
+          srcItem.consignedQty = (srcItem.soldQty || 0) + srcItem.remainingQty;
+          if (!Array.isArray(dst.consignmentItems)) dst.consignmentItems = [];
+          const dstItem = dst.consignmentItems.find((c) => c.sku === p.sku);
+          if (dstItem) {
+            dstItem.remainingQty = (dstItem.remainingQty || 0) + qty;
+            dstItem.consignedQty = (dstItem.soldQty || 0) + dstItem.remainingQty;
+            dstItem.velocity = 'LARIS';
+          } else {
+            dst.consignmentItems.push({
+              sku: srcItem.sku,
+              name: srcItem.name,
+              batch: srcItem.batch,
+              expiry: srcItem.expiry,
+              consignedQty: qty,
+              soldQty: 0,
+              remainingQty: qty,
+              unitPrice: srcItem.unitPrice,
+              velocity: 'LARIS',
+              daysInOutlet: 1,
+              nearExpiry: srcItem.nearExpiry
+            });
+          }
+          src.consignmentTotalUnits = (src.consignmentItems || []).reduce((s, c) => s + (c.remainingQty || 0), 0);
+          dst.consignmentTotalUnits = (dst.consignmentItems || []).reduce((s, c) => s + (c.remainingQty || 0), 0);
+        }
+        if (p.ledgerEntry && !state.ledger.some((l) => l.id === p.ledgerEntry.id)) {
+          state.ledger = [p.ledgerEntry, ...state.ledger];
+        }
+      }
+      break;
+    }
+
+    case 'UPDATE_OUTLET_CREDIT_POLICY': {
+      const target = findOutlet(state, p.outletId);
+      if (target) {
+        if (p.creditLimit !== undefined) target.creditLimit = Number(p.creditLimit);
+        if (p.terms !== undefined) target.terms = p.terms;
+        if (p.creditRemaining !== undefined) target.creditRemaining = Number(p.creditRemaining);
+        if (p.creditStatus !== undefined) target.creditStatus = p.creditStatus;
+      }
+      break;
+    }
   }
 }
 

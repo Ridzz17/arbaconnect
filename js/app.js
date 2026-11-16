@@ -113,16 +113,66 @@
       }
 
       var navButtons = document.querySelectorAll('.nav-button');
+      var activeRole = (state.currentUser && state.currentUser.role === 'super-admin')
+        ? (state.currentRole || 'super-admin')
+        : state.currentUser.role;
+
+      // Sesuaikan nama menu navigasi dengan istilah kerja masing-masing role pengguna
+      var roleNavLabels = {
+        'super-admin': {
+          'executive-dashboard': 'Dasbor Direksi & Omset',
+          'inventory-stock-ledger': 'Gudang & Buku Besar Stok',
+          'b2b-crm-directory': 'Data Apotek & Konsinyasi',
+          'order-approval-queue': 'Verifikasi Faktur & Kirim',
+          'field-sales-pwa-preview': 'Aplikasi Sales Lapangan',
+          'user-management': 'Kelola Semua User & Akses',
+          'user-profile-settings': 'Profil & Ganti Password'
+        },
+        'executive': {
+          'executive-dashboard': 'Dasbor Direksi & Omset',
+          'inventory-stock-ledger': 'Pantauan Stok & FEFO',
+          'b2b-crm-directory': 'Mitra Apotek & Konsinyasi',
+          'order-approval-queue': 'Persetujuan Faktur & Kirim',
+          'field-sales-pwa-preview': 'Pantau Aplikasi Sales',
+          'user-profile-settings': 'Profil Direksi & Password'
+        },
+        'inventory': {
+          'inventory-stock-ledger': 'Stok Gudang & Batch FEFO',
+          'order-approval-queue': 'Siapkan Barang & Surat Jalan',
+          'user-profile-settings': 'Profil Gudang & Password'
+        },
+        'sales-ops': {
+          'order-approval-queue': 'Verifikasi Faktur & Tagihan',
+          'b2b-crm-directory': 'Data Apotek & Plafon Kredit',
+          'field-sales-pwa-preview': 'Pantau Input Nota Sales',
+          'user-profile-settings': 'Profil Admin & Password'
+        },
+        'field-sales': {
+          'field-sales-pwa-preview': 'Input Nota & Absen GPS',
+          'b2b-crm-directory': 'Apotek & Rute Kunjungan Saya',
+          'user-profile-settings': 'Profil Sales & Password'
+        }
+      };
+
+      var labelDict = roleNavLabels[activeRole] || roleNavLabels['executive'];
+
       navButtons.forEach(function (btn) {
         var path = btn.getAttribute('data-path');
         var isAllowed = allowedPaths.indexOf(path) !== -1;
         btn.style.display = isAllowed ? '' : 'none';
+        var labelSpan = btn.querySelector('.nav-label');
+        if (labelSpan && labelDict[path]) {
+          labelSpan.textContent = labelDict[path];
+          btn.setAttribute('title', labelDict[path]);
+        }
         if (path === state.currentPath) {
           btn.classList.add('active');
         } else {
           btn.classList.remove('active');
         }
       });
+
+      this.renderRoleContextBanner(state, activeRole);
 
       // Render view module
       switch (state.currentPath) {
@@ -169,6 +219,97 @@
       }
 
       window.scrollTo(0, 0);
+    },
+
+    renderRoleContextBanner: function (state, activeRole) {
+      var strip = document.getElementById('role-context-strip');
+      if (!strip) return;
+      if (!state.currentUser) {
+        strip.innerHTML = '';
+        return;
+      }
+
+      var user = state.currentUser;
+      var analytics = window.ArbaStore.getAnalytics ? window.ArbaStore.getAnalytics() : {};
+      var pendingCount = state.orders.filter(function (o) { return o.status === 'PENDING'; }).length;
+      var orangeCount = (analytics.orangeStockAlarms && analytics.orangeStockAlarms.length) || 0;
+      var pinkCount = (analytics.pinkExpiryAlarms && analytics.pinkExpiryAlarms.length) || 0;
+      var usersCount = (state.users && state.users.length) || 12;
+
+      var roleConfigs = {
+        'super-admin': {
+          bg: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
+          border: '#c4b5fd',
+          badgeBg: '#6d28d9',
+          icon: 'shield_person',
+          roleTitle: 'SUPER ADMINISTRATOR (AKSES PENUH SELURUH DIVISI)',
+          headline: 'Halo, ' + user.name + ' — Pusat Kendali Sistem & Hak Akses Pegawai',
+          desc: 'Anda dapat mengakses seluruh 7 halaman operasional, mengelola ' + usersCount + ' akun pegawai, mengganti password user mana pun, serta menggunakan pengubah tampilan divisi di kanan atas untuk mengecek layar Direktur, Gudang, Admin Penjualan, maupun Sales.'
+        },
+        'executive': {
+          bg: 'linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%)',
+          border: '#5eead4',
+          badgeBg: '#005c55',
+          icon: 'monitoring',
+          roleTitle: 'PERSPEKTIF DIREKTUR & MANAJEMEN PUNCAK',
+          headline: 'Ringkasan Eksekutif Harian untuk ' + user.name + ' (' + user.title + ')',
+          desc: 'Istilah & informasi disesuaikan untuk pengambilan keputusan direksi: Capaian Omset Bulanan (' + (analytics.revenuePct || 0) + '% dari target), ' + orangeCount + ' Peringatan Stok Menipis (Alarm Oranye), ' + pinkCount + ' Peringatan Barang Hampir Kedaluwarsa (Alarm Pink), serta Perkiraan Produksi Pabrik Bulan Depan.'
+        },
+        'inventory': {
+          bg: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+          border: '#7dd3fc',
+          badgeBg: '#0369a1',
+          icon: 'warehouse',
+          roleTitle: 'RUANG KERJA DIVISI GUDANG & LOGISTIK FEFO',
+          headline: 'Selamat Bertugas, ' + user.name + ' — Gudang Utama Kartasura',
+          desc: 'Istilah disesuaikan untuk operasional gudang: Fokus pada Stok Fisik Botol/Karton, Urutan Keluar Kedaluwarsa Terdekat (FEFO), ' + orangeCount + ' Produk di Bawah Batas Stok Aman (ROP), Penyiapan Barang untuk ' + pendingCount + ' Faktur Baru, serta Cek Fisik Barang Bawaan Sales Pagi vs Kembali Sore.'
+        },
+        'sales-ops': {
+          bg: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+          border: '#d8b4fe',
+          badgeBg: '#7e22ce',
+          icon: 'fact_check',
+          roleTitle: 'MEJA KERJA DIVISI ADMIN PENJUALAN & PIUTANG APOTEK',
+          headline: 'Selamat Bertugas, ' + user.name + ' — Verifikasi Faktur & Administrasi Konsinyasi',
+          desc: 'Istilah disesuaikan untuk administrasi penjualan & keuangan: Fokus pada pemeriksaan ' + pendingCount + ' Faktur Pesanan Masuk dari HP Sales, pengecekan Sisa Plafon Kredit Apotek, pemeriksaan Tanda Tangan Apoteker & Foto Rak, serta pemantauan Tagihan Barang Titip Jual (Konsinyasi) yang sudah laku.'
+        },
+        'field-sales': {
+          bg: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+          border: '#fcd34d',
+          badgeBg: '#b45309',
+          icon: 'Directions_Bike',
+          roleTitle: 'APLIKASI KERJA HARIAN SALES LAPANGAN',
+          headline: 'Selamat Bertugas di Lapangan, ' + user.name + ' (' + user.division + ')',
+          desc: 'Tampilan & istilah disederhanakan khusus untuk kunjungan apotek: 1) Pilih Apotek & Absen Lokasi GPS, 2) Hitung Barang Titipan yang Laku / Scan QR Kemasan, 3) Minta Tanda Tangan Apoteker & Foto Rak, lalu Simpan Nota (tetap berjalan lancar meskipun sinyal internet mati).'
+        }
+      };
+
+      var cfg = roleConfigs[activeRole] || roleConfigs['executive'];
+      var subtitleEl = document.getElementById('header-brand-subtitle');
+      if (subtitleEl) {
+        subtitleEl.textContent = cfg.roleTitle;
+      }
+
+      strip.innerHTML = `
+        <div style="background:${cfg.bg}; border:1.5px solid ${cfg.border}; border-radius:14px; padding:12px 16px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:flex-start; gap:12px; flex:1; min-width:260px;">
+            <div style="width:38px; height:38px; border-radius:10px; background:${cfg.badgeBg}; color:#ffffff; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px;">
+              <span class="material-symbols-outlined" style="font-size:20px;">${cfg.icon}</span>
+            </div>
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span style="font-size:10px; font-weight:800; letter-spacing:0.05em; padding:2px 8px; border-radius:999px; background:${cfg.badgeBg}; color:#ffffff;">
+                  ${cfg.roleTitle}
+                </span>
+                <span style="font-size:13px; font-weight:800; color:#0f172a;">${cfg.headline}</span>
+              </div>
+              <p style="font-size:11.5px; color:#334155; margin:4px 0 0 0; line-height:1.45;">
+                ${cfg.desc}
+              </p>
+            </div>
+          </div>
+        </div>
+      `;
     },
 
     // Header interaction handling

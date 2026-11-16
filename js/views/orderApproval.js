@@ -68,25 +68,43 @@
       return (b.orderTimestamp || 0) - (a.orderTimestamp || 0);
     });
 
+    var activeRole = (appState.currentUser && appState.currentUser.role === 'super-admin')
+      ? (appState.currentRole || 'super-admin')
+      : (appState.currentUser ? appState.currentUser.role : 'sales-ops');
+    var isWarehouseRole = activeRole === 'inventory';
+    var isSalesOpsRole = activeRole === 'sales-ops';
+
+    var pageTitle = isWarehouseRole
+      ? 'Penyiapan Barang Gudang, Alokasi Nomor Batch FEFO & Surat Jalan Armada'
+      : isSalesOpsRole
+      ? 'Meja Verifikasi Faktur Pesanan Sales, Plafon Kredit & Tanda Tangan Apoteker'
+      : 'Verifikasi Faktur Pesanan Masuk, Alokasi Stok FEFO & Pengiriman Armada';
+
+    var pageSubtitle = isWarehouseRole
+      ? 'Siapkan fisik botol/karton dari Gudang Kartasura sesuai urutan kedaluwarsa terdekat (FEFO), alihkan nomor batch bila stok kurang, dan terbitkan Surat Jalan untuk sopir armada.'
+      : isSalesOpsRole
+      ? 'Periksa faktur pesanan yang dikirim dari HP Sales, pastikan nilai nota tidak melewati sisa plafon kredit apotek, cek tanda tangan apoteker & foto rak, lalu setujui faktur.'
+      : 'Pusat persetujuan faktur pesanan dari lapangan, pemotongan otomatis stok gudang berstandar FEFO, dan pemantauan pengiriman sopir armada.';
+
     var html = `
       <div class="flex flex-col w-full">
         <!-- Top Section: Metric Ribbon & Audit Integrity Indicator -->
         <div class="flex flex-col gap-space-lg mb-space-lg">
-          <!-- Breadcrumb & Status Tracker -->
+          <!-- Breadcrumb & Status Tracker (Disesuaikan dengan Role Pengguna) -->
           <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
             <div>
               <div class="flex items-center gap-2 mb-1 text-on-surface-variant text-xs font-medium">
-                <span>Penjualan &amp; Distribusi</span>
+                <span>${isWarehouseRole ? 'Divisi Gudang &amp; Pengiriman' : 'Divisi Penjualan &amp; Piutang Apotek'}</span>
                 <span aria-hidden="true">·</span>
-                <span class="text-primary font-semibold">Otorisasi Pesanan B2B</span>
+                <span class="text-primary font-semibold">${isWarehouseRole ? 'Penyiapan Barang &amp; Surat Jalan' : 'Pemeriksaan Faktur &amp; Plafon'}</span>
                 <span aria-hidden="true">·</span>
-                <span>Kepatuhan FEFO</span>
+                <span>Urutan Kedaluwarsa Terdekat (FEFO)</span>
               </div>
               <h1 class="text-2xl text-on-surface font-bold tracking-tight">
-                Antrean Verifikasi &amp; Persetujuan Pesanan B2B
+                ${pageTitle}
               </h1>
               <p class="text-sm text-on-surface-variant mt-0.5 max-w-4xl">
-                Validasi pesanan masuk dari sales lapangan PWA, alokasi stok gudang otomatis, dan cetak Surat Jalan CV Arba'in dengan penegakan FEFO.
+                ${pageSubtitle}
               </p>
             </div>
 
@@ -95,10 +113,10 @@
               <span class="w-2 h-2 rounded-full bg-emerald-600" style="display:inline-block; width:8px; height:8px;"></span>
               <div class="flex flex-col">
                 <span class="text-xs text-on-surface font-semibold">
-                  Alokasi Stok FEFO Otomatis
+                  ${isWarehouseRole ? 'Potong Stok Batch FEFO Otomatis' : 'Pemeriksaan Plafon &amp; Stok Aktif'}
                 </span>
                 <span class="text-[11px] text-on-surface-variant">
-                  Terhubung Buku Besar Stok Gudang
+                  Terhubung ke Buku Besar Stok Gudang Kartasura
                 </span>
               </div>
               <span class="material-symbols-outlined text-primary text-[20px] ml-1">verified_user</span>
@@ -118,15 +136,15 @@
             >
               <div class="flex items-center justify-between w-full mb-1">
                 <span class="text-xs uppercase tracking-wider font-semibold opacity-90">
-                  Perlu Otorisasi
+                  ${isWarehouseRole ? 'Perlu Disiapkan Gudang' : 'Perlu Verifikasi Faktur'}
                 </span>
                 <span class="material-symbols-outlined text-[18px]">pending_actions</span>
               </div>
               <div class="flex items-baseline gap-1.5">
                 <span class="text-2xl font-bold">${pendingOrders.length}</span>
-                <span class="text-xs font-medium opacity-90">Pesanan</span>
+                <span class="text-xs font-medium opacity-90">Faktur</span>
               </div>
-              <span class="text-xs mt-1 opacity-80">Menunggu Persetujuan Admin</span>
+              <span class="text-xs mt-1 opacity-80">${isWarehouseRole ? 'Siapkan Batch &amp; Cetak Surat Jalan' : 'Menunggu Persetujuan Admin'}</span>
             </button>
 
             <button
@@ -140,7 +158,7 @@
             >
               <div class="flex items-center justify-between w-full mb-1">
                 <span class="text-xs uppercase tracking-wider font-semibold">
-                  Diproses Hari Ini
+                  ${isWarehouseRole ? 'Barang Sudah Disiapkan' : 'Faktur Disetujui Hari Ini'}
                 </span>
                 <span class="material-symbols-outlined text-[18px]">task_alt</span>
               </div>
@@ -148,9 +166,9 @@
                 <span class="text-2xl font-bold">
                   ${28 + approvedOrders.length - 1}
                 </span>
-                <span class="text-xs">Pesanan</span>
+                <span class="text-xs">Faktur</span>
               </div>
-              <span class="text-xs mt-1 opacity-80">Telah Dikonfirmasi</span>
+              <span class="text-xs mt-1 opacity-80">Stok Batch FEFO Telah Dipotong</span>
             </button>
 
             <button
@@ -164,7 +182,7 @@
             >
               <div class="flex items-center justify-between w-full mb-1">
                 <span class="text-xs uppercase tracking-wider font-semibold">
-                  Manifest Armada
+                  Surat Jalan &amp; Armada
                 </span>
                 <span class="material-symbols-outlined text-[18px]">local_shipping</span>
               </div>
@@ -172,7 +190,7 @@
                 <span class="text-2xl font-bold">14</span>
                 <span class="text-xs">Faktur</span>
               </div>
-              <span class="text-xs mt-1 opacity-80">Siap Dikirim Logistik</span>
+              <span class="text-xs mt-1 opacity-80">Dibawa Sopir Pengiriman</span>
             </button>
 
             <button
@@ -186,7 +204,7 @@
             >
               <div class="flex items-center justify-between w-full mb-1">
                 <span class="text-xs uppercase tracking-wider font-semibold">
-                  Ditolak / Retur
+                  Faktur Ditolak / Retur
                 </span>
                 <span class="material-symbols-outlined text-[18px]">cancel</span>
               </div>
@@ -479,9 +497,40 @@
                             <span class="font-body-sm text-body-sm text-on-surface-variant">
                               Sisa Limit: ${window.ArbaUtils.formatRupiah(order.limitRemaining)} (Aman)
                             </span>
+                            ${(function () {
+                              var sc = window.ArbaStore.getOutletCreditScoring ? window.ArbaStore.getOutletCreditScoring(order.outletId) : null;
+                              if (!sc) return '';
+                              return `<span class="mt-1 inline-flex items-center justify-end gap-1 text-[11px] font-bold" style="color:${sc.badgeColor};">📊 Skor Kelayakan Kredit: ${sc.score}/100 (${sc.tier})</span>`;
+                            })()}
                           </div>
                         </div>
                       </div>
+
+                      <!-- Bukti Tanda Tangan Digital Apoteker & Foto Audit Etalase (Bila Ada dari PWA) -->
+                      ${(order.signatureDataUrl || order.shelfPhotoDataUrl) ? `
+                        <div class="my-3 p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+                          <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-emerald-700 text-[22px]">verified</span>
+                            <div>
+                              <div class="font-bold text-emerald-950">Bukti Serah Terima Digital Terlampir dari PWA Sales</div>
+                              <div class="text-[11px] text-emerald-800">Ditandatangani oleh: <b>${order.signerName || 'Apoteker Penanggung Jawab'}</b></div>
+                            </div>
+                          </div>
+                          <div class="flex items-center gap-3">
+                            ${order.signatureDataUrl ? `
+                              <div class="bg-white px-2.5 py-1 rounded-lg border border-emerald-300 text-center">
+                                <div class="text-[9px] uppercase font-bold text-slate-500">E-Signature Apoteker</div>
+                                <img src="${order.signatureDataUrl}" alt="E-Signature" style="height:34px; display:block;" />
+                              </div>
+                            ` : ''}
+                            ${order.shelfPhotoDataUrl ? `
+                              <div class="bg-white p-1 rounded-lg border border-emerald-300 text-center">
+                                <img src="${order.shelfPhotoDataUrl}" alt="Foto Etalase" style="height:42px; width:84px; object-fit:cover; border-radius:4px; display:block;" />
+                              </div>
+                            ` : ''}
+                          </div>
+                        </div>
+                      ` : ''}
 
                       <!-- Sales Origin & Geofence Verification Metadata Box -->
                       <div class="grid grid-cols-1 md:grid-cols-3 gap-space-md my-space-md p-space-md bg-surface-container-low rounded-xl border border-border-subtle/30 p-3 my-3 gap-3">

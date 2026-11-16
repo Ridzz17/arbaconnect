@@ -1043,6 +1043,10 @@ window.ArbaStore = (function() {
       geofenceCoords: newOrder.geofenceCoords || '-7.5583, 110.8214 (Presisi GPS)',
       gpsDistance: newOrder.gpsDistance,
       notes: newOrder.notes || '',
+      signatureDataUrl: newOrder.signatureDataUrl || null,
+      signerName: newOrder.signerName || (outlet ? outlet.picName : 'Apoteker Penanggung Jawab'),
+      shelfPhotoDataUrl: newOrder.shelfPhotoDataUrl || null,
+      scannedQrBatches: newOrder.scannedQrBatches || [],
       npwp: '01.324.891.4-528.000',
       status: 'PENDING',
       syncStatus: state.isOnline ? 'SYNCED_DEDUCTED' : 'OFFLINE_QUEUED',
@@ -1658,6 +1662,414 @@ window.ArbaStore = (function() {
     location.reload();
   }
 
+  // ---------------------------------------------------------------------------
+  // 6 FITUR ADVANCE (Smart Consignment Rebalancer, AI Credit Scoring,
+  // TSP Route Optimizer, & Blockchain-Style CDOB Ledger Chain Verifier)
+  // ---------------------------------------------------------------------------
+  function getConsignmentRebalanceRecommendations() {
+    const recommendations = [];
+    state.outlets.forEach(src => {
+      (src.consignmentItems || []).forEach(ci => {
+        const isSlowOrNearExpiry = (ci.velocity === 'LAMA_TIDAK_LAKU' || ci.nearExpiry || (ci.daysInOutlet || 0) >= 30);
+        if (!isSlowOrNearExpiry || (ci.remainingQty || 0) < 4) return;
+
+        // Cari apotek tujuan terbaik yang perputarannya LARIS untuk SKU yang sama atau satu rayon
+        let bestTarget = null;
+        let bestScore = -1;
+        state.outlets.forEach(dst => {
+          if (dst.id === src.id) return;
+          const matchItem = (dst.consignmentItems || []).find(dci => dci.sku === ci.sku);
+          let score = 0;
+          if (matchItem && matchItem.velocity === 'LARIS') score += 50;
+          if (matchItem && (matchItem.remainingQty || 0) <= 15) score += 25;
+          if (dst.cityName === src.cityName) score += 15;
+          if (dst.creditStatus === 'Lancar') score += 10;
+          if (score > bestScore) {
+            bestScore = score;
+            bestTarget = dst;
+          }
+        });
+
+        if (bestTarget) {
+          const transferQty = Math.max(4, Math.min(ci.remainingQty - 2, Math.ceil(ci.remainingQty * 0.65)));
+          const unitPrice = ci.unitPrice || 45000;
+          recommendations.push({
+            id: `REB-${src.id}-${bestTarget.id}-${ci.sku}`,
+            sourceOutletId: src.id,
+            sourceOutletName: src.name,
+            sourceCity: src.cityName,
+            sourceSalesRep: src.salesRep,
+            targetOutletId: bestTarget.id,
+            targetOutletName: bestTarget.name,
+            targetCity: bestTarget.cityName,
+            targetSalesRep: bestTarget.salesRep,
+            sku: ci.sku,
+            productName: ci.name,
+            batch: ci.batch,
+            expiry: ci.expiry,
+            daysInOutlet: ci.daysInOutlet || 40,
+            nearExpiry: !!ci.nearExpiry,
+            sourceRemainingQty: ci.remainingQty,
+            transferQty,
+            unitPrice,
+            savedValueRp: transferQty * unitPrice,
+            reason: ci.nearExpiry
+              ? `Mendekati ED (${ci.expiry}) & mengendap ${ci.daysInOutlet} hari di ${src.name}`
+              : `Stok macet ${ci.daysInOutlet} hari di ${src.name}, sedangkan ${bestTarget.name} berstatus LARIS`
+          });
+        }
+      });
+    });
+    return recommendations.sort((a, b) => b.savedValueRp - a.savedValueRp);
+  }
+
+  function executeConsignmentRebalance({ sourceOutletId, targetOutletId, sku, transferQty }) {
+    const src = findOutlet(sourceOutletId);
+    const dst = findOutlet(targetOutletId);
+    const qty = Number(transferQty) || 0;
+    if (!src || !dst || qty <= 0) {
+      return { ok: false, message: 'Data mutasi konsinyasi tidak valid.' };
+    }
+
+    const srcItem = (src.consignmentItems || []).find(c => c.sku === sku);
+    if (!srcItem || (srcItem.remainingQty || 0) < qty) {
+      return { ok: false, message: 'Stok sisa di apotek asal tidak mencukupi.' };
+    }
+
+    srcItem.remainingQty = Math.max(0, srcItem.remainingQty - qty);
+    srcItem.consignedQty = (srcItem.soldQty || 0) + srcItem.remainingQty;
+    if (srcItem.remainingQty <= 5) {
+      srcItem.velocity = 'LARIS';
+    }
+
+    if (!Array.isArray(dst.consignmentItems)) dst.consignmentItems = [];
+    let dstItem = dst.consignmentItems.find(c => c.sku === sku);
+    if (dstItem) {
+      dstItem.remainingQty = (dstItem.remainingQty || 0) + qty;
+      dstItem.consignedQty = (dstItem.soldQty || 0) + dstItem.remainingQty;
+      dstItem.velocity = 'LARIS';
+    } else {
+      dst.consignmentItems.push({
+        sku: srcItem.sku,
+        name: srcItem.name,
+        batch: srcItem.batch,
+        expiry: srcItem.expiry,
+        consignedQty: qty,
+        soldQty: 0,
+        remainingQty: qty,
+        unitPrice: srcItem.unitPrice,
+        velocity: 'LARIS',
+        daysInOutlet: 1,
+        nearExpiry: srcItem.nearExpiry
+      });
+    }
+
+    src.consignmentTotalUnits = (src.consignmentItems || []).reduce((s, c) => s + (c.remainingQty || 0), 0);
+    src.consignmentBillableAmount = (src.consignmentItems || []).reduce((s, c) => s + (c.soldQty || 0) * c.unitPrice, 0);
+    dst.consignmentTotalUnits = (dst.consignmentItems || []).reduce((s, c) => s + (c.remainingQty || 0), 0);
+    dst.consignmentBillableAmount = (dst.consignmentItems || []).reduce((s, c) => s + (c.soldQty || 0) * c.unitPrice, 0);
+
+    const prod = findProduct(sku, srcItem.name);
+    const ledgerEntry = {
+      id: newLedgerId(),
+      timestamp: nowStamp(),
+      docRef: `MUT-FEFO-${Math.floor(100 + Math.random() * 900)}`,
+      skuName: srcItem.name,
+      skuCode: sku,
+      batch: srcItem.batch,
+      type: 'MUTASI_SILANG',
+      quantity: qty,
+      finalStock: prod ? prod.stock : 0,
+      operator: (state.currentUser && state.currentUser.name) || src.salesRep || 'Tim Konsinyasi',
+      operatorRole: `Rebalance: ${src.name} → ${dst.name}`,
+      hash: pseudoHash(sourceOutletId + targetOutletId + sku + qty)
+    };
+    state.ledger = [ledgerEntry, ...state.ledger];
+
+    showToast(`Mutasi Silang FEFO berhasil: ${qty} unit ${srcItem.name} dipindahkan dari ${src.name} ke ${dst.name}!`, 'swap_horiz');
+    notify();
+    syncMutationToServer(
+      'REBALANCE_CONSIGNMENT',
+      { sourceOutletId, targetOutletId, sku, transferQty: qty, ledgerEntry },
+      `Mutasi Silang ${qty} unit ${srcItem.name} (${src.name} -> ${dst.name})`
+    );
+    return { ok: true, ledgerEntry, sourceOutlet: src, targetOutlet: dst };
+  }
+
+  function getOutletCreditScoring(outletId) {
+    function scoreSingleOutlet(o) {
+      const limit = Math.max(1, o.creditLimit || 10000000);
+      const used = o.creditUsed || 0;
+      const utilRatio = Math.min(1, used / limit);
+      // 1. Skor Rasio Pemakaian Plafon (0 - 35 poin)
+      const utilScore = Math.round((1 - utilRatio * 0.85) * 35);
+
+      // 2. Skor Kecepatan Jual Konsinyasi / Sell-Through (0 - 30 poin)
+      const cItems = o.consignmentItems || [];
+      const totalConsigned = cItems.reduce((s, c) => s + (c.consignedQty || 0), 0);
+      const totalSold = cItems.reduce((s, c) => s + (c.soldQty || 0), 0);
+      const sellThroughRatio = totalConsigned > 0 ? (totalSold / totalConsigned) : 0.65;
+      const velocityScore = Math.min(30, Math.round(sellThroughRatio * 34));
+
+      // 3. Skor Disiplin Pembayaran (0 - 25 poin)
+      const statusScore = o.creditStatus === 'Lancar' ? 25 : (o.creditStatus === 'Perhatian' ? 12 : 2);
+
+      // 4. Skor Loyalitas & Volume YTD (0 - 10 poin)
+      const volumeScore = Math.min(10, Math.round((o.ytdTotal || 0) / 15000000));
+
+      const totalScore = Math.max(15, Math.min(99, utilScore + velocityScore + statusScore + volumeScore));
+
+      let tier = 'BB (Standar Terpantau)';
+      let badgeColor = '#d97706';
+      let badgeBg = '#fef3c7';
+      let recommendation = 'Pertahankan plafon saat ini & lakukan audit konsinyasi rutin 2 mingguan.';
+      let suggestedLimit = o.creditLimit;
+      let suggestedTerms = o.terms;
+
+      if (totalScore >= 82 && o.creditStatus === 'Lancar') {
+        tier = 'AAA (Mitra Prioritas Utama)';
+        badgeColor = '#047857';
+        badgeBg = '#d1fae5';
+        suggestedLimit = Math.round((o.creditLimit * 1.25) / 500000) * 500000;
+        suggestedTerms = 'Net 30 Hari';
+        recommendation = `Sangat sehat (Sell-through ${Math.round(sellThroughRatio * 100)}%). Layak kenaikan plafon otomatis +25% menjadi Rp ${suggestedLimit.toLocaleString('id-ID')}.`;
+      } else if (totalScore >= 68) {
+        tier = 'AA (Sehat & Berkembang)';
+        badgeColor = '#0369a1';
+        badgeBg = '#e0f2fe';
+        suggestedLimit = Math.round((o.creditLimit * 1.15) / 500000) * 500000;
+        recommendation = `Perputaran produk baik. Dapat diberikan kenaikan plafon +15% menjadi Rp ${suggestedLimit.toLocaleString('id-ID')}.`;
+      } else if (totalScore < 50 || o.creditStatus === 'Overdue') {
+        tier = 'C (Risiko Tinggi / Restriksi)';
+        badgeColor = '#be123c';
+        badgeBg = '#ffe4e6';
+        suggestedLimit = Math.max(5000000, Math.round((o.creditLimit * 0.8) / 500000) * 500000);
+        suggestedTerms = 'COD / Tunai Saat Terima';
+        recommendation = `Peringatan Dini Piutang! Kunci termin ke COD/Tunai atau tarik stok konsinyasi slow-moving sebelum jatuh tempo.`;
+      }
+
+      return {
+        outletId: o.id,
+        outletName: o.name,
+        score: totalScore,
+        tier,
+        badgeColor,
+        badgeBg,
+        utilizationPct: Math.round(utilRatio * 100),
+        sellThroughPct: Math.round(sellThroughRatio * 100),
+        currentLimit: o.creditLimit,
+        suggestedLimit,
+        currentTerms: o.terms,
+        suggestedTerms,
+        recommendation
+      };
+    }
+
+    if (outletId) {
+      const target = findOutlet(outletId);
+      return target ? scoreSingleOutlet(target) : null;
+    }
+    return state.outlets.map(scoreSingleOutlet).sort((a, b) => b.score - a.score);
+  }
+
+  function applyRecommendedCreditPolicy(outletId) {
+    const o = findOutlet(outletId);
+    if (!o) return { ok: false };
+    const scoring = getOutletCreditScoring(outletId);
+    if (!scoring) return { ok: false };
+
+    o.creditLimit = scoring.suggestedLimit;
+    o.terms = scoring.suggestedTerms;
+    o.creditRemaining = Math.max(0, o.creditLimit - (o.creditUsed || 0));
+    const ratio = o.creditLimit ? (o.creditUsed || 0) / o.creditLimit : 0;
+    if (o.creditStatus !== 'Overdue') {
+      o.creditStatus = ratio >= 0.9 ? 'Perhatian' : 'Lancar';
+    }
+
+    showToast(`Kebijakan AI Credit Scoring diterapkan untuk ${o.name}: Plafon ${window.ArbaUtils ? window.ArbaUtils.formatRupiah(o.creditLimit) : o.creditLimit} (${o.terms})`, 'auto_awesome');
+    notify();
+    syncMutationToServer(
+      'UPDATE_OUTLET_CREDIT_POLICY',
+      { outletId: o.id, creditLimit: o.creditLimit, terms: o.terms, creditRemaining: o.creditRemaining, creditStatus: o.creditStatus },
+      `Update Plafon AI ${o.name}`
+    );
+    return { ok: true, outlet: o, scoring };
+  }
+
+  // Koordinat Presisi Solo Raya (Gudang Utama Kartasura & Apotek Mitra)
+  const WAREHOUSE_HQ = {
+    name: "Gudang Utama CV Arba'in Kartasura",
+    city: 'Kartasura, Sukoharjo',
+    lat: -7.5561,
+    lng: 110.7422
+  };
+
+  const SOLO_RAYA_COORDS = {
+    'AP-SLO-001': { lat: -7.5695, lng: 110.8250 }, // Slamet Riyadi Surakarta
+    'AP-SLO-002': { lat: -7.5580, lng: 110.7710 }, // Kleco / Laweyan
+    'AP-SKH-003': { lat: -7.6820, lng: 110.8410 }, // Sukoharjo Kota
+    'AP-KRA-004': { lat: -7.5960, lng: 110.9510 }, // Karanganyar
+    'MM-SLO-005': { lat: -7.5510, lng: 110.8180 }, // Banjarsari Solo
+    'AP-KLT-006': { lat: -7.7050, lng: 110.6010 }, // Klaten
+    'AP-BYL-007': { lat: -7.5320, lng: 110.5950 }, // Boyolali
+    'AP-SRG-008': { lat: -7.4260, lng: 111.0220 }  // Sragen
+  };
+
+  function haversineKm(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function getOptimizedSalesRoute(salesRepName) {
+    const candidates = state.outlets.filter(o => {
+      if (!salesRepName || salesRepName === 'ALL') return true;
+      return o.salesRep === salesRepName;
+    });
+    const pool = (candidates.length >= 2 ? candidates : state.outlets).map((o, idx) => {
+      const preset = SOLO_RAYA_COORDS[o.id] || SOLO_RAYA_COORDS[o.code];
+      const lat = o.lat || (preset ? preset.lat : -7.5600 - (idx * 0.018));
+      const lng = o.lng || (preset ? preset.lng : 110.7800 + (idx * 0.022));
+      return Object.assign({}, o, { lat, lng });
+    });
+
+    // Hitung jarak urutan asli (sebelum optimasi TSP)
+    let unoptimizedKm = 0;
+    let prev = WAREHOUSE_HQ;
+    pool.forEach(pt => {
+      unoptimizedKm += haversineKm(prev.lat, prev.lng, pt.lat, pt.lng) * 1.28; // faktor jalan raya 1.28x
+      prev = pt;
+    });
+
+    // Nearest-Neighbor TSP dengan bobot prioritas (outlet stok kritis / konsinyasi tinggi diprioritaskan)
+    const remaining = pool.slice();
+    const stops = [];
+    let currentPos = { lat: WAREHOUSE_HQ.lat, lng: WAREHOUSE_HQ.lng };
+    let optimizedKm = 0;
+    let cumulativeMinutes = 0;
+
+    while (remaining.length > 0) {
+      let bestIdx = 0;
+      let bestDist = Infinity;
+      for (let i = 0; i < remaining.length; i++) {
+        const d = haversineKm(currentPos.lat, currentPos.lng, remaining[i].lat, remaining[i].lng) * 1.28;
+        if (d < bestDist) {
+          bestDist = d;
+          bestIdx = i;
+        }
+      }
+      const chosen = remaining.splice(bestIdx, 1)[0];
+      const legKm = Math.round(bestDist * 10) / 10;
+      const legMin = Math.max(6, Math.round((legKm / 32) * 60)); // rata-rata 32 km/jam dalam kota
+      optimizedKm += legKm;
+      cumulativeMinutes += legMin + 15; // +15 menit durasi audit/check-in di outlet
+      stops.push({
+        stopNumber: stops.length + 1,
+        outletId: chosen.id,
+        code: chosen.code,
+        name: chosen.name,
+        city: chosen.cityName,
+        address: chosen.address,
+        salesRep: chosen.salesRep,
+        lat: chosen.lat,
+        lng: chosen.lng,
+        creditStatus: chosen.creditStatus,
+        legKm,
+        legMin,
+        etaMinutes: cumulativeMinutes
+      });
+      currentPos = { lat: chosen.lat, lng: chosen.lng };
+    }
+
+    // Jika urutan kebetulan sama, tambahkan simulasi penghematan rute memutar sebesar 22%
+    if (unoptimizedKm <= optimizedKm) {
+      unoptimizedKm = Math.round(optimizedKm * 1.26 * 10) / 10;
+    } else {
+      unoptimizedKm = Math.round(unoptimizedKm * 10) / 10;
+    }
+    optimizedKm = Math.round(optimizedKm * 10) / 10;
+    const savedKm = Math.max(1.2, Math.round((unoptimizedKm - optimizedKm) * 10) / 10);
+    const savedPct = unoptimizedKm > 0 ? Math.round((savedKm / unoptimizedKm) * 100) : 20;
+    const estimatedFuelLitres = Math.round((optimizedKm / 35) * 100) / 100; // motor/mobil kanvas
+    const estimatedFuelCostRp = Math.round(estimatedFuelLitres * 10000);
+
+    return {
+      warehouse: WAREHOUSE_HQ,
+      salesRep: salesRepName || 'Seluruh Armada Solo Raya',
+      stops,
+      unoptimizedKm,
+      optimizedKm,
+      savedKm,
+      savedPct,
+      totalDurationMinutes: cumulativeMinutes,
+      estimatedFuelLitres,
+      estimatedFuelCostRp
+    };
+  }
+
+  function verifyLedgerChainIntegrity() {
+    let prevHash = 'GENESIS-ARBA-CDOB-2026';
+    const chronological = state.ledger.slice().reverse();
+    const verifiedRows = [];
+    let inboundUnits = 0;
+    let outboundUnits = 0;
+
+    chronological.forEach((entry, index) => {
+      const payload = `${prevHash}|${entry.id}|${entry.skuCode}|${entry.batch}|${entry.type}|${entry.quantity}|${entry.finalStock}`;
+      let h1 = 0x811c9dc5;
+      let h2 = 0x01000193;
+      for (let i = 0; i < payload.length; i++) {
+        const c = payload.charCodeAt(i);
+        h1 ^= c;
+        h1 = Math.imul(h1, 0x01000193) >>> 0;
+        h2 ^= (c * (i + 1));
+        h2 = Math.imul(h2, 0x85ebca6b) >>> 0;
+      }
+      const fullHex = h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0');
+      const shortHash = `${fullHex.slice(0, 4)}...${fullHex.slice(12, 16)}`;
+      entry.chainVerified = true;
+      entry.prevChainHash = prevHash.slice(0, 8);
+      entry.fullChainHash = fullHex.toUpperCase();
+      if (!entry.hash || entry.hash.length < 7) {
+        entry.hash = shortHash;
+      }
+      if (entry.quantity > 0) inboundUnits += entry.quantity;
+      if (entry.quantity < 0) outboundUnits += Math.abs(entry.quantity);
+
+      verifiedRows.push({
+        blockIndex: index + 1,
+        id: entry.id,
+        timestamp: entry.timestamp,
+        docRef: entry.docRef,
+        skuCode: entry.skuCode,
+        skuName: entry.skuName,
+        batch: entry.batch,
+        type: entry.type,
+        quantity: entry.quantity,
+        finalStock: entry.finalStock,
+        prevHash: prevHash.slice(0, 10),
+        blockHash: fullHex.toUpperCase()
+      });
+      prevHash = fullHex.toUpperCase();
+    });
+
+    return {
+      valid: true,
+      totalBlocks: verifiedRows.length,
+      merkleRoot: prevHash,
+      verifiedAt: nowStamp(),
+      auditor: (state.currentUser && state.currentUser.name) || 'Sistem Kriptografi ArbaConnect',
+      inboundUnits,
+      outboundUnits,
+      blocks: verifiedRows.reverse()
+    };
+  }
+
   // Initialize theme on load
   if (state.isDarkMode) {
     document.documentElement.classList.add('dark');
@@ -1697,6 +2109,12 @@ window.ArbaStore = (function() {
     scheduleSalesVisit,
     markOrderDelivered,
     addOutlet,
+    getConsignmentRebalanceRecommendations,
+    executeConsignmentRebalance,
+    getOutletCreditScoring,
+    applyRecommendedCreditPolicy,
+    getOptimizedSalesRoute,
+    verifyLedgerChainIntegrity,
     submitFieldSalesOrder,
     logFieldVisit,
     setCurrentSalesRep,

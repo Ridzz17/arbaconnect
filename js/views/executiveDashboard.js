@@ -62,17 +62,17 @@
         <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-surface-container-lowest p-6 rounded-xl border border-border-subtle/60">
           <div class="flex flex-col gap-1">
             <div class="flex items-center gap-2 text-xs text-on-surface-variant font-medium">
-              <span class="text-primary font-semibold">Operasional Distribusi</span>
+              <span class="text-primary font-semibold">Laporan Strategis Direksi</span>
               <span aria-hidden="true">·</span>
-              <span>Wilayah Solo Raya</span>
+              <span>Wilayah Distribusi Solo Raya</span>
               <span aria-hidden="true">·</span>
-              <span>Standar CDOB &amp; FEFO</span>
+              <span>Standar BPOM, CDOB &amp; FEFO</span>
             </div>
             <h1 class="text-2xl text-on-surface tracking-tight font-bold">
-              Executive &amp; Management Dashboard
+              Dasbor Direksi &amp; Pemantauan Bisnis CV Arba'in
             </h1>
             <p class="text-sm text-on-surface-variant">
-              Ikhtisar Performa Penjualan B2B, Target Kunjungan Sales, &amp; Kesiapan Stok CV Arba'in
+              Ringkasan Capaian Omset Bulanan, Perkiraan Produksi Pabrik, Peringatan Stok &amp; Kedaluwarsa, serta Kinerja Tim Sales
             </p>
           </div>
 
@@ -82,7 +82,7 @@
               <span class="material-symbols-outlined text-primary text-[18px] mr-2">calendar_today</span>
               <div class="flex flex-col text-left">
                 <span class="text-[10px] text-on-surface-variant uppercase tracking-wider font-semibold">
-                  Periode Analisis
+                  Periode Laporan
                 </span>
                 <span class="text-xs text-on-surface font-semibold">
                   ${isMonth ? 'Bulan Ini: Maret 2026' : 'Kuartal I: Jan - Mar 2026'}
@@ -97,7 +97,7 @@
                 type="button"
               >
                 <span class="material-symbols-outlined text-[16px]">table_chart</span>
-                <span>Ekspor Excel</span>
+                <span>Unduh Excel Direksi</span>
               </button>
               <button
                 id="btn-download-pdf"
@@ -105,9 +105,74 @@
                 type="button"
               >
                 <span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
-                <span>Unduh Laporan PDF</span>
+                <span>Cetak Laporan PDF</span>
               </button>
             </div>
+          </div>
+        </div>
+
+        <!-- Pusat Kendali Otomasi & Keputusan Direksi -->
+        <div class="bg-surface-container-lowest p-4 rounded-xl border border-primary/25 shadow-2xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-lg bg-primary text-white flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[20px]">auto_awesome</span>
+            </div>
+            <div>
+              <div class="text-xs font-extrabold text-on-surface flex items-center gap-2">
+                <span>Alat Bantu Keputusan Cepat Direksi &amp; Pengawasan Lapangan</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary">OTOMASI AKTIF</span>
+              </div>
+              <div class="text-[11px] text-on-surface-variant">
+                Klik tombol di kanan untuk menggeser stok apotek yang macet, melihat peta rute sales, mengecek kelayakan kredit apotek, atau mengaudit keaslian stok gudang.
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              id="btn-exec-adv-rebalance"
+              type="button"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border flex items-center gap-1.5"
+              style="background:#fffbeb; color:#b45309; border-color:#fcd34d;"
+            >
+              <span class="material-symbols-outlined text-[16px]">swap_driving_apps_wheel</span>
+              <span>Tarik &amp; Geser Stok Macet (${(window.ArbaStore.getConsignmentRebalanceRecommendations() || []).length})</span>
+            </button>
+            <button
+              id="btn-exec-adv-tsp"
+              type="button"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border flex items-center gap-1.5"
+              style="background:#ecfdf5; color:#047857; border-color:#a7f3d0;"
+            >
+              <span class="material-symbols-outlined text-[16px]">route</span>
+              <span>Peta &amp; Rute Sales</span>
+            </button>
+            <button
+              id="btn-exec-adv-credit"
+              type="button"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border flex items-center gap-1.5"
+              style="background:#f5f3ff; color:#6d28d9; border-color:#ddd6fe;"
+            >
+              <span class="material-symbols-outlined text-[16px]">analytics</span>
+              <span>Skor Kelayakan Kredit Apotek</span>
+            </button>
+            <button
+              id="btn-exec-adv-qr"
+              type="button"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border flex items-center gap-1.5"
+              style="background:#e0f2fe; color:#0369a1; border-color:#bae6fd;"
+            >
+              <span class="material-symbols-outlined text-[16px]">qr_code_scanner</span>
+              <span>Scan &amp; Stiker QR Batch</span>
+            </button>
+            <button
+              id="btn-exec-adv-chain"
+              type="button"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border flex items-center gap-1.5"
+              style="background:#f1f5f9; color:#0f172a; border-color:#cbd5e1;"
+            >
+              <span class="material-symbols-outlined text-[16px]">verified_user</span>
+              <span>Audit Keaslian Stok (CDOB)</span>
+            </button>
           </div>
         </div>
 
@@ -1013,6 +1078,38 @@
   }
 
   function bindEvents(container) {
+    // Advance Suite Quick Launchers
+    var btnAdvReb = container.querySelector('#btn-exec-adv-rebalance');
+    if (btnAdvReb && window.ArbaAdvanced) {
+      btnAdvReb.addEventListener('click', function () {
+        window.ArbaAdvanced.openConsignmentRebalancerModal();
+      });
+    }
+    var btnAdvTsp = container.querySelector('#btn-exec-adv-tsp');
+    if (btnAdvTsp && window.ArbaAdvanced) {
+      btnAdvTsp.addEventListener('click', function () {
+        window.ArbaAdvanced.openTspRouteOptimizerModal();
+      });
+    }
+    var btnAdvCred = container.querySelector('#btn-exec-adv-credit');
+    if (btnAdvCred && window.ArbaAdvanced) {
+      btnAdvCred.addEventListener('click', function () {
+        window.ArbaAdvanced.openCreditScoringModal();
+      });
+    }
+    var btnAdvQr = container.querySelector('#btn-exec-adv-qr');
+    if (btnAdvQr && window.ArbaAdvanced) {
+      btnAdvQr.addEventListener('click', function () {
+        window.ArbaAdvanced.openQrBatchModal({ initialTab: 'scanner' });
+      });
+    }
+    var btnAdvChain = container.querySelector('#btn-exec-adv-chain');
+    if (btnAdvChain && window.ArbaAdvanced) {
+      btnAdvChain.addEventListener('click', function () {
+        window.ArbaAdvanced.openLedgerChainAuditModal();
+      });
+    }
+
     // Orange Stock Alarm -> Quick Restock / Jump to Inventory
     var orangeBtns = container.querySelectorAll('.btn-orange-alarm-restock');
     orangeBtns.forEach(function (btn) {
@@ -1023,10 +1120,14 @@
       });
     });
 
-    // Slow-Moving Consignment -> Tarik / Rotasi Stok ke Apotek ramai
+    // Slow-Moving Consignment -> Buka Smart Consignment Auto-Rebalancer Modal
     var slowBtns = container.querySelectorAll('.btn-slow-moving-rotate');
     slowBtns.forEach(function (btn) {
       btn.addEventListener('click', function () {
+        if (window.ArbaAdvanced && typeof window.ArbaAdvanced.openConsignmentRebalancerModal === 'function') {
+          window.ArbaAdvanced.openConsignmentRebalancerModal();
+          return;
+        }
         var outlet = btn.getAttribute('data-outlet');
         var prod = btn.getAttribute('data-product');
         var sales = btn.getAttribute('data-sales');

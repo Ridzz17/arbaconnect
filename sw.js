@@ -8,7 +8,7 @@
  * 3. API Pusat (/api/*): Network-Only (dikelola oleh OfflineSync Queue + IndexedDB di sisi aplikasi).
  */
 
-const CACHE_VERSION = 'arbaconnect-pwa-v5';
+const CACHE_VERSION = 'arbaconnect-pwa-v6';
 const FONT_CACHE = 'arbaconnect-fonts-v1';
 
 const APP_SHELL_ASSETS = [
@@ -27,6 +27,7 @@ const APP_SHELL_ASSETS = [
   './js/offlineSync.js',
   './js/store.js',
   './js/auth.js',
+  './js/advancedFeatures.js',
   './js/views/executiveDashboard.js',
   './js/views/inventoryLedger.js',
   './js/views/b2bCrm.js',

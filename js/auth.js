@@ -19,55 +19,55 @@
 
   var ROLE_META = {
     'super-admin': {
-      label: 'Super Administrator (All Access)',
+      label: 'Super Administrator (Akses Penuh)',
       sqlRole: 'super_admin',
       icon: 'shield_person',
       badgeBg: '#f3e8ff',
       badgeText: '#6d28d9',
-      desc: 'Akses penuh seluruh sistem ERP, Manajemen Semua User, Reset Password & Konfigurasi RBAC'
+      desc: 'Kendali penuh seluruh 7 halaman sistem, pengelolaan semua akun pegawai, reset password & pengaturan izin akses divisi'
     },
     'executive': {
-      label: 'Direktur & Manajemen',
+      label: 'Direktur & Manajemen Puncak',
       sqlRole: 'direktur',
       icon: 'monitoring',
       badgeBg: '#e6f4f1',
       badgeText: '#005c55',
-      desc: 'Akses 5 Modul Operasional ERP, Dashboard Eksekutif, Forecasting Produksi & Audit CDOB'
+      desc: 'Pemantauan omset bulanan, perkiraan produksi pabrik, peringatan stok menipis & barang hampir kedaluwarsa'
     },
     'inventory': {
-      label: 'Admin Gudang & Stok FEFO',
+      label: 'Admin Gudang & Logistik FEFO',
       sqlRole: 'admin_gudang',
       icon: 'warehouse',
       badgeBg: '#e0f2fe',
       badgeText: '#0369a1',
-      desc: 'Katalog Batch FEFO, Buku Besar Stok SHA-256 & Rekonsiliasi Barang Bawaan Sales'
+      desc: 'Pencatatan stok fisik Gudang Kartasura, urutan keluar kedaluwarsa terdekat (FEFO), & cek barang bawaan sales'
     },
     'sales-ops': {
-      label: 'Admin Penjualan & Verifikasi',
+      label: 'Admin Penjualan & Piutang Apotek',
       sqlRole: 'admin_penjualan',
       icon: 'fact_check',
       badgeBg: '#ede9fe',
       badgeText: '#5b21b6',
-      desc: 'Otorisasi Pesanan Masuk PWA, Evaluasi Plafon Kredit & Direktori CRM Konsinyasi'
+      desc: 'Pemeriksaan faktur pesanan sales, evaluasi batas plafon kredit apotek, & tagihan barang titip jual (konsinyasi)'
     },
     'field-sales': {
-      label: 'Sales Lapangan (Mobile PWA)',
+      label: 'Sales Lapangan (Aplikasi HP)',
       sqlRole: 'sales',
       icon: 'smartphone',
       badgeBg: '#fef3c7',
       badgeText: '#b45309',
-      desc: 'Check-In GPS Geofence, Audit Stok Titipan Apotek & Input Order Offline-First'
+      desc: 'Absen lokasi GPS di apotek, hitung barang titipan yang laku, tanda tangan apoteker & buat nota meski tanpa sinyal'
     }
   };
 
   var MODULE_LABELS = {
-    'executive-dashboard': { name: 'Executive Dashboard', icon: 'dashboard' },
-    'inventory-stock-ledger': { name: 'Inventory & Stock Ledger', icon: 'inventory_2' },
-    'b2b-crm-directory': { name: 'B2B CRM & Directory', icon: 'store' },
-    'order-approval-queue': { name: 'Order Approval Queue', icon: 'fact_check' },
-    'field-sales-pwa-preview': { name: 'Field Sales PWA', icon: 'smartphone' },
-    'user-management': { name: 'Manajemen Semua User (Super Admin)', icon: 'manage_accounts' },
-    'user-profile-settings': { name: 'Edit Profil & Ganti Password', icon: 'person_edit' }
+    'executive-dashboard': { name: 'Dasbor Direksi & Omset', icon: 'dashboard' },
+    'inventory-stock-ledger': { name: 'Gudang & Buku Besar Stok FEFO', icon: 'inventory_2' },
+    'b2b-crm-directory': { name: 'Data Apotek & Konsinyasi', icon: 'store' },
+    'order-approval-queue': { name: 'Verifikasi Faktur & Kirim', icon: 'fact_check' },
+    'field-sales-pwa-preview': { name: 'Aplikasi Sales Lapangan', icon: 'smartphone' },
+    'user-management': { name: 'Kelola Semua Akun Pegawai', icon: 'manage_accounts' },
+    'user-profile-settings': { name: 'Profil Saya & Ganti Password', icon: 'person_edit' }
   };
 
   function getUsers() {
@@ -277,12 +277,12 @@
 
               <!-- Ringkasan Hak Akses Per Role -->
               <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px; font-size:11px; color:#475569; line-height:1.5;">
-                <div style="font-weight:800; color:#0f172a; margin-bottom:4px;">Pembatasan Halaman Otomatis Sesuai Role (RBAC):</div>
-                <div>• <b style="color:#6d28d9;">Super Admin:</b> Akses Semua Halaman + Manajemen Semua User</div>
-                <div>• <b style="color:#005c55;">Direktur:</b> Executive Dashboard, Inventory, CRM, Approval, PWA, Profil</div>
-                <div>• <b style="color:#0369a1;">Admin Gudang:</b> Hanya Inventory &amp; Stock Ledger, Order Approval, Profil</div>
-                <div>• <b style="color:#5b21b6;">Admin Penjualan:</b> Hanya Order Approval, B2B CRM, PWA Preview, Profil</div>
-                <div>• <b style="color:#b45309;">Sales Lapangan:</b> Hanya Field Sales PWA, B2B CRM, Profil</div>
+                <div style="font-weight:800; color:#0f172a; margin-bottom:4px;">Penyesuaian Halaman &amp; Informasi Otomatis Sesuai Jabatan:</div>
+                <div>• <b style="color:#6d28d9;">Super Admin:</b> Akses Seluruh Sistem + Kelola Semua Akun Pegawai</div>
+                <div>• <b style="color:#005c55;">Direktur:</b> Dasbor Omset, Perkiraan Produksi Pabrik, Peringatan Stok &amp; Kedaluwarsa</div>
+                <div>• <b style="color:#0369a1;">Admin Gudang:</b> Stok Fisik Gudang, Batch FEFO, Bawaan Sales &amp; Penyiapan Barang Kirim</div>
+                <div>• <b style="color:#5b21b6;">Admin Penjualan:</b> Verifikasi Faktur Sales, Plafon Kredit Apotek &amp; Tagihan Konsinyasi</div>
+                <div>• <b style="color:#b45309;">Sales Lapangan:</b> Aplikasi HP Input Nota, Absen Lokasi GPS, Rute &amp; Daftar Apotek Saya</div>
               </div>
 
               <button
