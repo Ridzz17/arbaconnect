@@ -104,34 +104,32 @@
           <div class="flex items-center gap-2 flex-wrap">
             <button
               id="btn-crm-rebalancer"
-              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer border"
-              style="background:#fffbeb; color:#b45309; border-color:#fcd34d;"
+              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer border border-border-subtle/50"
               type="button"
               title="Rekomendasi Tarik & Geser Stok Titipan yang Macet / Hampir Kedaluwarsa ke Apotek Lain yang Laris"
             >
-              <span class="material-symbols-outlined text-[16px]">swap_driving_apps_wheel</span>
-              <span>Tarik &amp; Geser Stok Macet (${(window.ArbaStore.getConsignmentRebalanceRecommendations() || []).length})</span>
+              <span class="material-symbols-outlined text-[16px] text-amber-600">swap_driving_apps_wheel</span>
+              <span>Tarik &amp; Geser Stok Macet</span>
+              <span class="px-1.5 py-0.5 rounded-full bg-primary text-white text-[10px] font-bold">${(window.ArbaStore.getConsignmentRebalanceRecommendations() || []).length}</span>
             </button>
             ${!isSalesRole ? `
               <button
                 id="btn-crm-credit-score"
-                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer border"
-                style="background:#f5f3ff; color:#6d28d9; border-color:#ddd6fe;"
+                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer border border-border-subtle/50"
                 type="button"
                 title="Penilaian Kelayakan Plafon Kredit & Kesehatan Bayar Apotek (Skor 0-100)"
               >
-                <span class="material-symbols-outlined text-[16px]">analytics</span>
+                <span class="material-symbols-outlined text-[16px] text-primary">analytics</span>
                 <span>Skor Kelayakan Kredit</span>
               </button>
             ` : ''}
             <button
               id="btn-crm-tsp-map"
-              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer border"
-              style="background:#ecfdf5; color:#047857; border-color:#a7f3d0;"
+              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer border border-border-subtle/50"
               type="button"
               title="Peta Lokasi Apotek & Urutan Rute Kunjungan Terdekat (Hemat Jarak & BBM)"
             >
-              <span class="material-symbols-outlined text-[16px]">route</span>
+              <span class="material-symbols-outlined text-[16px] text-emerald-600">route</span>
               <span>${isSalesRole ? 'Peta Urutan Rute Saya' : 'Peta &amp; Rute Kunjungan'}</span>
             </button>
             ${!isSalesRole ? `
@@ -665,22 +663,22 @@
                 ${(function () {
                   var aiSc = window.ArbaStore.getOutletCreditScoring ? window.ArbaStore.getOutletCreditScoring(selectedOutlet.id) : null;
                   if (!aiSc) return '';
+                  var badgeCls = aiSc.score >= 82 ? 'badge-success' : (aiSc.score >= 68 ? 'badge-primary' : (aiSc.score < 50 ? 'badge-danger' : 'badge-warning'));
                   return `
-                    <div class="p-3 rounded-xl border text-xs mb-1" style="background:${aiSc.badgeBg}; border-color:${aiSc.badgeColor}40;">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="font-bold flex items-center gap-1" style="color:${aiSc.badgeColor};">
-                          <span class="material-symbols-outlined text-[15px]">auto_awesome</span>
-                          Skor Kelayakan Kredit: <b>${aiSc.score}/100</b>
+                    <div class="p-3 rounded-xl bg-surface-container-low border border-border-subtle/60 text-xs mb-1">
+                      <div class="flex items-center justify-between mb-1.5">
+                        <span class="font-bold text-on-surface flex items-center gap-1">
+                          <span class="material-symbols-outlined text-[15px] text-primary">auto_awesome</span>
+                          Skor Kelayakan Kredit: <b class="text-primary">${aiSc.score}/100</b>
                         </span>
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-white/80" style="color:${aiSc.badgeColor};">${aiSc.tier}</span>
+                        <span class="badge ${badgeCls}">${aiSc.tier}</span>
                       </div>
-                      <div class="text-[11px] text-slate-700 leading-snug ${isSalesRole ? '' : 'mb-2'}">${aiSc.recommendation}</div>
+                      <div class="text-[11px] text-on-surface-variant leading-snug ${isSalesRole ? '' : 'mb-2.5'}">${aiSc.recommendation}</div>
                       ${!isSalesRole ? `
                         <button
                           id="btn-drawer-apply-ai-credit"
                           type="button"
-                          class="w-full py-1.5 px-3 rounded-lg text-[11px] font-bold text-white cursor-pointer border-0 flex items-center justify-center gap-1"
-                          style="background:${aiSc.badgeColor};"
+                          class="w-full py-1.5 px-3 rounded-lg bg-primary hover:bg-primary-container text-[11px] font-bold text-white cursor-pointer border-0 flex items-center justify-center gap-1 transition-colors"
                         >
                           <span class="material-symbols-outlined text-[14px]">bolt</span>
                           <span>Sesuaikan Plafon ke Rekomendasi (${window.ArbaUtils.formatRupiah(aiSc.suggestedLimit)})</span>

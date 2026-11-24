@@ -312,8 +312,10 @@
   animation: fadeIn 0.15s ease-out;
 }
 
-.modal-dialog {
+.modal-dialog,
+.modal-card {
   background-color: var(--color-surface-container-lowest);
+  color: var(--color-on-surface);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-2xl);
   border: 1px solid var(--color-border-subtle);
@@ -326,12 +328,56 @@
   animation: scaleUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.modal-dialog.max-w-4xl {
+  max-width: 880px;
+}
+
+.modal-dialog.max-w-3xl {
+  max-width: 800px;
+}
+
 .modal-dialog.max-w-2xl {
   max-width: 720px;
 }
 
 .modal-dialog.max-w-xl {
   max-width: 640px;
+}
+
+.adv-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.adv-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.adv-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .adv-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .adv-grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .adv-grid-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .adv-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .modal-header {

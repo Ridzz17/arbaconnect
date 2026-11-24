@@ -4,7 +4,7 @@
  */
 
 window.ArbaStore = (function() {
-  const STORAGE_KEY = 'arbaconnect_erp_state_v5';
+  const STORAGE_KEY = 'arbaconnect_erp_state_v6';
   const ALL_VALID_PATHS = [
     'login',
     'executive-dashboard',

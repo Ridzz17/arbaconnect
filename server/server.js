@@ -1344,7 +1344,9 @@ const server = http.createServer(async (req, res) => {
     const mime = MIME_TYPES[ext] || 'application/octet-stream';
     const headers = {
       'Content-Type': mime,
-      'Cache-Control': ext === '.html' || safePath.endsWith('sw.js') ? 'no-cache' : 'public, max-age=3600'
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
     };
     if (safePath.endsWith('sw.js')) {
       headers['Service-Worker-Allowed'] = '/';

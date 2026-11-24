@@ -117,23 +117,21 @@
 
               <button
                 id="btn-qr-batch-modal"
-                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors cursor-pointer border"
-                style="background:#ecfdf5; color:#047857; border-color:#a7f3d0;"
+                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
                 type="button"
                 title="Scan QR Botol/Karton atau Cetak Stiker Nomor Batch Gudang"
               >
-                <span class="material-symbols-outlined text-[15px]">qr_code_scanner</span>
+                <span class="material-symbols-outlined text-[15px] text-primary">qr_code_scanner</span>
                 <span>Scan &amp; Cetak Stiker QR</span>
               </button>
 
               <button
                 id="btn-chain-audit-modal"
-                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors cursor-pointer border"
-                style="background:#f5f3ff; color:#6d28d9; border-color:#ddd6fe;"
+                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
                 type="button"
                 title="Periksa Keaslian Catatan Keluar-Masuk Stok & Cetak Sertifikat Audit CDOB"
               >
-                <span class="material-symbols-outlined text-[15px]">verified_user</span>
+                <span class="material-symbols-outlined text-[15px] text-emerald-600">verified_user</span>
                 <span>Cek Keaslian Stok (CDOB)</span>
               </button>
 

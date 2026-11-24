@@ -131,46 +131,42 @@
             <button
               id="btn-exec-adv-rebalance"
               type="button"
-              class="px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border flex items-center gap-1.5"
-              style="background:#fffbeb; color:#b45309; border-color:#fcd34d;"
+              class="px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold cursor-pointer border border-border-subtle/60 flex items-center gap-1.5 transition-colors"
             >
-              <span class="material-symbols-outlined text-[16px]">swap_driving_apps_wheel</span>
-              <span>Tarik &amp; Geser Stok Macet (${(window.ArbaStore.getConsignmentRebalanceRecommendations() || []).length})</span>
+              <span class="material-symbols-outlined text-[16px] text-amber-600">swap_driving_apps_wheel</span>
+              <span>Tarik &amp; Geser Stok Macet</span>
+              <span class="px-1.5 py-0.5 rounded-full bg-primary text-white text-[10px] font-bold">${(window.ArbaStore.getConsignmentRebalanceRecommendations() || []).length}</span>
             </button>
             <button
               id="btn-exec-adv-tsp"
               type="button"
-              class="px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border flex items-center gap-1.5"
-              style="background:#ecfdf5; color:#047857; border-color:#a7f3d0;"
+              class="px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold cursor-pointer border border-border-subtle/60 flex items-center gap-1.5 transition-colors"
             >
-              <span class="material-symbols-outlined text-[16px]">route</span>
+              <span class="material-symbols-outlined text-[16px] text-emerald-600">route</span>
               <span>Peta &amp; Rute Sales</span>
             </button>
             <button
               id="btn-exec-adv-credit"
               type="button"
-              class="px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border flex items-center gap-1.5"
-              style="background:#f5f3ff; color:#6d28d9; border-color:#ddd6fe;"
+              class="px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold cursor-pointer border border-border-subtle/60 flex items-center gap-1.5 transition-colors"
             >
-              <span class="material-symbols-outlined text-[16px]">analytics</span>
+              <span class="material-symbols-outlined text-[16px] text-primary">analytics</span>
               <span>Skor Kelayakan Kredit Apotek</span>
             </button>
             <button
               id="btn-exec-adv-qr"
               type="button"
-              class="px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border flex items-center gap-1.5"
-              style="background:#e0f2fe; color:#0369a1; border-color:#bae6fd;"
+              class="px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold cursor-pointer border border-border-subtle/60 flex items-center gap-1.5 transition-colors"
             >
-              <span class="material-symbols-outlined text-[16px]">qr_code_scanner</span>
+              <span class="material-symbols-outlined text-[16px] text-primary">qr_code_scanner</span>
               <span>Scan &amp; Stiker QR Batch</span>
             </button>
             <button
               id="btn-exec-adv-chain"
               type="button"
-              class="px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border flex items-center gap-1.5"
-              style="background:#f1f5f9; color:#0f172a; border-color:#cbd5e1;"
+              class="px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold cursor-pointer border border-border-subtle/60 flex items-center gap-1.5 transition-colors"
             >
-              <span class="material-symbols-outlined text-[16px]">verified_user</span>
+              <span class="material-symbols-outlined text-[16px] text-emerald-600">verified_user</span>
               <span>Audit Keaslian Stok (CDOB)</span>
             </button>
           </div>

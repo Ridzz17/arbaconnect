@@ -16,7 +16,7 @@
   window.ArbaViews = window.ArbaViews || {};
 
   var state = {
-    isPhoneFrame: true,
+    isPhoneFrame: false,
     selectedOutletCode: 'AP-SLO-001',
     activeCategory: 'all',
     productSearch: '',
@@ -111,54 +111,57 @@
     // Validasi plafon kredit outlet (hanya untuk termin Jatuh Tempo non-Konsinyasi & non-COD)
     var isCreditTerm = /Net|Jatuh Tempo/i.test(state.selectedTerm);
     var overCredit = isCreditTerm && totalAmount > (currentOutlet.creditRemaining || 0);
+    var isSuperAdminUser = appState.currentUser && appState.currentUser.role === 'super-admin';
+    var usePhoneFrame = isSuperAdminUser && state.isPhoneFrame;
 
     var html = `
       <div class="flex flex-col items-center w-full pb-12">
-        <!-- Viewport Control Bar (Disesuaikan dengan Role Sales vs Direksi/Admin) -->
-        <div class="w-full max-w-xl flex items-center justify-between mb-4 bg-surface-container-lowest p-3 rounded-xl border border-border-subtle/50 text-xs text-on-surface-variant">
-          <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary text-[18px]">smartphone</span>
-            <span class="font-semibold text-on-surface">${isFieldSalesRole ? 'Aplikasi Kerja Harian Sales: ' + currentRep : 'Mode Pantau &amp; Simulasi Aplikasi HP Sales'}</span>
-            <span class="hidden sm:inline">· ${isFieldSalesRole ? 'Bisa Tanpa Sinyal' : 'Pilih Nama Sales di Layar HP'}</span>
+        ${isSuperAdminUser ? `
+          <!-- Viewport Control Bar (Khusus Super Admin) -->
+          <div class="w-full max-w-2xl flex items-center justify-between mb-4 bg-surface-container-lowest p-3 rounded-xl border border-border-subtle/50 text-xs text-on-surface-variant">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-[18px]">smartphone</span>
+              <span class="font-semibold text-on-surface">Pratinjau Responsif Aplikasi Sales (Super Admin)</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button
+                id="btn-viewport-phone"
+                class="px-2.5 py-1 rounded-md font-medium cursor-pointer transition-colors border-0 text-xs ${
+                  state.isPhoneFrame
+                    ? 'bg-primary text-white font-semibold'
+                    : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
+                }"
+                type="button"
+              >
+                Ukuran HP (390px)
+              </button>
+              <button
+                id="btn-viewport-full"
+                class="px-2.5 py-1 rounded-md font-medium cursor-pointer transition-colors border-0 text-xs ${
+                  !state.isPhoneFrame
+                    ? 'bg-primary text-white font-semibold'
+                    : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
+                }"
+                type="button"
+              >
+                Layar Penuh
+              </button>
+            </div>
           </div>
-          <div class="flex items-center gap-1.5">
-            <button
-              id="btn-viewport-phone"
-              class="px-2.5 py-1 rounded-md font-medium cursor-pointer transition-colors border-0 text-xs ${
-                state.isPhoneFrame
-                  ? 'bg-primary text-white font-semibold'
-                  : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
-              }"
-              type="button"
-            >
-              Ukuran HP (390px)
-            </button>
-            <button
-              id="btn-viewport-full"
-              class="px-2.5 py-1 rounded-md font-medium cursor-pointer transition-colors border-0 text-xs ${
-                !state.isPhoneFrame
-                  ? 'bg-primary text-white font-semibold'
-                  : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
-              }"
-              type="button"
-            >
-              Layar Lebar
-            </button>
-          </div>
-        </div>
+        ` : ''}
 
-        <!-- Smartphone Body Simulation Container -->
+        <!-- Field Sales Main Application Container -->
         <div
           class="w-full transition-all duration-200 ${
-            state.isPhoneFrame
+            usePhoneFrame
               ? 'max-w-[420px] rounded-3xl border border-border-subtle/70 bg-surface shadow-xl overflow-hidden'
-              : 'max-w-2xl bg-surface rounded-2xl border border-border-subtle/60 p-4'
+              : 'max-w-3xl bg-surface rounded-2xl border border-border-subtle/60 shadow-xs overflow-hidden'
           }"
-          style="${state.isPhoneFrame ? 'max-width: 420px; border-radius: 28px;' : ''}"
+          style="${usePhoneFrame ? 'max-width: 420px; border-radius: 28px;' : ''}"
         >
-          <!-- Smartphone App Frame -->
+          <!-- App Frame -->
           <div class="flex flex-col min-h-[680px] bg-white text-slate-900 relative rounded-2xl overflow-hidden" style="position:relative; background:#fff; min-height:680px;">
-            <!-- Top Bar - Sales Profile & Offline Switch -->
+            <!-- Top Bar - Sales Profile & Sync Status -->
             <div class="bg-[#005c55] text-white px-4 py-3 sticky top-0 z-30 shadow-xs flex items-center justify-between" style="background:#005c55; color:#fff;">
               <div class="flex items-center gap-2.5">
                 <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-xs text-white" style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center;">
@@ -167,7 +170,7 @@
                 <div class="flex flex-col">
                   ${isFieldSalesRole ? `
                     <span class="font-bold text-xs leading-tight text-white">${currentRep}</span>
-                    <span class="text-[11px] text-teal-100 font-medium">${appState.currentUser.division || 'Sales Rep'} · Terkunci</span>
+                    <span class="text-[11px] text-teal-100 font-medium">${appState.currentUser.division || 'Sales Lapangan'}</span>
                   ` : `
                     <select
                       id="pwa-rep-select"
@@ -179,15 +182,15 @@
                         return `<option value="${s.name}" style="color:#0f172a;" ${s.name === currentRep ? 'selected' : ''}>${s.name}</option>`;
                       }).join('')}
                     </select>
-                    <span class="text-[11px] text-teal-100 font-medium">Sales Rep · Solo Raya</span>
+                    <span class="text-[11px] text-teal-100 font-medium">Sales Lapangan · Solo Raya</span>
                   `}
                 </div>
               </div>
 
-              <!-- Offline/Online Network Indicator Button -->
+              <!-- Network Sync Status Indicator Button -->
               <button
                 id="btn-pwa-online-toggle"
-                title="Klik untuk simulasi mode Online/Offline"
+                title="Status Koneksi & Sinkronisasi Data"
                 class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors border-0 ${
                   isOnline
                     ? 'bg-white/15 text-white hover:bg-white/25'
@@ -200,7 +203,7 @@
                   class="w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-300' : 'bg-amber-950'}"
                   style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${isOnline ? '#6ee7b7' : '#451a03'};"
                 ></span>
-                <span>${isOnline ? 'Online' : 'Offline'}</span>
+                <span>${isOnline ? 'Tersinkron' : 'Mode Lokal'}</span>
                 ${!isOnline && offlineQueue.length > 0 ? `
                   <span class="ml-1 px-1 bg-amber-900 text-amber-200 text-[10px] rounded">
                     ${offlineQueue.length}
@@ -529,20 +532,11 @@
                     <div class="flex items-center gap-1">
                       <button
                         type="button"
-                        id="btn-pwa-auto-sign"
-                        class="px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer border-0"
-                        style="background:#e0f2fe; color:#0369a1;"
-                        title="Buat tanda tangan digital apoteker otomatis"
-                      >
-                        TTD Cepat
-                      </button>
-                      <button
-                        type="button"
                         id="btn-pwa-clear-sign"
                         class="px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer border-0"
                         style="background:#f1f5f9; color:#475569;"
                       >
-                        Hapus
+                        Bersihkan TTD
                       </button>
                     </div>
                   </div>
@@ -834,11 +828,16 @@
       });
     }
 
-    // Online / Offline toggle
+    // Online / Offline sync action
     var btnOnline = container.querySelector('#btn-pwa-online-toggle');
     if (btnOnline) {
       btnOnline.addEventListener('click', function () {
-        window.ArbaStore.toggleOnlineStatus();
+        var st = window.ArbaStore.getState();
+        if (st.currentUser && st.currentUser.role === 'super-admin') {
+          window.ArbaStore.toggleOnlineStatus();
+        } else {
+          window.ArbaStore.syncNow();
+        }
       });
     }
 
