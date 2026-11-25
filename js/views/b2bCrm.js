@@ -71,16 +71,16 @@
     var isSalesOpsRole = activeRole === 'sales-ops';
 
     var crmTitle = isSalesRole
-      ? 'Daftar Apotek Langganan & Rute Kunjungan Saya (' + (appState.currentUser ? appState.currentUser.name : 'Sales') + ')'
+      ? 'Direktori Mitra Apotek & Rute Distribusi Wilayah (' + (appState.currentUser ? appState.currentUser.name : 'Sales') + ')'
       : isSalesOpsRole
-      ? 'Data Pelanggan Apotek, Evaluasi Plafon Kredit & Tagihan Konsinyasi'
-      : 'Direktori Kemitraan Apotek, Plafon Kredit & Barang Titipan Solo Raya';
+      ? 'Manajemen Kemitraan Apotek, Evaluasi Plafon Kredit & Piutang Konsinyasi'
+      : 'Direktori Kemitraan Apotek B2B, Plafon Kredit & Inventaris Konsinyasi Solo Raya';
 
     var crmSubtitle = isSalesRole
-      ? 'Lihat sisa barang titipan (konsinyasi) di apotek rayon Anda, cek nomor WA Apoteker, lihat urutan rute kunjungan terdekat, atau buka aplikasi input nota.'
+      ? 'Pantau saldo inventaris konsinyasi pada apotek wilayah tugas Anda, hubungi Apoteker Penanggung Jawab, optimalkan rute kunjungan, atau buat faktur pesanan baru.'
       : isSalesOpsRole
-      ? 'Pantau kelancaran bayar apotek, evaluasi skor kelayakan plafon kredit, tagih barang titipan yang sudah laku, dan geser stok yang macet.'
-      : 'Pusat data seluruh apotek dan toko obat mitra CV Arba\'in, pemantauan batas plafon kredit, serta perputaran barang konsinyasi.';
+      ? 'Kelola kolektibilitas pembayaran mitra apotek, evaluasi skor kelayakan plafon kredit, rekonsiliasi penjualan konsinyasi, dan lakukan realokasi stok berperputaran lambat.'
+      : 'Basis data terpadu seluruh jaringan apotek dan ritel mitra CV Arba\'in, pengendalian eksposur plafon kredit, serta pemantauan perputaran inventaris konsinyasi.';
 
     var html = `
       <div class="flex flex-col w-full gap-space-lg">
@@ -90,9 +90,9 @@
             <div class="flex items-center gap-2 text-on-surface-variant text-xs mb-1 font-medium">
               <span>Distribusi Herbal Solo Raya</span>
               <span aria-hidden="true">·</span>
-              <span class="text-primary font-semibold">${isSalesRole ? 'Rute &amp; Apotek Pegangan Sales' : isSalesOpsRole ? 'Administrasi Penjualan &amp; Piutang' : 'Manajemen Kemitraan Apotek'}</span>
+              <span class="text-primary font-semibold">${isSalesRole ? 'Wilayah Tugas Distribusi Sales' : isSalesOpsRole ? 'Administrasi Penjualan &amp; Piutang' : 'Manajemen Kemitraan Apotek'}</span>
               <span aria-hidden="true">·</span>
-              <span>Sistem Titip Jual (Konsinyasi)</span>
+              <span>Kemitraan Konsinyasi B2B</span>
             </div>
             <h1 class="text-2xl text-on-surface tracking-tight font-bold">
               ${crmTitle}
@@ -106,10 +106,10 @@
               id="btn-crm-rebalancer"
               class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer border border-border-subtle/50"
               type="button"
-              title="Rekomendasi Tarik & Geser Stok Titipan yang Macet / Hampir Kedaluwarsa ke Apotek Lain yang Laris"
+              title="Realokasi Inventaris Konsinyasi Berperputaran Lambat / Mendekati Kedaluwarsa Antar-Mitra Apotek"
             >
               <span class="material-symbols-outlined text-[16px] text-amber-600">swap_driving_apps_wheel</span>
-              <span>Tarik &amp; Geser Stok Macet</span>
+              <span>Realokasi Stok Konsinyasi</span>
               <span class="px-1.5 py-0.5 rounded-full bg-primary text-white text-[10px] font-bold">${(window.ArbaStore.getConsignmentRebalanceRecommendations() || []).length}</span>
             </button>
             ${!isSalesRole ? `
@@ -117,20 +117,20 @@
                 id="btn-crm-credit-score"
                 class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer border border-border-subtle/50"
                 type="button"
-                title="Penilaian Kelayakan Plafon Kredit & Kesehatan Bayar Apotek (Skor 0-100)"
+                title="Evaluasi Kelayakan Plafon Kredit & Kolektibilitas Mitra Apotek (Skor 0-100)"
               >
                 <span class="material-symbols-outlined text-[16px] text-primary">analytics</span>
-                <span>Skor Kelayakan Kredit</span>
+                <span>Evaluasi Kelayakan Kredit</span>
               </button>
             ` : ''}
             <button
               id="btn-crm-tsp-map"
               class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer border border-border-subtle/50"
               type="button"
-              title="Peta Lokasi Apotek & Urutan Rute Kunjungan Terdekat (Hemat Jarak & BBM)"
+              title="Peta Lokasi Mitra Apotek & Optimasi Rute Kunjungan Distribusi"
             >
               <span class="material-symbols-outlined text-[16px] text-emerald-600">route</span>
-              <span>${isSalesRole ? 'Peta Urutan Rute Saya' : 'Peta &amp; Rute Kunjungan'}</span>
+              <span>${isSalesRole ? 'Optimasi Rute Kunjungan' : 'Peta &amp; Optimasi Rute'}</span>
             </button>
             ${!isSalesRole ? `
               <button
@@ -738,11 +738,11 @@
                   </div>
                 </div>
 
-                <!-- Rincian Stok Titipan (Konsinyasi) di Apotek Ini: Barang Laku vs Lama Tidak Laku & Alarm Pink Expired -->
+                <!-- Rincian Inventaris Konsinyasi Mitra -->
                 <div class="flex flex-col gap-2">
                   <div class="flex items-center justify-between">
                     <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold text-[11px]">
-                      Stok Titipan (Konsinyasi) di Apotek Ini
+                      Rincian Inventaris Konsinyasi Mitra
                     </span>
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary">
                       ${selectedOutlet.terms}
@@ -753,19 +753,19 @@
                       var isSlow = ci.velocity === 'LAMA_TIDAK_LAKU';
                       var isPink = ci.nearExpiry;
                       return `
-                        <div class="p-2.5 rounded-lg border text-xs flex flex-col gap-1" style="background:${isPink ? '#fdf2f8' : 'var(--color-surface-container-low)'}; border-color:${isPink ? '#f472b6' : 'var(--color-border-subtle)'};">
+                        <div class="p-2.5 rounded-lg border border-border-subtle bg-surface-container-low text-xs flex flex-col gap-1">
                           <div class="flex items-center justify-between gap-1">
                             <span class="font-bold text-on-surface truncate">${ci.name}</span>
                             <div class="flex items-center gap-1 shrink-0">
-                              ${isPink ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold" style="background:#db2777; color:#fff;">🩷 Hampir ED</span>` : ''}
-                              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${isSlow ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-800'}">
-                                ${isSlow ? 'Lama Tak Laku' : 'Laris'}
+                              ${isPink ? `<span class="badge badge-danger">Mendekati ED</span>` : ''}
+                              <span class="badge ${isSlow ? 'badge-warning' : 'badge-success'}">
+                                ${isSlow ? 'Perputaran Lambat' : 'Perputaran Cepat'}
                               </span>
                             </div>
                           </div>
                           <div class="flex items-center justify-between text-[11px] text-on-surface-variant">
-                            <span>Titip: <b>${ci.consignedQty}</b> · Laku: <b class="text-emerald-700">${ci.soldQty}</b> · Sisa di Apotek: <b class="text-on-surface">${ci.remainingQty}</b></span>
-                            <span>ED: <b style="${isPink ? 'color:#be185d;' : ''}">${ci.expiry}</b></span>
+                            <span>Kuota: <b>${ci.consignedQty}</b> · Terjual: <b class="text-emerald-600">${ci.soldQty}</b> · Saldo: <b class="text-on-surface">${ci.remainingQty}</b></span>
+                            <span>ED: <b class="${isPink ? 'text-rose-600' : 'text-on-surface'}">${ci.expiry}</b></span>
                           </div>
                         </div>
                       `;

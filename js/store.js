@@ -408,8 +408,14 @@ window.ArbaStore = (function() {
   function loginUser(userObj, options) {
     options = options || {};
     if (!userObj) return null;
-    // Ambil objek terbaru dari state.users agar perubahan profil/password selalu mutakhir
-    const latestUser = (state.users || []).find(u => u.id === userObj.id) || userObj;
+    if (!Array.isArray(state.users)) state.users = [];
+    const existingIdx = state.users.findIndex(u => u.id === userObj.id);
+    if (existingIdx !== -1) {
+      state.users[existingIdx] = Object.assign({}, state.users[existingIdx], userObj);
+    } else {
+      state.users.push(JSON.parse(JSON.stringify(userObj)));
+    }
+    const latestUser = state.users.find(u => u.id === userObj.id) || userObj;
     if (latestUser.active === false) {
       showToast('Akun ini sedang dinonaktifkan oleh Super Admin.', 'block');
       return null;
@@ -445,6 +451,13 @@ window.ArbaStore = (function() {
   }
 
   function updateUserProfile(userId, updates) {
+    const isSuperAdmin = state.currentUser && state.currentUser.role === 'super-admin';
+    // Non-Super-Admin hanya boleh mengubah profilnya sendiri
+    if (state.currentUser && !isSuperAdmin && state.currentUser.id !== userId) {
+      showToast('Akses ditolak: Anda hanya dapat mengubah profil akun Anda sendiri.', 'lock');
+      return { ok: false, message: 'Tidak memiliki izin untuk mengubah profil pengguna lain.' };
+    }
+
     const idx = (state.users || []).findIndex(u => u.id === userId);
     if (idx === -1) return { ok: false, message: 'Pengguna tidak ditemukan.' };
 
@@ -459,29 +472,33 @@ window.ArbaStore = (function() {
     if (updates.division !== undefined) target.division = String(updates.division).trim();
     if (updates.avatarInitials !== undefined) target.avatarInitials = String(updates.avatarInitials).trim().toUpperCase().slice(0, 2);
     if (updates.badgeColor !== undefined) target.badgeColor = updates.badgeColor;
-    if (updates.active !== undefined) target.active = Boolean(updates.active);
-    if (updates.role !== undefined) {
-      target.role = updates.role;
-      const sqlMap = {
-        'super-admin': 'super_admin',
-        'executive': 'direktur',
-        'inventory': 'admin_gudang',
-        'sales-ops': 'admin_penjualan',
-        'field-sales': 'sales'
-      };
-      target.sqlRole = sqlMap[updates.role] || 'sales';
-    }
-    if (Array.isArray(updates.permissions)) {
-      target.permissions = updates.permissions;
-    }
-    if (updates.defaultPath !== undefined) {
-      target.defaultPath = updates.defaultPath;
-    }
-    if (updates.password !== undefined && String(updates.password).trim() !== '') {
-      target.password = String(updates.password).trim();
-    }
-    if (updates.pin !== undefined && String(updates.pin).trim() !== '') {
-      target.pin = String(updates.pin).trim();
+
+    // Field hak akses sensitif (role, permissions, active, password override) hanya boleh diubah oleh Super Admin
+    if (isSuperAdmin || !state.currentUser) {
+      if (updates.active !== undefined) target.active = Boolean(updates.active);
+      if (updates.role !== undefined) {
+        target.role = updates.role;
+        const sqlMap = {
+          'super-admin': 'super_admin',
+          'executive': 'direktur',
+          'inventory': 'admin_gudang',
+          'sales-ops': 'admin_penjualan',
+          'field-sales': 'sales'
+        };
+        target.sqlRole = sqlMap[updates.role] || 'sales';
+      }
+      if (Array.isArray(updates.permissions)) {
+        target.permissions = updates.permissions;
+      }
+      if (updates.defaultPath !== undefined) {
+        target.defaultPath = updates.defaultPath;
+      }
+      if (updates.password !== undefined && String(updates.password).trim() !== '') {
+        target.password = String(updates.password).trim();
+      }
+      if (updates.pin !== undefined && String(updates.pin).trim() !== '') {
+        target.pin = String(updates.pin).trim();
+      }
     }
 
     // Jika user ini adalah Sales Lapangan dan namanya berubah, sinkronkan salesRepName & salesTeam
@@ -505,10 +522,16 @@ window.ArbaStore = (function() {
   }
 
   function changeUserPassword(userId, currentPassword, newPassword, newPin, isSuperAdminOverride) {
+    const isSuperAdmin = state.currentUser && state.currentUser.role === 'super-admin';
+    if (state.currentUser && !isSuperAdmin && state.currentUser.id !== userId) {
+      return { ok: false, message: 'Akses ditolak: Anda hanya dapat mengganti password akun Anda sendiri.' };
+    }
+    const allowOverride = Boolean(isSuperAdminOverride && (isSuperAdmin || !state.currentUser));
+
     const target = (state.users || []).find(u => u.id === userId);
     if (!target) return { ok: false, message: 'Akun pengguna tidak ditemukan.' };
 
-    if (!isSuperAdminOverride) {
+    if (!allowOverride) {
       const cur = String(currentPassword || '').trim();
       if (cur !== target.password && cur !== target.pin) {
         return { ok: false, message: 'Password saat ini tidak sesuai!' };
@@ -536,6 +559,10 @@ window.ArbaStore = (function() {
   }
 
   function createNewUser(userData) {
+    if (state.currentUser && state.currentUser.role !== 'super-admin') {
+      showToast('Akses ditolak: Hanya Super Admin yang dapat membuat akun baru.', 'lock');
+      return { ok: false, message: 'Hanya Super Admin yang diizinkan membuat akun baru.' };
+    }
     const id = userData.id || `USR-${Math.floor(100 + Math.random() * 900)}`;
     const role = userData.role || 'field-sales';
     const sqlMap = {
@@ -606,6 +633,10 @@ window.ArbaStore = (function() {
   }
 
   function deleteUser(userId) {
+    if (state.currentUser && state.currentUser.role !== 'super-admin') {
+      showToast('Akses ditolak: Hanya Super Admin yang dapat menghapus akun.', 'lock');
+      return { ok: false, message: 'Hanya Super Admin yang diizinkan menghapus akun.' };
+    }
     if (userId === 'USR-SUPER-01') {
       showToast('Akun Super Admin utama tidak dapat dihapus!', 'warning');
       return { ok: false, message: 'Akun Super Admin utama dilindungi.' };
@@ -670,7 +701,11 @@ window.ArbaStore = (function() {
       state.users = centralState.users;
       if (state.currentUser) {
         const refreshed = state.users.find(u => u.id === state.currentUser.id);
-        if (refreshed) state.currentUser = JSON.parse(JSON.stringify(refreshed));
+        if (!refreshed || refreshed.active === false) {
+          logoutUser();
+          return;
+        }
+        state.currentUser = JSON.parse(JSON.stringify(refreshed));
       }
     }
     if (Array.isArray(centralState.products)) state.products = centralState.products;
@@ -719,8 +754,9 @@ window.ArbaStore = (function() {
       if (window.ArbaOfflineSync && typeof window.ArbaOfflineSync.flushOfflineQueue === 'function') {
         window.ArbaOfflineSync.flushOfflineQueue();
         window.ArbaOfflineSync.connectRealtimeSSE();
+      } else {
+        state.offlineQueue = [];
       }
-      state.offlineQueue = [];
       showToast(
         `Online kembali: ${count} transaksi lokal dikirim ke Server Pusat & stok dipotong otomatis` +
         (waiting ? ` (${waiting} menunggu stok)` : '') + '.' + lowStockMessage(lowHits),
@@ -1291,11 +1327,11 @@ window.ArbaStore = (function() {
     if (totalDiscrepancy === 0) {
       loadRec.status = 'TERVERIFIKASI_KLOP';
       loadRec.auditNote = undefined;
-      showToast(`Rekonsiliasi ${loadRec.salesRep} KLOP 100%! Tidak ada selisih barang bawaan.`, 'verified');
+      showToast(`Rekonsiliasi manifest ${loadRec.salesRep} terverifikasi sesuai (100%).`, 'verified');
     } else {
       loadRec.status = 'SELISIH_AUDIT';
-      loadRec.auditNote = `Terdeteksi selisih ${totalDiscrepancy} unit belum kembali ke gudang (wajib ditagihkan ke sales)!`;
-      showToast(`PERINGATAN AUDIT: Selisih ${totalDiscrepancy} unit pada bawaan ${loadRec.salesRep}!`, 'warning');
+      loadRec.auditNote = `Terdeteksi selisih ${totalDiscrepancy} unit yang belum dikembalikan ke gudang.`;
+      showToast(`Peringatan Audit: Terdapat selisih ${totalDiscrepancy} unit pada manifest ${loadRec.salesRep}.`, 'warning');
     }
     notify();
     syncMutationToServer('RECONCILE_LOADING', { loadId, actualReturnedMap }, `Rekonsiliasi Bawaan ${loadRec.salesRep}`);
@@ -1670,6 +1706,7 @@ window.ArbaStore = (function() {
     const recommendations = [];
     state.outlets.forEach(src => {
       (src.consignmentItems || []).forEach(ci => {
+        if (ci.rebalanced) return;
         const isSlowOrNearExpiry = (ci.velocity === 'LAMA_TIDAK_LAKU' || ci.nearExpiry || (ci.daysInOutlet || 0) >= 30);
         if (!isSlowOrNearExpiry || (ci.remainingQty || 0) < 4) return;
 
@@ -1714,8 +1751,8 @@ window.ArbaStore = (function() {
             unitPrice,
             savedValueRp: transferQty * unitPrice,
             reason: ci.nearExpiry
-              ? `Mendekati ED (${ci.expiry}) & mengendap ${ci.daysInOutlet} hari di ${src.name}`
-              : `Stok macet ${ci.daysInOutlet} hari di ${src.name}, sedangkan ${bestTarget.name} berstatus LARIS`
+              ? `Mendekati ED (${ci.expiry}) & durasi simpan ${ci.daysInOutlet} hari di ${src.name}`
+              : `Perputaran lambat (${ci.daysInOutlet} hari) di ${src.name}, dialihkan ke ${bestTarget.name}`
           });
         }
       });
@@ -1723,24 +1760,21 @@ window.ArbaStore = (function() {
     return recommendations.sort((a, b) => b.savedValueRp - a.savedValueRp);
   }
 
-  function executeConsignmentRebalance({ sourceOutletId, targetOutletId, sku, transferQty }) {
+  function applySingleRebalanceInternal({ sourceOutletId, targetOutletId, sku, transferQty }) {
     const src = findOutlet(sourceOutletId);
     const dst = findOutlet(targetOutletId);
     const qty = Number(transferQty) || 0;
-    if (!src || !dst || qty <= 0) {
-      return { ok: false, message: 'Data mutasi konsinyasi tidak valid.' };
-    }
+    if (!src || !dst || qty <= 0) return null;
 
     const srcItem = (src.consignmentItems || []).find(c => c.sku === sku);
-    if (!srcItem || (srcItem.remainingQty || 0) < qty) {
-      return { ok: false, message: 'Stok sisa di apotek asal tidak mencukupi.' };
-    }
+    if (!srcItem || (srcItem.remainingQty || 0) < qty) return null;
 
     srcItem.remainingQty = Math.max(0, srcItem.remainingQty - qty);
     srcItem.consignedQty = (srcItem.soldQty || 0) + srcItem.remainingQty;
-    if (srcItem.remainingQty <= 5) {
-      srcItem.velocity = 'LARIS';
-    }
+    srcItem.velocity = 'LARIS';
+    srcItem.daysInOutlet = 1;
+    srcItem.nearExpiry = false;
+    srcItem.rebalanced = true;
 
     if (!Array.isArray(dst.consignmentItems)) dst.consignmentItems = [];
     let dstItem = dst.consignmentItems.find(c => c.sku === sku);
@@ -1760,7 +1794,8 @@ window.ArbaStore = (function() {
         unitPrice: srcItem.unitPrice,
         velocity: 'LARIS',
         daysInOutlet: 1,
-        nearExpiry: srcItem.nearExpiry
+        nearExpiry: false,
+        rebalanced: true
       });
     }
 
@@ -1781,19 +1816,120 @@ window.ArbaStore = (function() {
       quantity: qty,
       finalStock: prod ? prod.stock : 0,
       operator: (state.currentUser && state.currentUser.name) || src.salesRep || 'Tim Konsinyasi',
-      operatorRole: `Rebalance: ${src.name} → ${dst.name}`,
+      operatorRole: `Realokasi: ${src.name} → ${dst.name}`,
       hash: pseudoHash(sourceOutletId + targetOutletId + sku + qty)
     };
     state.ledger = [ledgerEntry, ...state.ledger];
+    return { ledgerEntry, src, dst, srcItem };
+  }
 
-    showToast(`Mutasi Silang FEFO berhasil: ${qty} unit ${srcItem.name} dipindahkan dari ${src.name} ke ${dst.name}!`, 'swap_horiz');
+  function executeConsignmentRebalance({ sourceOutletId, targetOutletId, sku, transferQty }) {
+    const res = applySingleRebalanceInternal({ sourceOutletId, targetOutletId, sku, transferQty });
+    if (!res) {
+      return { ok: false, message: 'Data realokasi konsinyasi tidak valid atau stok tidak mencukupi.' };
+    }
+    showToast(`Realokasi FEFO berhasil: ${transferQty} unit ${res.srcItem.name} dipindahkan dari ${res.src.name} ke ${res.dst.name}.`, 'swap_horiz');
     notify();
     syncMutationToServer(
       'REBALANCE_CONSIGNMENT',
-      { sourceOutletId, targetOutletId, sku, transferQty: qty, ledgerEntry },
-      `Mutasi Silang ${qty} unit ${srcItem.name} (${src.name} -> ${dst.name})`
+      { sourceOutletId, targetOutletId, sku, transferQty: Number(transferQty), ledgerEntry: res.ledgerEntry },
+      `Realokasi ${transferQty} unit ${res.srcItem.name} (${res.src.name} -> ${res.dst.name})`
     );
-    return { ok: true, ledgerEntry, sourceOutlet: src, targetOutlet: dst };
+    return { ok: true, ledgerEntry: res.ledgerEntry, sourceOutlet: res.src, targetOutlet: res.dst };
+  }
+
+  function batchExecuteConsignmentRebalance(items) {
+    const list = Array.isArray(items) && items.length ? items : getConsignmentRebalanceRecommendations();
+    const applied = [];
+    list.forEach(r => {
+      const res = applySingleRebalanceInternal({
+        sourceOutletId: r.sourceOutletId,
+        targetOutletId: r.targetOutletId,
+        sku: r.sku,
+        transferQty: r.transferQty
+      });
+      if (res) {
+        applied.push({
+          sourceOutletId: r.sourceOutletId,
+          targetOutletId: r.targetOutletId,
+          sku: r.sku,
+          transferQty: Number(r.transferQty),
+          ledgerEntry: res.ledgerEntry
+        });
+      }
+    });
+    if (applied.length > 0) {
+      showToast(`Seluruh ${applied.length} rute realokasi konsinyasi berhasil diproses dan tercatat di Buku Besar Stok.`, 'done_all');
+      notify();
+      syncMutationToServer(
+        'BATCH_REBALANCE_CONSIGNMENT',
+        { items: applied },
+        `Realokasi Massal ${applied.length} Rute Konsinyasi FEFO`
+      );
+    }
+    return { ok: true, count: applied.length };
+  }
+
+  function quickRestockFromAlarm(sku) {
+    const prod = state.products.find(p => p.sku === sku);
+    if (!prod) return { ok: false };
+    const neededQty = Math.max(100, (prod.rop - prod.stock) + prod.safetyStock);
+    const newBatch = `BATCH-2026-${Math.floor(100 + Math.random() * 899)}`;
+    const docRef = `PO-ROP-${Math.floor(100 + Math.random() * 899)}`;
+    addInboundBatch({
+      sku: prod.sku,
+      batch: newBatch,
+      qty: neededQty,
+      expiryDate: '20 Des 2027',
+      docRef
+    });
+    return { ok: true, qty: neededQty, batch: newBatch };
+  }
+
+  function resolveExpiryAlarm({ locationType, outletId, sku, batch }) {
+    if (locationType === 'APOTEK_MITRA') {
+      const src = findOutlet(outletId);
+      if (src && Array.isArray(src.consignmentItems)) {
+        const ci = src.consignmentItems.find(c => c.sku === sku || c.batch === batch);
+        if (ci) {
+          const transferQty = Math.max(2, Math.ceil((ci.remainingQty || 4) * 0.5));
+          const dst = state.outlets.find(o => o.id !== src.id && o.creditStatus === 'Lancar') || state.outlets[0];
+          return executeConsignmentRebalance({
+            sourceOutletId: src.id,
+            targetOutletId: dst.id,
+            sku: ci.sku,
+            transferQty: Math.min(ci.remainingQty, transferQty)
+          });
+        }
+      }
+    }
+
+    // Jika di Gudang Utama: prioritaskan distribusi FEFO & perbarui status batch
+    const prod = state.products.find(p => p.sku === sku || p.activeBatch === batch);
+    if (prod) {
+      prod.fefoStatus = 'Prioritas FEFO Terjadwal';
+      prod.status = prod.stock <= prod.rop ? 'below-rop' : 'optimal';
+      const entry = {
+        id: newLedgerId(),
+        timestamp: nowStamp(),
+        docRef: `FEFO-PRIO-${Math.floor(100 + Math.random() * 900)}`,
+        skuName: prod.name,
+        skuCode: prod.sku,
+        batch: prod.activeBatch,
+        type: 'PENYESUAIAN',
+        quantity: 0,
+        finalStock: prod.stock,
+        operator: (state.currentUser && state.currentUser.name) || 'Kepala Gudang',
+        operatorRole: 'Alokasi Prioritas FEFO',
+        hash: pseudoHash(prod.sku + prod.activeBatch + 'FEFO')
+      };
+      state.ledger = [entry, ...state.ledger];
+      showToast(`Batch ${prod.activeBatch} (${prod.name}) telah ditetapkan sebagai Prioritas Distribusi FEFO Utama.`, 'verified');
+      notify();
+      syncMutationToServer('RESOLVE_EXPIRY_ALARM', { locationType, outletId, sku: prod.sku, batch: prod.activeBatch, ledgerEntry: entry }, `Prioritas FEFO ${prod.name}`);
+      return { ok: true };
+    }
+    return { ok: false };
   }
 
   function getOutletCreditScoring(outletId) {
@@ -1826,7 +1962,24 @@ window.ArbaStore = (function() {
       let suggestedLimit = o.creditLimit;
       let suggestedTerms = o.terms;
 
-      if (totalScore >= 82 && o.creditStatus === 'Lancar') {
+      if (o.aiCreditOptimized) {
+        if (totalScore >= 82 && o.creditStatus === 'Lancar') {
+          tier = 'AAA (Mitra Prioritas Utama)';
+          badgeColor = '#047857';
+          badgeBg = '#d1fae5';
+        } else if (totalScore >= 68) {
+          tier = 'AA (Sehat & Berkembang)';
+          badgeColor = '#0369a1';
+          badgeBg = '#e0f2fe';
+        } else if (totalScore < 50 || o.creditStatus === 'Overdue') {
+          tier = 'C (Risiko Tinggi / Restriksi)';
+          badgeColor = '#be123c';
+          badgeBg = '#ffe4e6';
+        }
+        suggestedLimit = o.creditLimit;
+        suggestedTerms = o.terms;
+        recommendation = `Plafon kredit (${window.ArbaUtils ? window.ArbaUtils.formatRupiah(o.creditLimit) : o.creditLimit}) & termin (${o.terms}) telah dioptimalkan sesuai profil risiko mitra.`;
+      } else if (totalScore >= 82 && o.creditStatus === 'Lancar') {
         tier = 'AAA (Mitra Prioritas Utama)';
         badgeColor = '#047857';
         badgeBg = '#d1fae5';
@@ -1880,18 +2033,19 @@ window.ArbaStore = (function() {
 
     o.creditLimit = scoring.suggestedLimit;
     o.terms = scoring.suggestedTerms;
+    o.aiCreditOptimized = true;
     o.creditRemaining = Math.max(0, o.creditLimit - (o.creditUsed || 0));
     const ratio = o.creditLimit ? (o.creditUsed || 0) / o.creditLimit : 0;
     if (o.creditStatus !== 'Overdue') {
       o.creditStatus = ratio >= 0.9 ? 'Perhatian' : 'Lancar';
     }
 
-    showToast(`Kebijakan AI Credit Scoring diterapkan untuk ${o.name}: Plafon ${window.ArbaUtils ? window.ArbaUtils.formatRupiah(o.creditLimit) : o.creditLimit} (${o.terms})`, 'auto_awesome');
+    showToast(`Kebijakan Plafon Kredit diterapkan untuk ${o.name}: ${window.ArbaUtils ? window.ArbaUtils.formatRupiah(o.creditLimit) : o.creditLimit} (${o.terms})`, 'auto_awesome');
     notify();
     syncMutationToServer(
       'UPDATE_OUTLET_CREDIT_POLICY',
-      { outletId: o.id, creditLimit: o.creditLimit, terms: o.terms, creditRemaining: o.creditRemaining, creditStatus: o.creditStatus },
-      `Update Plafon AI ${o.name}`
+      { outletId: o.id, creditLimit: o.creditLimit, terms: o.terms, creditRemaining: o.creditRemaining, creditStatus: o.creditStatus, aiCreditOptimized: true },
+      `Update Plafon Kredit ${o.name}`
     );
     return { ok: true, outlet: o, scoring };
   }
@@ -2111,6 +2265,9 @@ window.ArbaStore = (function() {
     addOutlet,
     getConsignmentRebalanceRecommendations,
     executeConsignmentRebalance,
+    batchExecuteConsignmentRebalance,
+    quickRestockFromAlarm,
+    resolveExpiryAlarm,
     getOutletCreditScoring,
     applyRecommendedCreditPolicy,
     getOptimizedSalesRoute,

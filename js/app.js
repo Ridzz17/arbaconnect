@@ -577,11 +577,11 @@
       var profileAvatar = document.getElementById('header-profile-avatar');
       if (profilePill) {
         var roleLabelMap = {
-          'super-admin': ['Farid Super Administrator', 'Super Admin & RBAC Manager'],
-          'executive': ['H. Ahmad Zaini, S.E.', 'Direktur & Manajemen (6 Pilar)'],
-          'inventory': ['Slamet Riadi', 'Kepala Gudang & Stok FEFO'],
-          'sales-ops': ['Dewi Sartika, S.Ak.', 'Koordinator Admin Penjualan'],
-          'field-sales': [state.currentSalesRep || 'Budi Santoso', 'Sales Lapangan (Mobile PWA)']
+          'super-admin': ['Farid Super Administrator', 'Super Administrator Sistem'],
+          'executive': ['H. Ahmad Zaini, S.E.', 'Direktur Operasional & Manajemen'],
+          'inventory': ['Slamet Riadi', 'Kepala Gudang & Logistik FEFO'],
+          'sales-ops': ['Dewi Sartika, S.Ak.', 'Koordinator Administrasi Penjualan'],
+          'field-sales': [state.currentSalesRep || 'Budi Santoso', 'Personel Distribusi Sales Lapangan']
         };
         var labels = state.currentUser
           ? [state.currentUser.name, state.currentUser.title]

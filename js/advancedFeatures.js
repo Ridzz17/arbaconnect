@@ -424,11 +424,11 @@
             </div>
             <div>
               <div class="flex items-center gap-2 flex-wrap">
-                <h3 class="font-bold text-sm text-on-surface">Rekomendasi Tarik &amp; Geser Stok Titipan Antar-Apotek (Cegah Kedaluwarsa)</h3>
-                <span class="badge badge-warning">ROTASI FEFO</span>
+                <h3 class="font-bold text-sm text-on-surface">Realokasi Inventaris Konsinyasi Antar-Mitra Berbasis FEFO</h3>
+                <span class="badge badge-warning">OPTIMASI FEFO</span>
               </div>
               <p class="text-xs text-on-surface-variant mt-0.5">
-                Memindahkan barang titipan (konsinyasi) yang lama tidak laku / hampir kedaluwarsa ke apotek terdekat yang penjualannya <b>LARIS</b>.
+                Memindahkan inventaris konsinyasi berperputaran lambat atau mendekati masa kedaluwarsa ke mitra apotek dengan tingkat penjualan tinggi.
               </p>
             </div>
           </div>
@@ -441,17 +441,17 @@
           <!-- Ringkasan Dampak Finansial -->
           <div class="adv-grid-3">
             <div class="p-3.5 rounded-xl bg-surface-container-low border border-border-subtle">
-              <div class="text-[11px] font-bold uppercase text-on-surface-variant">Rekomendasi Rotasi Apotek</div>
-              <div class="text-xl font-bold text-on-surface mt-0.5">${recs.length} Rute Mutasi</div>
-              <div class="text-[11px] text-amber-600 font-semibold mt-0.5">Total ${totalUnits} botol diselamatkan dari ED</div>
+              <div class="text-[11px] font-bold uppercase text-on-surface-variant">Rekomendasi Realokasi Mitra</div>
+              <div class="text-xl font-bold text-on-surface mt-0.5">${recs.length} Rute Realokasi</div>
+              <div class="text-[11px] text-amber-600 font-semibold mt-0.5">Total ${totalUnits} unit produk dioptimalkan</div>
             </div>
             <div class="p-3.5 rounded-xl bg-surface-container-low border border-border-subtle">
-              <div class="text-[11px] font-bold uppercase text-on-surface-variant">Nilai Produk Diselamatkan</div>
+              <div class="text-[11px] font-bold uppercase text-on-surface-variant">Estimasi Nilai Inventaris</div>
               <div class="text-xl font-bold text-primary mt-0.5">${window.ArbaUtils.formatRupiah(totalSavedValue)}</div>
-              <div class="text-[11px] text-emerald-600 font-semibold mt-0.5">Mencegah kerugian retur expired</div>
+              <div class="text-[11px] text-emerald-600 font-semibold mt-0.5">Mitigasi risiko retur kedaluwarsa</div>
             </div>
             <div class="p-3.5 rounded-xl bg-surface-container-low border border-border-subtle flex flex-col justify-between">
-              <div class="text-[11px] font-bold uppercase text-on-surface-variant">Tindakan Massal</div>
+              <div class="text-[11px] font-bold uppercase text-on-surface-variant">Otorisasi Realokasi Massal</div>
               ${recs.length > 0 ? `
                 <button
                   id="rebalance-exec-all-btn"
@@ -459,10 +459,10 @@
                   class="mt-1 py-2 px-3 rounded-lg bg-primary hover:bg-primary-container text-white text-xs font-semibold cursor-pointer border-0 flex items-center justify-center gap-1.5 shadow-xs"
                 >
                   <span class="material-symbols-outlined text-[16px]">bolt</span>
-                  <span>Jalankan Semua Rotasi (${recs.length})</span>
+                  <span>Proses Seluruh Realokasi (${recs.length})</span>
                 </button>
               ` : `
-                <div class="text-xs font-bold text-emerald-600 mt-1">Semua Konsinyasi Optimal!</div>
+                <div class="text-xs font-bold text-emerald-600 mt-1">Distribusi Konsinyasi Optimal</div>
               `}
             </div>
           </div>
@@ -471,8 +471,8 @@
           ${recs.length === 0 ? `
             <div class="p-8 text-center rounded-xl border border-border-subtle bg-surface-container-low">
               <span class="material-symbols-outlined text-[36px] text-emerald-600">verified</span>
-              <div class="font-bold text-sm text-on-surface mt-2">Seluruh Stok Konsinyasi Apotek Telah Seimbang!</div>
-              <p class="text-xs text-on-surface-variant mt-1">Tidak ditemukan stok titipan macet atau mendekati kedaluwarsa yang memerlukan pemindahan saat ini.</p>
+              <div class="font-bold text-sm text-on-surface mt-2">Seluruh Inventaris Konsinyasi Mitra Telah Optimal</div>
+              <p class="text-xs text-on-surface-variant mt-1">Tidak ditemukan inventaris konsinyasi berperputaran lambat atau mendekati kedaluwarsa yang memerlukan realokasi saat ini.</p>
             </div>
           ` : `
             <div class="flex flex-col gap-2.5 max-h-[420px] overflow-y-auto pr-1">
@@ -483,29 +483,29 @@
                       <div class="flex items-center gap-2 flex-wrap mb-1.5">
                         <span class="font-bold text-xs text-on-surface">${r.productName}</span>
                         <span class="badge badge-neutral font-mono">Batch: ${r.batch} • ED: ${r.expiry}</span>
-                        ${r.nearExpiry ? '<span class="badge badge-danger">HAMPIR ED</span>' : '<span class="badge badge-warning">LAMBAT LAKU</span>'}
+                        ${r.nearExpiry ? '<span class="badge badge-danger">MENDEKATI ED</span>' : '<span class="badge badge-warning">PERPUTARAN LAMBAT</span>'}
                       </div>
 
                       <div class="flex items-center gap-2 flex-wrap text-xs">
                         <div class="px-2.5 py-1.5 rounded-lg bg-surface-container-lowest border border-border-subtle">
-                          <div class="text-[10px] uppercase font-bold text-rose-600">TARIK DARI APOTEK ASAL</div>
+                          <div class="text-[10px] uppercase font-bold text-rose-600">MITRA ASAL (PENARIKAN)</div>
                           <div class="font-semibold text-on-surface">${r.sourceOutletName} (${r.sourceCity})</div>
-                          <div class="text-[10px] text-on-surface-variant">Sisa ${r.sourceRemainingQty} unit • Mengendap ${r.daysInOutlet} hari</div>
+                          <div class="text-[10px] text-on-surface-variant">Saldo: ${r.sourceRemainingQty} unit • Durasi: ${r.daysInOutlet} hari</div>
                         </div>
 
                         <span class="material-symbols-outlined text-primary text-[20px]">trending_flat</span>
 
                         <div class="px-2.5 py-1.5 rounded-lg bg-surface-container-lowest border border-border-subtle">
-                          <div class="text-[10px] uppercase font-bold text-emerald-600">GESER KE APOTEK LARIS</div>
+                          <div class="text-[10px] uppercase font-bold text-emerald-600">MITRA TUJUAN (PENEMPATAN)</div>
                           <div class="font-semibold text-on-surface">${r.targetOutletName} (${r.targetCity})</div>
-                          <div class="text-[10px] text-on-surface-variant">Sales: ${r.targetSalesRep} • Perputaran Cepat</div>
+                          <div class="text-[10px] text-on-surface-variant">PIC Sales: ${r.targetSalesRep} • Perputaran Cepat</div>
                         </div>
                       </div>
                     </div>
 
                     <div class="flex flex-col items-end gap-1.5 shrink-0 w-full sm:w-auto">
                       <div class="text-right">
-                        <div class="text-[11px] text-on-surface-variant">Geser: <b class="text-on-surface">${r.transferQty} Botol</b></div>
+                        <div class="text-[11px] text-on-surface-variant">Kuantitas: <b class="text-on-surface">${r.transferQty} Unit</b></div>
                         <div class="font-bold text-sm text-primary">${window.ArbaUtils.formatRupiah(r.savedValueRp)}</div>
                       </div>
                       <button
@@ -517,7 +517,7 @@
                         data-qty="${r.transferQty}"
                       >
                         <span class="material-symbols-outlined text-[15px]">swap_horiz</span>
-                        <span>Tarik &amp; Geser (${r.transferQty})</span>
+                        <span>Proses Realokasi (${r.transferQty})</span>
                       </button>
                     </div>
                   </div>
@@ -559,14 +559,18 @@
     var execAllBtn = document.getElementById('rebalance-exec-all-btn');
     if (execAllBtn) {
       execAllBtn.onclick = function () {
-        recs.forEach(function (r) {
-          window.ArbaStore.executeConsignmentRebalance({
-            sourceOutletId: r.sourceOutletId,
-            targetOutletId: r.targetOutletId,
-            sku: r.sku,
-            transferQty: r.transferQty
+        if (window.ArbaStore.batchExecuteConsignmentRebalance) {
+          window.ArbaStore.batchExecuteConsignmentRebalance(recs);
+        } else {
+          recs.forEach(function (r) {
+            window.ArbaStore.executeConsignmentRebalance({
+              sourceOutletId: r.sourceOutletId,
+              targetOutletId: r.targetOutletId,
+              sku: r.sku,
+              transferQty: r.transferQty
+            });
           });
-        });
+        }
         openConsignmentRebalancerModal();
       };
     }

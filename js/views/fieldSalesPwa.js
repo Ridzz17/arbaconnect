@@ -315,36 +315,36 @@
                 ${(currentOutlet.consignmentItems && currentOutlet.consignmentItems.length > 0) ? `
                   <div class="p-2 rounded-lg text-[11px] space-y-1" style="background:#fdf2f8; border:1px solid #f472b6; color:#831843; margin-top:0.35rem;">
                     <div class="font-bold flex items-center justify-between">
-                      <span>📦 Stok Titipan di Apotek: ${currentOutlet.consignmentTotalUnits || 0} unit</span>
-                      <span>Laku: ${currentOutlet.consignmentItems.reduce(function (s, c) { return s + c.soldQty; }, 0)} unit</span>
+                      <span>📦 Saldo Konsinyasi Mitra: ${currentOutlet.consignmentTotalUnits || 0} unit</span>
+                      <span>Terjual: ${currentOutlet.consignmentItems.reduce(function (s, c) { return s + c.soldQty; }, 0)} unit</span>
                     </div>
                     ${currentOutlet.consignmentItems.filter(function (c) { return c.nearExpiry; }).map(function (c) {
-                      return `<div class="text-[10px] font-semibold" style="color:#be185d;">🩷 Alarm Pink: <b>${c.name}</b> (${c.remainingQty} btl, ED ${c.expiry}) — Minta apotek jual dulu!</div>`;
+                      return `<div class="text-[10px] font-semibold" style="color:#be185d;">Peringatan FEFO: <b>${c.name}</b> (${c.remainingQty} unit, ED ${c.expiry}) — Prioritaskan distribusi batch ini.</div>`;
                     }).join('')}
                   </div>
                 ` : ''}
 
-                <!-- Quick Actions: Tagih & Isi Ulang Konsinyasi (1-Tap), Rute TSP & Kunjungan Tanpa Order -->
+                <!-- Quick Actions: Rekonsiliasi & Restock Konsinyasi, Optimasi Rute & Log Kunjungan -->
                 <div class="flex flex-wrap gap-1.5" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.5rem;">
                   <button
                     type="button"
                     id="btn-pwa-repeat-order"
                     class="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-semibold cursor-pointer border-0"
                     style="flex:1; background:#e0f2fe; color:#075985; border-radius:8px; padding:0.45rem;"
-                    title="Otomatis isi jumlah barang konsinyasi yang laku terjual di apotek ini untuk ditagih & diganti stok baru"
+                    title="Muat kuantitas produk konsinyasi yang telah terjual di mitra ini untuk penagihan dan pengisian ulang stok"
                   >
                     <span class="material-symbols-outlined text-[15px]">sync_saved_locally</span>
-                    <span>Tagih &amp; Isi Ulang</span>
+                    <span>Rekonsiliasi &amp; Restock</span>
                   </button>
                   <button
                     type="button"
                     id="btn-pwa-tsp-route"
                     class="flex items-center justify-center gap-1 py-2 px-2.5 rounded-lg text-[11px] font-bold cursor-pointer border-0"
                     style="background:#d1fae5; color:#065f46; border-radius:8px; padding:0.45rem 0.6rem;"
-                    title="Lihat Peta Lokasi Apotek & Urutan Rute Kunjungan Terdekat (Hemat BBM)"
+                    title="Buka Peta Lokasi Mitra & Optimasi Rute Kunjungan"
                   >
                     <span class="material-symbols-outlined text-[15px]">route</span>
-                    <span>Rute Terdekat</span>
+                    <span>Optimasi Rute</span>
                   </button>
                   <button
                     type="button"
@@ -353,7 +353,7 @@
                     style="background:#f1f5f9; color:#334155; border-radius:8px; padding:0.45rem 0.6rem;"
                   >
                     <span class="material-symbols-outlined text-[15px]">where_to_vote</span>
-                    <span>Kunjungan Saja</span>
+                    <span>Log Kunjungan</span>
                   </button>
                 </div>
               </div>
@@ -362,7 +362,7 @@
               <div class="space-y-2 mb-3">
                 <div class="flex items-center justify-between mb-1.5">
                   <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                    2. Pilih Barang / Scan Kemasan
+                    2. Katalog Pemesanan Produk Herbal
                   </span>
                   <div class="flex items-center gap-2">
                     <button
@@ -370,13 +370,13 @@
                       id="btn-pwa-scan-qr"
                       class="px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 cursor-pointer border-0"
                       style="background:#005c55; color:#ffffff;"
-                      title="Scan QR pada Botol/Karton Herbal untuk Masukkan ke Nota"
+                      title="Pindai Kode QR Batch Produk Herbal untuk Memasukkan ke Faktur"
                     >
                       <span class="material-symbols-outlined text-[14px]">qr_code_scanner</span>
-                      <span>Scan QR Botol</span>
+                      <span>Pindai QR Batch</span>
                     </button>
                     <span class="text-[11px] text-teal-800 font-semibold" style="color:#005c55;">
-                      ${totalQuantity} botol
+                      ${totalQuantity} unit
                     </span>
                   </div>
                 </div>
@@ -453,16 +453,16 @@
                           </div>
                           ${consItem ? `
                             <div class="text-[10px] font-semibold mt-0.5" style="color:${consItem.nearExpiry ? '#be185d' : '#0f766e'};">
-                              Di Apotek: Titip ${consItem.consignedQty} · Laku <b>${consItem.soldQty}</b> · Sisa ${consItem.remainingQty}${consItem.nearExpiry ? ' · 🩷 Hampir ED!' : ''}
+                              Konsinyasi Mitra: Kuota ${consItem.consignedQty} · Terjual <b>${consItem.soldQty}</b> · Saldo ${consItem.remainingQty}${consItem.nearExpiry ? ' · Mendekati ED' : ''}
                             </div>
                           ` : ''}
                           ${prod.stock === 0 ? `
                             <div class="text-[10px] font-semibold mt-0.5" style="color:#be123c;">
-                              Stok gudang habis — tidak dapat dipesan
+                              Persediaan gudang habis — tidak dapat dipesan
                             </div>
                           ` : isLow ? `
                             <div class="text-[10px] font-semibold mt-0.5" style="color:#ea580c;">
-                              🟧 Alarm Oranye: Stok Gudang &le; ROP (${prod.rop})${atMax && qty > 0 ? ' · batas stok' : ''}
+                              Peringatan ROP: Persediaan Gudang &le; Ambang Minimum (${prod.rop} unit)${atMax && qty > 0 ? ' · batas stok' : ''}
                             </div>
                           ` : (atMax && qty > 0 ? `
                             <div class="text-[10px] text-amber-700 font-medium mt-0.5">Batas stok gudang tercapai</div>

@@ -115,30 +115,78 @@
     };
   }
 
+  var localFailedAttempts = {};
+  var MAX_LOCAL_ATTEMPTS = 5;
+  var LOCAL_LOCKOUT_MS = 30 * 1000;
+
+  function checkLocalRateLimit(identifier) {
+    var key = String(identifier || '').trim().toLowerCase() || 'global';
+    var rec = localFailedAttempts[key];
+    if (rec && rec.count >= MAX_LOCAL_ATTEMPTS && (Date.now() - rec.lastAttempt) < LOCAL_LOCKOUT_MS) {
+      var waitSec = Math.ceil((LOCAL_LOCKOUT_MS - (Date.now() - rec.lastAttempt)) / 1000);
+      return {
+        locked: true,
+        message: 'Terlalu banyak percobaan login gagal. Akun dikunci sementara selama ' + waitSec + ' detik.'
+      };
+    }
+    return { locked: false };
+  }
+
+  function recordLocalFailure(identifier) {
+    var key = String(identifier || '').trim().toLowerCase() || 'global';
+    var prev = localFailedAttempts[key] || { count: 0 };
+    localFailedAttempts[key] = { count: prev.count + 1, lastAttempt: Date.now() };
+  }
+
+  function clearLocalFailure(identifier) {
+    var key = String(identifier || '').trim().toLowerCase() || 'global';
+    delete localFailedAttempts[key];
+  }
+
   async function authenticate(identifier, password) {
-    var localCheck = findUserByCredentials(identifier, password);
-    if (localCheck.ok && localCheck.user) {
-      var st = window.ArbaStore ? window.ArbaStore.getState() : { isOnline: false };
-      if (st.isOnline && typeof fetch === 'function') {
-        try {
-          var res = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ identifier: identifier, password: password })
-          });
-          if (res.ok) {
-            var data = await res.json();
-            if (data && data.status === 'ok' && data.user) {
-              return { ok: true, user: localCheck.user, mode: 'ONLINE_SQL' };
-            }
-          }
-        } catch (e) {
-          // Gunakan sesi ter-cache bila koneksi terputus
-        }
-      }
-      return { ok: true, user: localCheck.user, mode: 'LOCAL_RBAC' };
+    var rateCheck = checkLocalRateLimit(identifier);
+    if (rateCheck.locked) {
+      return { ok: false, message: rateCheck.message };
     }
 
+    var st = window.ArbaStore ? window.ArbaStore.getState() : { isOnline: false };
+    var browserOnline = typeof navigator === 'undefined' || navigator.onLine !== false;
+
+    // 1. Bila sedang ONLINE, verifikasi ke Server Pusat SQLite (/api/auth/login) terlebih dahulu
+    if (st.isOnline && browserOnline && typeof fetch === 'function') {
+      try {
+        var res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: identifier, password: password })
+        });
+        if (res.ok) {
+          var data = await res.json();
+          if (data && data.status === 'ok' && data.user) {
+            clearLocalFailure(identifier);
+            return { ok: true, user: data.user, mode: 'ONLINE_SQL' };
+          }
+        } else if (res.status === 401 || res.status === 403 || res.status === 429) {
+          recordLocalFailure(identifier);
+          var errData = await res.json().catch(function () { return {}; });
+          return {
+            ok: false,
+            message: errData.message || 'Username/Email atau Kata Sandi tidak sesuai.'
+          };
+        }
+      } catch (e) {
+        // Jika fetch gagal karena server tidak terjangkau / jaringan terputus, lanjutkan ke verifikasi Offline-First di bawah
+      }
+    }
+
+    // 2. Fallback OFFLINE-FIRST: Verifikasi terhadap kredensial ter-cache lokal (mendukung Password & PIN Offline)
+    var localCheck = findUserByCredentials(identifier, password);
+    if (localCheck.ok && localCheck.user) {
+      clearLocalFailure(identifier);
+      return { ok: true, user: localCheck.user, mode: 'OFFLINE_CACHE' };
+    }
+
+    recordLocalFailure(identifier);
     return {
       ok: false,
       message: localCheck.message || 'Username/Email atau Password tidak sesuai.'

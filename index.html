@@ -24,11 +24,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
     <!-- Pure Vanilla Stylesheets -->
-    <link rel="stylesheet" href="css/tokens.css?v=9" />
-    <link rel="stylesheet" href="css/layout.css?v=9" />
-    <link rel="stylesheet" href="css/components.css?v=9" />
-    <link rel="stylesheet" href="css/utilities.css?v=9" />
-    <link rel="stylesheet" href="css/print.css?v=9" />
+    <link rel="stylesheet" href="css/tokens.css?v=12" />
+    <link rel="stylesheet" href="css/layout.css?v=12" />
+    <link rel="stylesheet" href="css/components.css?v=12" />
+    <link rel="stylesheet" href="css/utilities.css?v=12" />
+    <link rel="stylesheet" href="css/print.css?v=12" />
   </head>
   <body>
     <!-- App Shell Container -->
@@ -293,7 +293,7 @@
       if ('caches' in window) {
         caches.keys().then(function (keys) {
           keys.forEach(function (k) {
-            if (k.indexOf('arbaconnect-pwa-') === 0 && k !== 'arbaconnect-pwa-v9') {
+            if (k.indexOf('arbaconnect-pwa-') === 0 && k !== 'arbaconnect-pwa-v12') {
               caches.delete(k);
             }
           });
@@ -305,18 +305,18 @@
         });
       }
     </script>
-    <script src="js/data.js?v=9"></script>
-    <script src="js/utils.js?v=9"></script>
-    <script src="js/offlineSync.js?v=9"></script>
-    <script src="js/store.js?v=9"></script>
-    <script src="js/auth.js?v=9"></script>
-    <script src="js/advancedFeatures.js?v=9"></script>
-    <script src="js/views/executiveDashboard.js?v=9"></script>
-    <script src="js/views/inventoryLedger.js?v=9"></script>
-    <script src="js/views/b2bCrm.js?v=9"></script>
-    <script src="js/views/orderApproval.js?v=9"></script>
-    <script src="js/views/fieldSalesPwa.js?v=9"></script>
-    <script src="js/views/userProfileAndAdmin.js?v=9"></script>
-    <script src="js/app.js?v=9"></script>
+    <script src="js/data.js?v=12"></script>
+    <script src="js/utils.js?v=12"></script>
+    <script src="js/offlineSync.js?v=12"></script>
+    <script src="js/store.js?v=12"></script>
+    <script src="js/auth.js?v=12"></script>
+    <script src="js/advancedFeatures.js?v=12"></script>
+    <script src="js/views/executiveDashboard.js?v=12"></script>
+    <script src="js/views/inventoryLedger.js?v=12"></script>
+    <script src="js/views/b2bCrm.js?v=12"></script>
+    <script src="js/views/orderApproval.js?v=12"></script>
+    <script src="js/views/fieldSalesPwa.js?v=12"></script>
+    <script src="js/views/userProfileAndAdmin.js?v=12"></script>
+    <script src="js/app.js?v=12"></script>
   </body>
 </html>

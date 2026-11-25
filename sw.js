@@ -8,7 +8,7 @@
  * 3. API Pusat (/api/*): Network-Only (dikelola oleh OfflineSync Queue + IndexedDB di sisi aplikasi).
  */
 
-const CACHE_VERSION = 'arbaconnect-pwa-v9';
+const CACHE_VERSION = 'arbaconnect-pwa-v12';
 const FONT_CACHE = 'arbaconnect-fonts-v1';
 
 const APP_SHELL_ASSETS = [
