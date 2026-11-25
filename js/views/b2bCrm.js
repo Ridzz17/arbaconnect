@@ -71,16 +71,16 @@
     var isSalesOpsRole = activeRole === 'sales-ops';
 
     var crmTitle = isSalesRole
-      ? 'Daftar Apotek Langganan & Rute Kunjungan Saya (' + (appState.currentUser ? appState.currentUser.name : 'Sales') + ')'
+      ? 'Direktori Mitra Apotek & Rute Distribusi Wilayah (' + (appState.currentUser ? appState.currentUser.name : 'Sales') + ')'
       : isSalesOpsRole
-      ? 'Data Pelanggan Apotek, Evaluasi Plafon Kredit & Tagihan Konsinyasi'
-      : 'Direktori Kemitraan Apotek, Plafon Kredit & Barang Titipan Solo Raya';
+      ? 'Manajemen Kemitraan Apotek, Evaluasi Plafon Kredit & Piutang Konsinyasi'
+      : 'Direktori Kemitraan Apotek B2B, Plafon Kredit & Inventaris Konsinyasi Solo Raya';
 
     var crmSubtitle = isSalesRole
-      ? 'Lihat sisa barang titipan (konsinyasi) di apotek rayon Anda, cek nomor WA Apoteker, lihat urutan rute kunjungan terdekat, atau buka aplikasi input nota.'
+      ? 'Pantau saldo inventaris konsinyasi pada apotek wilayah tugas Anda, hubungi Apoteker Penanggung Jawab, optimalkan rute kunjungan, atau buat faktur pesanan baru.'
       : isSalesOpsRole
-      ? 'Pantau kelancaran bayar apotek, evaluasi skor kelayakan plafon kredit, tagih barang titipan yang sudah laku, dan geser stok yang macet.'
-      : 'Pusat data seluruh apotek dan toko obat mitra CV Arba\'in, pemantauan batas plafon kredit, serta perputaran barang konsinyasi.';
+      ? 'Kelola kolektibilitas pembayaran mitra apotek, evaluasi skor kelayakan plafon kredit, rekonsiliasi penjualan konsinyasi, dan lakukan realokasi stok berperputaran lambat.'
+      : 'Basis data terpadu seluruh jaringan apotek dan ritel mitra CV Arba\'in, pengendalian eksposur plafon kredit, serta pemantauan perputaran inventaris konsinyasi.';
 
     var html = `
       <div class="flex flex-col w-full gap-space-lg">
@@ -90,9 +90,9 @@
             <div class="flex items-center gap-2 text-on-surface-variant text-xs mb-1 font-medium">
               <span>Distribusi Herbal Solo Raya</span>
               <span aria-hidden="true">·</span>
-              <span class="text-primary font-semibold">${isSalesRole ? 'Rute &amp; Apotek Pegangan Sales' : isSalesOpsRole ? 'Administrasi Penjualan &amp; Piutang' : 'Manajemen Kemitraan Apotek'}</span>
+              <span class="text-primary font-semibold">${isSalesRole ? 'Wilayah Tugas Distribusi Sales' : isSalesOpsRole ? 'Administrasi Penjualan &amp; Piutang' : 'Manajemen Kemitraan Apotek'}</span>
               <span aria-hidden="true">·</span>
-              <span>Sistem Titip Jual (Konsinyasi)</span>
+              <span>Kemitraan Konsinyasi B2B</span>
             </div>
             <h1 class="text-2xl text-on-surface tracking-tight font-bold">
               ${crmTitle}
@@ -104,35 +104,33 @@
           <div class="flex items-center gap-2 flex-wrap">
             <button
               id="btn-crm-rebalancer"
-              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer border"
-              style="background:#fffbeb; color:#b45309; border-color:#fcd34d;"
+              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer border border-border-subtle/50"
               type="button"
-              title="Rekomendasi Tarik & Geser Stok Titipan yang Macet / Hampir Kedaluwarsa ke Apotek Lain yang Laris"
+              title="Realokasi Inventaris Konsinyasi Berperputaran Lambat / Mendekati Kedaluwarsa Antar-Mitra Apotek"
             >
-              <span class="material-symbols-outlined text-[16px]">swap_driving_apps_wheel</span>
-              <span>Tarik &amp; Geser Stok Macet (${(window.ArbaStore.getConsignmentRebalanceRecommendations() || []).length})</span>
+              <span class="material-symbols-outlined text-[16px] text-amber-600">swap_driving_apps_wheel</span>
+              <span>Realokasi Stok Konsinyasi</span>
+              <span class="px-1.5 py-0.5 rounded-full bg-primary text-white text-[10px] font-bold">${(window.ArbaStore.getConsignmentRebalanceRecommendations() || []).length}</span>
             </button>
             ${!isSalesRole ? `
               <button
                 id="btn-crm-credit-score"
-                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer border"
-                style="background:#f5f3ff; color:#6d28d9; border-color:#ddd6fe;"
+                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer border border-border-subtle/50"
                 type="button"
-                title="Penilaian Kelayakan Plafon Kredit & Kesehatan Bayar Apotek (Skor 0-100)"
+                title="Evaluasi Kelayakan Plafon Kredit & Kolektibilitas Mitra Apotek (Skor 0-100)"
               >
-                <span class="material-symbols-outlined text-[16px]">analytics</span>
-                <span>Skor Kelayakan Kredit</span>
+                <span class="material-symbols-outlined text-[16px] text-primary">analytics</span>
+                <span>Evaluasi Kelayakan Kredit</span>
               </button>
             ` : ''}
             <button
               id="btn-crm-tsp-map"
-              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer border"
-              style="background:#ecfdf5; color:#047857; border-color:#a7f3d0;"
+              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer border border-border-subtle/50"
               type="button"
-              title="Peta Lokasi Apotek & Urutan Rute Kunjungan Terdekat (Hemat Jarak & BBM)"
+              title="Peta Lokasi Mitra Apotek & Optimasi Rute Kunjungan Distribusi"
             >
-              <span class="material-symbols-outlined text-[16px]">route</span>
-              <span>${isSalesRole ? 'Peta Urutan Rute Saya' : 'Peta &amp; Rute Kunjungan'}</span>
+              <span class="material-symbols-outlined text-[16px] text-emerald-600">route</span>
+              <span>${isSalesRole ? 'Optimasi Rute Kunjungan' : 'Peta &amp; Optimasi Rute'}</span>
             </button>
             ${!isSalesRole ? `
               <button
@@ -624,6 +622,33 @@
                   </div>
                 </div>
 
+                <!-- Peta Lokasi Nyata Mitra Apotek (Leaflet + OpenStreetMap + Google Maps Directions) -->
+                ${(function () {
+                  var coords = window.ArbaStore.getOutletCoordinates ? window.ArbaStore.getOutletCoordinates(selectedOutlet) : { lat: selectedOutlet.lat || -7.5682, lng: selectedOutlet.lng || 110.8091 };
+                  var hq = window.ArbaStore.warehouseHq || { lat: -7.5561, lng: 110.7422 };
+                  var gmapsDirUrl = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(hq.lat + ',' + hq.lng) + '&destination=' + encodeURIComponent(coords.lat + ',' + coords.lng) + '&travelmode=driving';
+                  var gmapsPlaceUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(coords.lat + ',' + coords.lng);
+                  return `
+                    <div class="rounded-xl overflow-hidden border border-border-subtle bg-surface-container-low">
+                      <div class="px-3 py-2 flex items-center justify-between text-[11px] border-b border-border-subtle">
+                        <span class="font-bold text-on-surface flex items-center gap-1">
+                          <span class="material-symbols-outlined text-[15px] text-primary">location_on</span>
+                          <span>Peta Lokasi Mitra (<span class="font-mono">${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}</span>)</span>
+                        </span>
+                        <div class="flex items-center gap-1.5">
+                          <a href="${gmapsPlaceUrl}" target="_blank" rel="noreferrer" class="text-primary hover:underline font-semibold">Google Maps</a>
+                          <span>·</span>
+                          <a href="${gmapsDirUrl}" target="_blank" rel="noreferrer" class="text-emerald-700 hover:underline font-bold flex items-center gap-0.5">
+                            <span class="material-symbols-outlined text-[13px]">directions</span>
+                            <span>Rute</span>
+                          </a>
+                        </div>
+                      </div>
+                      <div id="crm-drawer-leaflet-map" data-lat="${coords.lat}" data-lng="${coords.lng}" data-name="${window.ArbaUtils.escapeHtml(selectedOutlet.name)}" data-addr="${window.ArbaUtils.escapeHtml(selectedOutlet.address + ', ' + selectedOutlet.cityName)}" style="width:100%; height:165px; z-index:1; background:#e2e8f0;"></div>
+                    </div>
+                  `;
+                })()}
+
                 <!-- Omset Performa Snapshot & Chart Widget -->
                 <div class="bg-surface-container-low p-space-md rounded-lg flex flex-col gap-space-sm border border-border-subtle/30 p-3">
                   <div class="flex items-center justify-between">
@@ -665,22 +690,22 @@
                 ${(function () {
                   var aiSc = window.ArbaStore.getOutletCreditScoring ? window.ArbaStore.getOutletCreditScoring(selectedOutlet.id) : null;
                   if (!aiSc) return '';
+                  var badgeCls = aiSc.score >= 82 ? 'badge-success' : (aiSc.score >= 68 ? 'badge-primary' : (aiSc.score < 50 ? 'badge-danger' : 'badge-warning'));
                   return `
-                    <div class="p-3 rounded-xl border text-xs mb-1" style="background:${aiSc.badgeBg}; border-color:${aiSc.badgeColor}40;">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="font-bold flex items-center gap-1" style="color:${aiSc.badgeColor};">
-                          <span class="material-symbols-outlined text-[15px]">auto_awesome</span>
-                          Skor Kelayakan Kredit: <b>${aiSc.score}/100</b>
+                    <div class="p-3 rounded-xl bg-surface-container-low border border-border-subtle/60 text-xs mb-1">
+                      <div class="flex items-center justify-between mb-1.5">
+                        <span class="font-bold text-on-surface flex items-center gap-1">
+                          <span class="material-symbols-outlined text-[15px] text-primary">auto_awesome</span>
+                          Skor Kelayakan Kredit: <b class="text-primary">${aiSc.score}/100</b>
                         </span>
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-white/80" style="color:${aiSc.badgeColor};">${aiSc.tier}</span>
+                        <span class="badge ${badgeCls}">${aiSc.tier}</span>
                       </div>
-                      <div class="text-[11px] text-slate-700 leading-snug ${isSalesRole ? '' : 'mb-2'}">${aiSc.recommendation}</div>
+                      <div class="text-[11px] text-on-surface-variant leading-snug ${isSalesRole ? '' : 'mb-2.5'}">${aiSc.recommendation}</div>
                       ${!isSalesRole ? `
                         <button
                           id="btn-drawer-apply-ai-credit"
                           type="button"
-                          class="w-full py-1.5 px-3 rounded-lg text-[11px] font-bold text-white cursor-pointer border-0 flex items-center justify-center gap-1"
-                          style="background:${aiSc.badgeColor};"
+                          class="w-full py-1.5 px-3 rounded-lg bg-primary hover:bg-primary-container text-[11px] font-bold text-white cursor-pointer border-0 flex items-center justify-center gap-1 transition-colors"
                         >
                           <span class="material-symbols-outlined text-[14px]">bolt</span>
                           <span>Sesuaikan Plafon ke Rekomendasi (${window.ArbaUtils.formatRupiah(aiSc.suggestedLimit)})</span>
@@ -740,11 +765,11 @@
                   </div>
                 </div>
 
-                <!-- Rincian Stok Titipan (Konsinyasi) di Apotek Ini: Barang Laku vs Lama Tidak Laku & Alarm Pink Expired -->
+                <!-- Rincian Inventaris Konsinyasi Mitra -->
                 <div class="flex flex-col gap-2">
                   <div class="flex items-center justify-between">
                     <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold text-[11px]">
-                      Stok Titipan (Konsinyasi) di Apotek Ini
+                      Rincian Inventaris Konsinyasi Mitra
                     </span>
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary">
                       ${selectedOutlet.terms}
@@ -755,19 +780,19 @@
                       var isSlow = ci.velocity === 'LAMA_TIDAK_LAKU';
                       var isPink = ci.nearExpiry;
                       return `
-                        <div class="p-2.5 rounded-lg border text-xs flex flex-col gap-1" style="background:${isPink ? '#fdf2f8' : 'var(--color-surface-container-low)'}; border-color:${isPink ? '#f472b6' : 'var(--color-border-subtle)'};">
+                        <div class="p-2.5 rounded-lg border border-border-subtle bg-surface-container-low text-xs flex flex-col gap-1">
                           <div class="flex items-center justify-between gap-1">
                             <span class="font-bold text-on-surface truncate">${ci.name}</span>
                             <div class="flex items-center gap-1 shrink-0">
-                              ${isPink ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold" style="background:#db2777; color:#fff;">🩷 Hampir ED</span>` : ''}
-                              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${isSlow ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-800'}">
-                                ${isSlow ? 'Lama Tak Laku' : 'Laris'}
+                              ${isPink ? `<span class="badge badge-danger">Mendekati ED</span>` : ''}
+                              <span class="badge ${isSlow ? 'badge-warning' : 'badge-success'}">
+                                ${isSlow ? 'Perputaran Lambat' : 'Perputaran Cepat'}
                               </span>
                             </div>
                           </div>
                           <div class="flex items-center justify-between text-[11px] text-on-surface-variant">
-                            <span>Titip: <b>${ci.consignedQty}</b> · Laku: <b class="text-emerald-700">${ci.soldQty}</b> · Sisa di Apotek: <b class="text-on-surface">${ci.remainingQty}</b></span>
-                            <span>ED: <b style="${isPink ? 'color:#be185d;' : ''}">${ci.expiry}</b></span>
+                            <span>Kuota: <b>${ci.consignedQty}</b> · Terjual: <b class="text-emerald-600">${ci.soldQty}</b> · Saldo: <b class="text-on-surface">${ci.remainingQty}</b></span>
+                            <span>ED: <b class="${isPink ? 'text-rose-600' : 'text-on-surface'}">${ci.expiry}</b></span>
                           </div>
                         </div>
                       `;
@@ -1000,8 +1025,72 @@
       });
     });
 
-    // Drawer buttons
+    // Drawer buttons & Real Leaflet Mini-Map with Road Route from Gudang Kartasura
     if (selectedOutlet) {
+      var drawerMapEl = container.querySelector('#crm-drawer-leaflet-map');
+      if (drawerMapEl && typeof window.L !== 'undefined') {
+        try {
+          if (window.__arbaCrmDrawerMap) {
+            try { window.__arbaCrmDrawerMap.remove(); } catch (e) {}
+            window.__arbaCrmDrawerMap = null;
+          }
+          var dLat = Number(drawerMapEl.getAttribute('data-lat')) || -7.5682;
+          var dLng = Number(drawerMapEl.getAttribute('data-lng')) || 110.8091;
+          var dName = drawerMapEl.getAttribute('data-name') || selectedOutlet.name;
+          var dAddr = drawerMapEl.getAttribute('data-addr') || selectedOutlet.address;
+          var hq = window.ArbaStore.warehouseHq || { lat: -7.5561, lng: 110.7422, name: 'Gudang Kartasura' };
+
+          var dMap = window.L.map(drawerMapEl, {
+            center: [dLat, dLng],
+            zoom: 14,
+            zoomControl: true
+          });
+          window.__arbaCrmDrawerMap = dMap;
+          window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+          }).addTo(dMap);
+
+          var hqPin = window.L.divIcon({
+            className: 'crm-hq-pin',
+            html: '<div style="width:24px;height:24px;border-radius:6px;background:#0284c7;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">HQ</div>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          });
+          window.L.marker([hq.lat, hq.lng], { icon: hqPin }).addTo(dMap).bindPopup('<b>Gudang Utama Kartasura</b>');
+
+          var pin = window.L.divIcon({
+            className: 'crm-drawer-pin',
+            html: '<div style="width:28px;height:28px;border-radius:50%;background:#005c55;color:#fff;display:flex;align-items:center;justify-content:center;border:2.5px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,0.35);font-size:14px;">📍</div>',
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
+          });
+          window.L.marker([dLat, dLng], { icon: pin })
+            .addTo(dMap)
+            .bindPopup('<div style="font-size:11px;font-family:Inter,sans-serif;"><b>' + dName + '</b><br/>' + dAddr + '</div>');
+
+          var corridor = window.ArbaStore.computeCorridorRoadPath
+            ? window.ArbaStore.computeCorridorRoadPath(hq, { lat: dLat, lng: dLng })
+            : { waypoints: [[hq.lat, hq.lng], [dLat, dLng]] };
+
+          var dLineCasing = window.L.polyline(corridor.waypoints, { color: '#ffffff', weight: 6, opacity: 0.9 }).addTo(dMap);
+          var dLine = window.L.polyline(corridor.waypoints, { color: '#005c55', weight: 3.5, opacity: 0.92 }).addTo(dMap);
+          dMap.fitBounds(dLine.getBounds().pad(0.18));
+
+          if (window.ArbaAdvanced && window.ArbaAdvanced.fetchRealRoadGeometryOsrm) {
+            window.ArbaAdvanced.fetchRealRoadGeometryOsrm([hq, { lat: dLat, lng: dLng }], function (osrmRes) {
+              if (osrmRes && osrmRes.latLngs && window.__arbaCrmDrawerMap === dMap) {
+                dLineCasing.setLatLngs(osrmRes.latLngs);
+                dLine.setLatLngs(osrmRes.latLngs);
+                dMap.fitBounds(dLine.getBounds().pad(0.15));
+              }
+            });
+          }
+
+          setTimeout(function () { dMap.invalidateSize(); }, 80);
+        } catch (err) {}
+      }
+
       var btnWa = container.querySelector('#btn-drawer-whatsapp');
       if (btnWa) {
         btnWa.addEventListener('click', function () {
@@ -1244,6 +1333,28 @@
                 <textarea id="new-address" required rows="2" placeholder="Jl. Raya No. XX, Kelurahan, Kecamatan..." class="bg-surface-container-low text-on-surface px-3 py-2 rounded-lg text-xs border border-border-subtle/50"></textarea>
               </div>
 
+              <!-- Peta Nyata Pemilihan Titik Koordinat GPS Apotek Baru (Leaflet + OpenStreetMap) -->
+              <div class="md:col-span-2 flex flex-col gap-1.5" style="grid-column: span 2 / span 2;">
+                <div class="flex items-center justify-between">
+                  <label class="font-semibold text-on-surface flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[16px] text-primary">pin_drop</span>
+                    <span>Titik Lokasi Peta Nyata (Klik pada Peta untuk Menentukan Lokasi Apotek)</span>
+                  </label>
+                  <span class="text-[11px] font-mono text-primary font-semibold" id="new-coords-display">-7.5682, 110.8091</span>
+                </div>
+                <div id="new-outlet-picker-map" style="width:100%; height:190px; border-radius:10px; border:1px solid var(--color-border-subtle); z-index:1; background:#e2e8f0;"></div>
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[11px] text-on-surface-variant">Latitude:</span>
+                    <input id="new-lat" type="number" step="0.00001" value="-7.56820" class="flex-1 bg-surface-container-low text-on-surface px-2.5 py-1.5 rounded-lg font-mono text-xs border border-border-subtle/50" />
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[11px] text-on-surface-variant">Longitude:</span>
+                    <input id="new-lng" type="number" step="0.00001" value="110.80910" class="flex-1 bg-surface-container-low text-on-surface px-2.5 py-1.5 rounded-lg font-mono text-xs border border-border-subtle/50" />
+                  </div>
+                </div>
+              </div>
+
               <div class="flex flex-col gap-1">
                 <label class="font-semibold text-on-surface">Termin Pembayaran Disepakati *</label>
                 <select id="new-terms" required class="bg-surface-container-low text-on-surface px-3 py-2 rounded-lg text-xs border border-border-subtle/50 cursor-pointer">
@@ -1276,11 +1387,73 @@
 
     setTimeout(function () {
       var form = document.getElementById('form-new-outlet');
+      var latInput = document.getElementById('new-lat');
+      var lngInput = document.getElementById('new-lng');
+      var citySelect = document.getElementById('new-city');
+      var coordsLabel = document.getElementById('new-coords-display');
+      var pickerMapEl = document.getElementById('new-outlet-picker-map');
+      var pickerMap = null;
+      var pickerMarker = null;
+
+      var cityCoords = {
+        Solo: { lat: -7.5682, lng: 110.8091 },
+        Sukoharjo: { lat: -7.6819, lng: 110.8408 },
+        Karanganyar: { lat: -7.5965, lng: 110.9461 },
+        Klaten: { lat: -7.7056, lng: 110.6015 },
+        Boyolali: { lat: -7.5305, lng: 110.5964 },
+        Sragen: { lat: -7.4272, lng: 111.0221 }
+      };
+
+      function updatePickerCoords(lat, lng, panMap) {
+        var fLat = Number(lat).toFixed(5);
+        var fLng = Number(lng).toFixed(5);
+        if (latInput) latInput.value = fLat;
+        if (lngInput) lngInput.value = fLng;
+        if (coordsLabel) coordsLabel.textContent = fLat + ', ' + fLng;
+        if (pickerMarker) pickerMarker.setLatLng([Number(fLat), Number(fLng)]);
+        if (panMap && pickerMap) pickerMap.setView([Number(fLat), Number(fLng)], 14);
+      }
+
+      if (pickerMapEl && typeof window.L !== 'undefined') {
+        try {
+          pickerMap = window.L.map(pickerMapEl, {
+            center: [-7.5682, 110.8091],
+            zoom: 13
+          });
+          window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+          }).addTo(pickerMap);
+          pickerMarker = window.L.marker([-7.5682, 110.8091], { draggable: true }).addTo(pickerMap);
+          pickerMarker.on('dragend', function (ev) {
+            var pos = ev.target.getLatLng();
+            updatePickerCoords(pos.lat, pos.lng, false);
+          });
+          pickerMap.on('click', function (ev) {
+            updatePickerCoords(ev.latlng.lat, ev.latlng.lng, false);
+          });
+          setTimeout(function () { pickerMap.invalidateSize(); }, 90);
+        } catch (err) {}
+      }
+
+      if (citySelect) {
+        citySelect.onchange = function (e) {
+          var c = cityCoords[e.target.value];
+          if (c) updatePickerCoords(c.lat, c.lng, true);
+        };
+      }
+
       if (form) {
         form.onsubmit = function (e) {
           e.preventDefault();
           var cityVal = document.getElementById('new-city').value;
           var limitVal = Number(document.getElementById('new-limit').value);
+          var latVal = latInput ? Number(latInput.value) : undefined;
+          var lngVal = lngInput ? Number(lngInput.value) : undefined;
+
+          if (pickerMap) {
+            try { pickerMap.remove(); } catch (err) {}
+          }
 
           window.ArbaStore.addOutlet({
             name: document.getElementById('new-name').value,
@@ -1289,6 +1462,8 @@
             picPhone: document.getElementById('new-phone').value,
             city: cityVal,
             cityName: cityVal === 'Solo' ? 'Surakarta' : cityVal,
+            lat: latVal,
+            lng: lngVal,
             salesRep: document.getElementById('new-sales').value,
             address: document.getElementById('new-address').value,
             terms: document.getElementById('new-terms').value,

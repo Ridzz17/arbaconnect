@@ -4,7 +4,7 @@
  */
 
 window.ArbaStore = (function() {
-  const STORAGE_KEY = 'arbaconnect_erp_state_v5';
+  const STORAGE_KEY = 'arbaconnect_erp_state_v6';
   const ALL_VALID_PATHS = [
     'login',
     'executive-dashboard',
@@ -408,8 +408,14 @@ window.ArbaStore = (function() {
   function loginUser(userObj, options) {
     options = options || {};
     if (!userObj) return null;
-    // Ambil objek terbaru dari state.users agar perubahan profil/password selalu mutakhir
-    const latestUser = (state.users || []).find(u => u.id === userObj.id) || userObj;
+    if (!Array.isArray(state.users)) state.users = [];
+    const existingIdx = state.users.findIndex(u => u.id === userObj.id);
+    if (existingIdx !== -1) {
+      state.users[existingIdx] = Object.assign({}, state.users[existingIdx], userObj);
+    } else {
+      state.users.push(JSON.parse(JSON.stringify(userObj)));
+    }
+    const latestUser = state.users.find(u => u.id === userObj.id) || userObj;
     if (latestUser.active === false) {
       showToast('Akun ini sedang dinonaktifkan oleh Super Admin.', 'block');
       return null;
@@ -445,6 +451,13 @@ window.ArbaStore = (function() {
   }
 
   function updateUserProfile(userId, updates) {
+    const isSuperAdmin = state.currentUser && state.currentUser.role === 'super-admin';
+    // Non-Super-Admin hanya boleh mengubah profilnya sendiri
+    if (state.currentUser && !isSuperAdmin && state.currentUser.id !== userId) {
+      showToast('Akses ditolak: Anda hanya dapat mengubah profil akun Anda sendiri.', 'lock');
+      return { ok: false, message: 'Tidak memiliki izin untuk mengubah profil pengguna lain.' };
+    }
+
     const idx = (state.users || []).findIndex(u => u.id === userId);
     if (idx === -1) return { ok: false, message: 'Pengguna tidak ditemukan.' };
 
@@ -459,29 +472,33 @@ window.ArbaStore = (function() {
     if (updates.division !== undefined) target.division = String(updates.division).trim();
     if (updates.avatarInitials !== undefined) target.avatarInitials = String(updates.avatarInitials).trim().toUpperCase().slice(0, 2);
     if (updates.badgeColor !== undefined) target.badgeColor = updates.badgeColor;
-    if (updates.active !== undefined) target.active = Boolean(updates.active);
-    if (updates.role !== undefined) {
-      target.role = updates.role;
-      const sqlMap = {
-        'super-admin': 'super_admin',
-        'executive': 'direktur',
-        'inventory': 'admin_gudang',
-        'sales-ops': 'admin_penjualan',
-        'field-sales': 'sales'
-      };
-      target.sqlRole = sqlMap[updates.role] || 'sales';
-    }
-    if (Array.isArray(updates.permissions)) {
-      target.permissions = updates.permissions;
-    }
-    if (updates.defaultPath !== undefined) {
-      target.defaultPath = updates.defaultPath;
-    }
-    if (updates.password !== undefined && String(updates.password).trim() !== '') {
-      target.password = String(updates.password).trim();
-    }
-    if (updates.pin !== undefined && String(updates.pin).trim() !== '') {
-      target.pin = String(updates.pin).trim();
+
+    // Field hak akses sensitif (role, permissions, active, password override) hanya boleh diubah oleh Super Admin
+    if (isSuperAdmin || !state.currentUser) {
+      if (updates.active !== undefined) target.active = Boolean(updates.active);
+      if (updates.role !== undefined) {
+        target.role = updates.role;
+        const sqlMap = {
+          'super-admin': 'super_admin',
+          'executive': 'direktur',
+          'inventory': 'admin_gudang',
+          'sales-ops': 'admin_penjualan',
+          'field-sales': 'sales'
+        };
+        target.sqlRole = sqlMap[updates.role] || 'sales';
+      }
+      if (Array.isArray(updates.permissions)) {
+        target.permissions = updates.permissions;
+      }
+      if (updates.defaultPath !== undefined) {
+        target.defaultPath = updates.defaultPath;
+      }
+      if (updates.password !== undefined && String(updates.password).trim() !== '') {
+        target.password = String(updates.password).trim();
+      }
+      if (updates.pin !== undefined && String(updates.pin).trim() !== '') {
+        target.pin = String(updates.pin).trim();
+      }
     }
 
     // Jika user ini adalah Sales Lapangan dan namanya berubah, sinkronkan salesRepName & salesTeam
@@ -505,10 +522,16 @@ window.ArbaStore = (function() {
   }
 
   function changeUserPassword(userId, currentPassword, newPassword, newPin, isSuperAdminOverride) {
+    const isSuperAdmin = state.currentUser && state.currentUser.role === 'super-admin';
+    if (state.currentUser && !isSuperAdmin && state.currentUser.id !== userId) {
+      return { ok: false, message: 'Akses ditolak: Anda hanya dapat mengganti password akun Anda sendiri.' };
+    }
+    const allowOverride = Boolean(isSuperAdminOverride && (isSuperAdmin || !state.currentUser));
+
     const target = (state.users || []).find(u => u.id === userId);
     if (!target) return { ok: false, message: 'Akun pengguna tidak ditemukan.' };
 
-    if (!isSuperAdminOverride) {
+    if (!allowOverride) {
       const cur = String(currentPassword || '').trim();
       if (cur !== target.password && cur !== target.pin) {
         return { ok: false, message: 'Password saat ini tidak sesuai!' };
@@ -536,6 +559,10 @@ window.ArbaStore = (function() {
   }
 
   function createNewUser(userData) {
+    if (state.currentUser && state.currentUser.role !== 'super-admin') {
+      showToast('Akses ditolak: Hanya Super Admin yang dapat membuat akun baru.', 'lock');
+      return { ok: false, message: 'Hanya Super Admin yang diizinkan membuat akun baru.' };
+    }
     const id = userData.id || `USR-${Math.floor(100 + Math.random() * 900)}`;
     const role = userData.role || 'field-sales';
     const sqlMap = {
@@ -606,6 +633,10 @@ window.ArbaStore = (function() {
   }
 
   function deleteUser(userId) {
+    if (state.currentUser && state.currentUser.role !== 'super-admin') {
+      showToast('Akses ditolak: Hanya Super Admin yang dapat menghapus akun.', 'lock');
+      return { ok: false, message: 'Hanya Super Admin yang diizinkan menghapus akun.' };
+    }
     if (userId === 'USR-SUPER-01') {
       showToast('Akun Super Admin utama tidak dapat dihapus!', 'warning');
       return { ok: false, message: 'Akun Super Admin utama dilindungi.' };
@@ -670,7 +701,11 @@ window.ArbaStore = (function() {
       state.users = centralState.users;
       if (state.currentUser) {
         const refreshed = state.users.find(u => u.id === state.currentUser.id);
-        if (refreshed) state.currentUser = JSON.parse(JSON.stringify(refreshed));
+        if (!refreshed || refreshed.active === false) {
+          logoutUser();
+          return;
+        }
+        state.currentUser = JSON.parse(JSON.stringify(refreshed));
       }
     }
     if (Array.isArray(centralState.products)) state.products = centralState.products;
@@ -719,8 +754,9 @@ window.ArbaStore = (function() {
       if (window.ArbaOfflineSync && typeof window.ArbaOfflineSync.flushOfflineQueue === 'function') {
         window.ArbaOfflineSync.flushOfflineQueue();
         window.ArbaOfflineSync.connectRealtimeSSE();
+      } else {
+        state.offlineQueue = [];
       }
-      state.offlineQueue = [];
       showToast(
         `Online kembali: ${count} transaksi lokal dikirim ke Server Pusat & stok dipotong otomatis` +
         (waiting ? ` (${waiting} menunggu stok)` : '') + '.' + lowStockMessage(lowHits),
@@ -984,6 +1020,22 @@ window.ArbaStore = (function() {
   function addOutlet(newOutlet) {
     const id = `AP-SLO-${168 + state.outlets.length + 1}`;
     const limit = Number(newOutlet.creditLimit) || 10000000;
+    const cityDefaultCoords = {
+      Solo: { lat: -7.5695, lng: 110.8250 },
+      Surakarta: { lat: -7.5695, lng: 110.8250 },
+      Sukoharjo: { lat: -7.6819, lng: 110.8408 },
+      Karanganyar: { lat: -7.5965, lng: 110.9461 },
+      Klaten: { lat: -7.7056, lng: 110.6015 },
+      Boyolali: { lat: -7.5305, lng: 110.5964 },
+      Sragen: { lat: -7.4272, lng: 111.0221 }
+    };
+    const fallbackCoord = cityDefaultCoords[newOutlet.city] || cityDefaultCoords.Solo;
+    const lat = !isNaN(Number(newOutlet.lat)) && Number(newOutlet.lat) !== 0
+      ? Number(newOutlet.lat)
+      : Number((fallbackCoord.lat + (Math.random() - 0.5) * 0.012).toFixed(5));
+    const lng = !isNaN(Number(newOutlet.lng)) && Number(newOutlet.lng) !== 0
+      ? Number(newOutlet.lng)
+      : Number((fallbackCoord.lng + (Math.random() - 0.5) * 0.012).toFixed(5));
 
     const fullOutlet = {
       id,
@@ -992,6 +1044,8 @@ window.ArbaStore = (function() {
       address: newOutlet.address || 'Solo Raya',
       city: newOutlet.city || 'Solo',
       cityName: newOutlet.cityName || (newOutlet.city === 'Solo' ? 'Surakarta' : newOutlet.city),
+      lat,
+      lng,
       type: newOutlet.type || 'Apotek Mandiri',
       picName: newOutlet.picName || 'Apoteker Penanggung Jawab',
       picRole: 'Apoteker Pengelola Apotek (APA)',
@@ -1007,12 +1061,12 @@ window.ArbaStore = (function() {
       orderFrequency: 'Akun Baru',
       ytdTotal: 0,
       lastVisitDate: 'Hari Ini',
-      visitNotes: `"Outlet baru berhasil didaftarkan ke sistem ERP CV Arba'in. Alokasi rute pengiriman telah terdaftar."`
+      visitNotes: `"Outlet baru berhasil didaftarkan ke sistem ERP CV Arba'in pada koordinat GPS (${lat}, ${lng}). Alokasi rute pengiriman telah terdaftar."`
     };
 
     state.outlets = [fullOutlet, ...state.outlets];
     state.selectedOutletId = id;
-    showToast(`Outlet ${fullOutlet.name} (${id}) berhasil didaftarkan!`, 'add_business');
+    showToast(`Outlet ${fullOutlet.name} (${id}) berhasil didaftarkan di peta!`, 'add_business');
     notify();
     syncMutationToServer('ADD_OUTLET', { outlet: fullOutlet }, `Registrasi Outlet ${fullOutlet.name}`);
   }
@@ -1291,11 +1345,11 @@ window.ArbaStore = (function() {
     if (totalDiscrepancy === 0) {
       loadRec.status = 'TERVERIFIKASI_KLOP';
       loadRec.auditNote = undefined;
-      showToast(`Rekonsiliasi ${loadRec.salesRep} KLOP 100%! Tidak ada selisih barang bawaan.`, 'verified');
+      showToast(`Rekonsiliasi manifest ${loadRec.salesRep} terverifikasi sesuai (100%).`, 'verified');
     } else {
       loadRec.status = 'SELISIH_AUDIT';
-      loadRec.auditNote = `Terdeteksi selisih ${totalDiscrepancy} unit belum kembali ke gudang (wajib ditagihkan ke sales)!`;
-      showToast(`PERINGATAN AUDIT: Selisih ${totalDiscrepancy} unit pada bawaan ${loadRec.salesRep}!`, 'warning');
+      loadRec.auditNote = `Terdeteksi selisih ${totalDiscrepancy} unit yang belum dikembalikan ke gudang.`;
+      showToast(`Peringatan Audit: Terdapat selisih ${totalDiscrepancy} unit pada manifest ${loadRec.salesRep}.`, 'warning');
     }
     notify();
     syncMutationToServer('RECONCILE_LOADING', { loadId, actualReturnedMap }, `Rekonsiliasi Bawaan ${loadRec.salesRep}`);
@@ -1670,6 +1724,7 @@ window.ArbaStore = (function() {
     const recommendations = [];
     state.outlets.forEach(src => {
       (src.consignmentItems || []).forEach(ci => {
+        if (ci.rebalanced) return;
         const isSlowOrNearExpiry = (ci.velocity === 'LAMA_TIDAK_LAKU' || ci.nearExpiry || (ci.daysInOutlet || 0) >= 30);
         if (!isSlowOrNearExpiry || (ci.remainingQty || 0) < 4) return;
 
@@ -1714,8 +1769,8 @@ window.ArbaStore = (function() {
             unitPrice,
             savedValueRp: transferQty * unitPrice,
             reason: ci.nearExpiry
-              ? `Mendekati ED (${ci.expiry}) & mengendap ${ci.daysInOutlet} hari di ${src.name}`
-              : `Stok macet ${ci.daysInOutlet} hari di ${src.name}, sedangkan ${bestTarget.name} berstatus LARIS`
+              ? `Mendekati ED (${ci.expiry}) & durasi simpan ${ci.daysInOutlet} hari di ${src.name}`
+              : `Perputaran lambat (${ci.daysInOutlet} hari) di ${src.name}, dialihkan ke ${bestTarget.name}`
           });
         }
       });
@@ -1723,24 +1778,21 @@ window.ArbaStore = (function() {
     return recommendations.sort((a, b) => b.savedValueRp - a.savedValueRp);
   }
 
-  function executeConsignmentRebalance({ sourceOutletId, targetOutletId, sku, transferQty }) {
+  function applySingleRebalanceInternal({ sourceOutletId, targetOutletId, sku, transferQty }) {
     const src = findOutlet(sourceOutletId);
     const dst = findOutlet(targetOutletId);
     const qty = Number(transferQty) || 0;
-    if (!src || !dst || qty <= 0) {
-      return { ok: false, message: 'Data mutasi konsinyasi tidak valid.' };
-    }
+    if (!src || !dst || qty <= 0) return null;
 
     const srcItem = (src.consignmentItems || []).find(c => c.sku === sku);
-    if (!srcItem || (srcItem.remainingQty || 0) < qty) {
-      return { ok: false, message: 'Stok sisa di apotek asal tidak mencukupi.' };
-    }
+    if (!srcItem || (srcItem.remainingQty || 0) < qty) return null;
 
     srcItem.remainingQty = Math.max(0, srcItem.remainingQty - qty);
     srcItem.consignedQty = (srcItem.soldQty || 0) + srcItem.remainingQty;
-    if (srcItem.remainingQty <= 5) {
-      srcItem.velocity = 'LARIS';
-    }
+    srcItem.velocity = 'LARIS';
+    srcItem.daysInOutlet = 1;
+    srcItem.nearExpiry = false;
+    srcItem.rebalanced = true;
 
     if (!Array.isArray(dst.consignmentItems)) dst.consignmentItems = [];
     let dstItem = dst.consignmentItems.find(c => c.sku === sku);
@@ -1760,7 +1812,8 @@ window.ArbaStore = (function() {
         unitPrice: srcItem.unitPrice,
         velocity: 'LARIS',
         daysInOutlet: 1,
-        nearExpiry: srcItem.nearExpiry
+        nearExpiry: false,
+        rebalanced: true
       });
     }
 
@@ -1781,19 +1834,120 @@ window.ArbaStore = (function() {
       quantity: qty,
       finalStock: prod ? prod.stock : 0,
       operator: (state.currentUser && state.currentUser.name) || src.salesRep || 'Tim Konsinyasi',
-      operatorRole: `Rebalance: ${src.name} → ${dst.name}`,
+      operatorRole: `Realokasi: ${src.name} → ${dst.name}`,
       hash: pseudoHash(sourceOutletId + targetOutletId + sku + qty)
     };
     state.ledger = [ledgerEntry, ...state.ledger];
+    return { ledgerEntry, src, dst, srcItem };
+  }
 
-    showToast(`Mutasi Silang FEFO berhasil: ${qty} unit ${srcItem.name} dipindahkan dari ${src.name} ke ${dst.name}!`, 'swap_horiz');
+  function executeConsignmentRebalance({ sourceOutletId, targetOutletId, sku, transferQty }) {
+    const res = applySingleRebalanceInternal({ sourceOutletId, targetOutletId, sku, transferQty });
+    if (!res) {
+      return { ok: false, message: 'Data realokasi konsinyasi tidak valid atau stok tidak mencukupi.' };
+    }
+    showToast(`Realokasi FEFO berhasil: ${transferQty} unit ${res.srcItem.name} dipindahkan dari ${res.src.name} ke ${res.dst.name}.`, 'swap_horiz');
     notify();
     syncMutationToServer(
       'REBALANCE_CONSIGNMENT',
-      { sourceOutletId, targetOutletId, sku, transferQty: qty, ledgerEntry },
-      `Mutasi Silang ${qty} unit ${srcItem.name} (${src.name} -> ${dst.name})`
+      { sourceOutletId, targetOutletId, sku, transferQty: Number(transferQty), ledgerEntry: res.ledgerEntry },
+      `Realokasi ${transferQty} unit ${res.srcItem.name} (${res.src.name} -> ${res.dst.name})`
     );
-    return { ok: true, ledgerEntry, sourceOutlet: src, targetOutlet: dst };
+    return { ok: true, ledgerEntry: res.ledgerEntry, sourceOutlet: res.src, targetOutlet: res.dst };
+  }
+
+  function batchExecuteConsignmentRebalance(items) {
+    const list = Array.isArray(items) && items.length ? items : getConsignmentRebalanceRecommendations();
+    const applied = [];
+    list.forEach(r => {
+      const res = applySingleRebalanceInternal({
+        sourceOutletId: r.sourceOutletId,
+        targetOutletId: r.targetOutletId,
+        sku: r.sku,
+        transferQty: r.transferQty
+      });
+      if (res) {
+        applied.push({
+          sourceOutletId: r.sourceOutletId,
+          targetOutletId: r.targetOutletId,
+          sku: r.sku,
+          transferQty: Number(r.transferQty),
+          ledgerEntry: res.ledgerEntry
+        });
+      }
+    });
+    if (applied.length > 0) {
+      showToast(`Seluruh ${applied.length} rute realokasi konsinyasi berhasil diproses dan tercatat di Buku Besar Stok.`, 'done_all');
+      notify();
+      syncMutationToServer(
+        'BATCH_REBALANCE_CONSIGNMENT',
+        { items: applied },
+        `Realokasi Massal ${applied.length} Rute Konsinyasi FEFO`
+      );
+    }
+    return { ok: true, count: applied.length };
+  }
+
+  function quickRestockFromAlarm(sku) {
+    const prod = state.products.find(p => p.sku === sku);
+    if (!prod) return { ok: false };
+    const neededQty = Math.max(100, (prod.rop - prod.stock) + prod.safetyStock);
+    const newBatch = `BATCH-2026-${Math.floor(100 + Math.random() * 899)}`;
+    const docRef = `PO-ROP-${Math.floor(100 + Math.random() * 899)}`;
+    addInboundBatch({
+      sku: prod.sku,
+      batch: newBatch,
+      qty: neededQty,
+      expiryDate: '20 Des 2027',
+      docRef
+    });
+    return { ok: true, qty: neededQty, batch: newBatch };
+  }
+
+  function resolveExpiryAlarm({ locationType, outletId, sku, batch }) {
+    if (locationType === 'APOTEK_MITRA') {
+      const src = findOutlet(outletId);
+      if (src && Array.isArray(src.consignmentItems)) {
+        const ci = src.consignmentItems.find(c => c.sku === sku || c.batch === batch);
+        if (ci) {
+          const transferQty = Math.max(2, Math.ceil((ci.remainingQty || 4) * 0.5));
+          const dst = state.outlets.find(o => o.id !== src.id && o.creditStatus === 'Lancar') || state.outlets[0];
+          return executeConsignmentRebalance({
+            sourceOutletId: src.id,
+            targetOutletId: dst.id,
+            sku: ci.sku,
+            transferQty: Math.min(ci.remainingQty, transferQty)
+          });
+        }
+      }
+    }
+
+    // Jika di Gudang Utama: prioritaskan distribusi FEFO & perbarui status batch
+    const prod = state.products.find(p => p.sku === sku || p.activeBatch === batch);
+    if (prod) {
+      prod.fefoStatus = 'Prioritas FEFO Terjadwal';
+      prod.status = prod.stock <= prod.rop ? 'below-rop' : 'optimal';
+      const entry = {
+        id: newLedgerId(),
+        timestamp: nowStamp(),
+        docRef: `FEFO-PRIO-${Math.floor(100 + Math.random() * 900)}`,
+        skuName: prod.name,
+        skuCode: prod.sku,
+        batch: prod.activeBatch,
+        type: 'PENYESUAIAN',
+        quantity: 0,
+        finalStock: prod.stock,
+        operator: (state.currentUser && state.currentUser.name) || 'Kepala Gudang',
+        operatorRole: 'Alokasi Prioritas FEFO',
+        hash: pseudoHash(prod.sku + prod.activeBatch + 'FEFO')
+      };
+      state.ledger = [entry, ...state.ledger];
+      showToast(`Batch ${prod.activeBatch} (${prod.name}) telah ditetapkan sebagai Prioritas Distribusi FEFO Utama.`, 'verified');
+      notify();
+      syncMutationToServer('RESOLVE_EXPIRY_ALARM', { locationType, outletId, sku: prod.sku, batch: prod.activeBatch, ledgerEntry: entry }, `Prioritas FEFO ${prod.name}`);
+      return { ok: true };
+    }
+    return { ok: false };
   }
 
   function getOutletCreditScoring(outletId) {
@@ -1826,7 +1980,24 @@ window.ArbaStore = (function() {
       let suggestedLimit = o.creditLimit;
       let suggestedTerms = o.terms;
 
-      if (totalScore >= 82 && o.creditStatus === 'Lancar') {
+      if (o.aiCreditOptimized) {
+        if (totalScore >= 82 && o.creditStatus === 'Lancar') {
+          tier = 'AAA (Mitra Prioritas Utama)';
+          badgeColor = '#047857';
+          badgeBg = '#d1fae5';
+        } else if (totalScore >= 68) {
+          tier = 'AA (Sehat & Berkembang)';
+          badgeColor = '#0369a1';
+          badgeBg = '#e0f2fe';
+        } else if (totalScore < 50 || o.creditStatus === 'Overdue') {
+          tier = 'C (Risiko Tinggi / Restriksi)';
+          badgeColor = '#be123c';
+          badgeBg = '#ffe4e6';
+        }
+        suggestedLimit = o.creditLimit;
+        suggestedTerms = o.terms;
+        recommendation = `Plafon kredit (${window.ArbaUtils ? window.ArbaUtils.formatRupiah(o.creditLimit) : o.creditLimit}) & termin (${o.terms}) telah dioptimalkan sesuai profil risiko mitra.`;
+      } else if (totalScore >= 82 && o.creditStatus === 'Lancar') {
         tier = 'AAA (Mitra Prioritas Utama)';
         badgeColor = '#047857';
         badgeBg = '#d1fae5';
@@ -1880,40 +2051,112 @@ window.ArbaStore = (function() {
 
     o.creditLimit = scoring.suggestedLimit;
     o.terms = scoring.suggestedTerms;
+    o.aiCreditOptimized = true;
     o.creditRemaining = Math.max(0, o.creditLimit - (o.creditUsed || 0));
     const ratio = o.creditLimit ? (o.creditUsed || 0) / o.creditLimit : 0;
     if (o.creditStatus !== 'Overdue') {
       o.creditStatus = ratio >= 0.9 ? 'Perhatian' : 'Lancar';
     }
 
-    showToast(`Kebijakan AI Credit Scoring diterapkan untuk ${o.name}: Plafon ${window.ArbaUtils ? window.ArbaUtils.formatRupiah(o.creditLimit) : o.creditLimit} (${o.terms})`, 'auto_awesome');
+    showToast(`Kebijakan Plafon Kredit diterapkan untuk ${o.name}: ${window.ArbaUtils ? window.ArbaUtils.formatRupiah(o.creditLimit) : o.creditLimit} (${o.terms})`, 'auto_awesome');
     notify();
     syncMutationToServer(
       'UPDATE_OUTLET_CREDIT_POLICY',
-      { outletId: o.id, creditLimit: o.creditLimit, terms: o.terms, creditRemaining: o.creditRemaining, creditStatus: o.creditStatus },
-      `Update Plafon AI ${o.name}`
+      { outletId: o.id, creditLimit: o.creditLimit, terms: o.terms, creditRemaining: o.creditRemaining, creditStatus: o.creditStatus, aiCreditOptimized: true },
+      `Update Plafon Kredit ${o.name}`
     );
     return { ok: true, outlet: o, scoring };
   }
 
-  // Koordinat Presisi Solo Raya (Gudang Utama Kartasura & Apotek Mitra)
+  // Koordinat Presisi Jalan Nyata Solo Raya (Gudang Utama Kartasura & Apotek Mitra)
   const WAREHOUSE_HQ = {
     name: "Gudang Utama CV Arba'in Kartasura",
-    city: 'Kartasura, Sukoharjo',
+    city: 'Jl. Ahmad Yani, Kartasura, Sukoharjo',
     lat: -7.5561,
     lng: 110.7422
   };
 
   const SOLO_RAYA_COORDS = {
-    'AP-SLO-001': { lat: -7.5695, lng: 110.8250 }, // Slamet Riyadi Surakarta
-    'AP-SLO-002': { lat: -7.5580, lng: 110.7710 }, // Kleco / Laweyan
-    'AP-SKH-003': { lat: -7.6820, lng: 110.8410 }, // Sukoharjo Kota
-    'AP-KRA-004': { lat: -7.5960, lng: 110.9510 }, // Karanganyar
-    'MM-SLO-005': { lat: -7.5510, lng: 110.8180 }, // Banjarsari Solo
-    'AP-KLT-006': { lat: -7.7050, lng: 110.6010 }, // Klaten
-    'AP-BYL-007': { lat: -7.5320, lng: 110.5950 }, // Boyolali
-    'AP-SRG-008': { lat: -7.4260, lng: 111.0220 }  // Sragen
+    'AP-SLO-001': { lat: -7.5682, lng: 110.8091, roadCorridor: 'Jl. Slamet Riyadi (Laweyan - Purwosari)' },
+    'AP-SLO-002': { lat: -7.5588, lng: 110.8562, roadCorridor: 'Jl. Ir. Sutami (Kentingan UNS - Jebres)' },
+    'MM-SKH-014': { lat: -7.6819, lng: 110.8408, roadCorridor: 'Jl. Jend. Sudirman (Solo Baru - Sukoharjo Kota)' },
+    'MM-SLO-009': { lat: -7.5812, lng: 110.8279, roadCorridor: 'Jl. Veteran - Gading (Pasar Kliwon)' },
+    'AP-KRA-023': { lat: -7.5965, lng: 110.9461, roadCorridor: 'Jl. Lawu Utama (Papahan - Karanganyar Kota)' },
+    'AP-KRA-004': { lat: -7.5684, lng: 110.8753, roadCorridor: 'Jl. Raya Solo-Tawangmangu (Flyover Palur)' },
+    'AP-BYL-008': { lat: -7.5305, lng: 110.5964, roadCorridor: 'Jl. Raya Boyolali-Solo (Pandanaran Boyolali)' },
+    'MM-BYL-003': { lat: -7.5358, lng: 110.6022, roadCorridor: 'Jl. Pemuda - Simpang Lima Boyolali Kota' },
+    'MM-KLT-005': { lat: -7.7056, lng: 110.6015, roadCorridor: 'Jl. Raya Solo-Yogyakarta (Delanggu - Pemuda Klaten)' },
+    'AP-SRG-019': { lat: -7.4272, lng: 111.0221, roadCorridor: 'Jl. Raya Solo-Sragen (Kebakkramat - Jl. Sukowati Sragen)' },
+    'AP-KRA-078': { lat: -7.5931, lng: 110.9384, roadCorridor: 'Jl. Lawu Barat (Tasikmadu - Karanganyar)' }
   };
+
+  // Graf Jaringan Simpul Jalan Raya Utama (Arteri Nasional & Provinsi Solo Raya)
+  // Digunakan untuk membentuk jalur jalan nyata (Road Waypoints) & menghitung jarak jalan riil
+  const SOLO_RAYA_ROAD_NODES = {
+    J_KTS:  { id: 'J_KTS',  name: 'Tugu Kartasura',               lat: -7.5554, lng: 110.7376 },
+    J_UMS:  { id: 'J_UMS',  name: 'Simpang Pabelan UMS',          lat: -7.5582, lng: 110.7705 },
+    J_KLC:  { id: 'J_KLC',  name: 'Simpang Kleco / Faroka',       lat: -7.5632, lng: 110.7852 },
+    J_PWS:  { id: 'J_PWS',  name: 'Flyover Purwosari',            lat: -7.5665, lng: 110.7995 },
+    J_SRI:  { id: 'J_SRI',  name: 'Simpang Sriwedari / Laweyan',  lat: -7.5685, lng: 110.8135 },
+    J_GLD:  { id: 'J_GLD',  name: 'Bundaran Gladag Solo',         lat: -7.5718, lng: 110.8285 },
+    J_GDG:  { id: 'J_GDG',  name: 'Simpang Gading Veteran',       lat: -7.5815, lng: 110.8282 },
+    J_SBR:  { id: 'J_SBR',  name: 'Tugu Pandawa Solo Baru',       lat: -7.6032, lng: 110.8195 },
+    J_SKH:  { id: 'J_SKH',  name: 'Proliman Sukoharjo Kota',      lat: -7.6795, lng: 110.8402 },
+    J_JBR:  { id: 'J_JBR',  name: 'Simpang Panggung Jebres',      lat: -7.5612, lng: 110.8415 },
+    J_UNS:  { id: 'J_UNS',  name: 'Gerbang Kentingan UNS',        lat: -7.5592, lng: 110.8568 },
+    J_PLR:  { id: 'J_PLR',  name: 'Flyover Palur',                lat: -7.5678, lng: 110.8732 },
+    J_JTN:  { id: 'J_JTN',  name: 'Simpang Jaten Karanganyar',    lat: -7.5795, lng: 110.9035 },
+    J_KRA:  { id: 'J_KRA',  name: 'Taman Pancasila Karanganyar',  lat: -7.5958, lng: 110.9432 },
+    J_KBK:  { id: 'J_KBK',  name: 'Simpang Kebakkramat',          lat: -7.5305, lng: 110.9085 },
+    J_MSR:  { id: 'J_MSR',  name: 'Simpang Masaran Sragen',       lat: -7.4725, lng: 110.9585 },
+    J_SRG:  { id: 'J_SRG',  name: 'Alun-Alun Sukowati Sragen',    lat: -7.4275, lng: 111.0205 },
+    J_BNY:  { id: 'J_BNY',  name: 'Simpang Banyudono',            lat: -7.5475, lng: 110.6925 },
+    J_TRS:  { id: 'J_TRS',  name: 'Jalan Raya Teras Boyolali',    lat: -7.5415, lng: 110.6485 },
+    J_BYL:  { id: 'J_BYL',  name: 'Simpang Lima Boyolali',        lat: -7.5335, lng: 110.6002 },
+    J_GWK:  { id: 'J_GWK',  name: 'Simpang Gawok / Gatak',        lat: -7.5955, lng: 110.7125 },
+    J_DLG:  { id: 'J_DLG',  name: 'Simpang Delanggu',             lat: -7.6245, lng: 110.6925 },
+    J_CPR:  { id: 'J_CPR',  name: 'Simpang Ceper Klaten',         lat: -7.6685, lng: 110.6485 },
+    J_KLT:  { id: 'J_KLT',  name: 'Simpang Pemuda Klaten Tengah', lat: -7.7048, lng: 110.6025 }
+  };
+
+  const SOLO_RAYA_ROAD_EDGES = [
+    ['J_KTS', 'J_UMS'],
+    ['J_UMS', 'J_KLC'],
+    ['J_KLC', 'J_PWS'],
+    ['J_PWS', 'J_SRI'],
+    ['J_SRI', 'J_GLD'],
+    ['J_GLD', 'J_GDG'],
+    ['J_GDG', 'J_SBR'],
+    ['J_SBR', 'J_SKH'],
+    ['J_GLD', 'J_JBR'],
+    ['J_JBR', 'J_UNS'],
+    ['J_UNS', 'J_PLR'],
+    ['J_PLR', 'J_JTN'],
+    ['J_JTN', 'J_KRA'],
+    ['J_PLR', 'J_KBK'],
+    ['J_KBK', 'J_MSR'],
+    ['J_MSR', 'J_SRG'],
+    ['J_KTS', 'J_BNY'],
+    ['J_BNY', 'J_TRS'],
+    ['J_TRS', 'J_BYL'],
+    ['J_KTS', 'J_GWK'],
+    ['J_GWK', 'J_DLG'],
+    ['J_DLG', 'J_CPR'],
+    ['J_CPR', 'J_KLT'],
+    ['J_KLC', 'J_SBR']
+  ];
+
+  function getOutletCoordinates(outletOrId) {
+    const o = typeof outletOrId === 'string' ? findOutlet(outletOrId) : outletOrId;
+    if (o && typeof o.lat === 'number' && typeof o.lng === 'number') {
+      return { lat: o.lat, lng: o.lng };
+    }
+    const code = o ? (o.id || o.code) : String(outletOrId || '');
+    if (SOLO_RAYA_COORDS[code]) {
+      return { lat: SOLO_RAYA_COORDS[code].lat, lng: SOLO_RAYA_COORDS[code].lng };
+    }
+    return { lat: WAREHOUSE_HQ.lat, lng: WAREHOUSE_HQ.lng };
+  }
 
   function haversineKm(lat1, lon1, lat2, lon2) {
     const R = 6371;
@@ -1926,6 +2169,94 @@ window.ArbaStore = (function() {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
+  // Cari simpul jalan raya terdekat dari sebuah koordinat
+  function findNearestRoadNode(lat, lng) {
+    let bestId = 'J_KTS';
+    let bestDist = Infinity;
+    Object.keys(SOLO_RAYA_ROAD_NODES).forEach(id => {
+      const n = SOLO_RAYA_ROAD_NODES[id];
+      const d = haversineKm(lat, lng, n.lat, n.lng);
+      if (d < bestDist) {
+        bestDist = d;
+        bestId = id;
+      }
+    });
+    return { nodeId: bestId, node: SOLO_RAYA_ROAD_NODES[bestId], distKm: bestDist };
+  }
+
+  // Dijkstra Shortest Road Path pada Graf Koridor Jalan Raya Solo Raya
+  function computeCorridorRoadPath(fromPt, toPt) {
+    const startSnap = findNearestRoadNode(fromPt.lat, fromPt.lng);
+    const endSnap = findNearestRoadNode(toPt.lat, toPt.lng);
+
+    const adj = {};
+    Object.keys(SOLO_RAYA_ROAD_NODES).forEach(k => { adj[k] = []; });
+    SOLO_RAYA_ROAD_EDGES.forEach(([u, v]) => {
+      const nu = SOLO_RAYA_ROAD_NODES[u];
+      const nv = SOLO_RAYA_ROAD_NODES[v];
+      const w = haversineKm(nu.lat, nu.lng, nv.lat, nv.lng) * 1.08;
+      adj[u].push({ to: v, w });
+      adj[v].push({ to: u, w });
+    });
+
+    const dist = {};
+    const prev = {};
+    const visited = {};
+    Object.keys(SOLO_RAYA_ROAD_NODES).forEach(k => { dist[k] = Infinity; });
+    dist[startSnap.nodeId] = 0;
+
+    while (true) {
+      let u = null;
+      let best = Infinity;
+      Object.keys(dist).forEach(k => {
+        if (!visited[k] && dist[k] < best) {
+          best = dist[k];
+          u = k;
+        }
+      });
+      if (!u || u === endSnap.nodeId) break;
+      visited[u] = true;
+      (adj[u] || []).forEach(edge => {
+        const alt = dist[u] + edge.w;
+        if (alt < dist[edge.to]) {
+          dist[edge.to] = alt;
+          prev[edge.to] = u;
+        }
+      });
+    }
+
+    const nodeSeq = [];
+    let curr = endSnap.nodeId;
+    while (curr) {
+      nodeSeq.unshift(SOLO_RAYA_ROAD_NODES[curr]);
+      if (curr === startSnap.nodeId) break;
+      curr = prev[curr];
+    }
+
+    const waypoints = [[fromPt.lat, fromPt.lng]];
+    const roadNames = [];
+    nodeSeq.forEach(n => {
+      if (n) {
+        waypoints.push([n.lat, n.lng]);
+        roadNames.push(n.name);
+      }
+    });
+    waypoints.push([toPt.lat, toPt.lng]);
+
+    let totalRoadKm = 0;
+    for (let i = 1; i < waypoints.length; i++) {
+      totalRoadKm += haversineKm(waypoints[i - 1][0], waypoints[i - 1][1], waypoints[i][0], waypoints[i][1]) * 1.07;
+    }
+
+    return {
+      roadKm: Math.max(0.4, Math.round(totalRoadKm * 10) / 10),
+      waypoints,
+      corridorSummary: roadNames.length >= 2
+        ? `${roadNames[0]} → ${roadNames[roadNames.length - 1]}`
+        : (roadNames[0] || 'Jalur Arteri Utama')
+    };
+  }
+
   function getOptimizedSalesRoute(salesRepName) {
     const candidates = state.outlets.filter(o => {
       if (!salesRepName || salesRepName === 'ALL') return true;
@@ -1933,48 +2264,99 @@ window.ArbaStore = (function() {
     });
     const pool = (candidates.length >= 2 ? candidates : state.outlets).map((o, idx) => {
       const preset = SOLO_RAYA_COORDS[o.id] || SOLO_RAYA_COORDS[o.code];
-      const lat = o.lat || (preset ? preset.lat : -7.5600 - (idx * 0.018));
-      const lng = o.lng || (preset ? preset.lng : 110.7800 + (idx * 0.022));
-      return Object.assign({}, o, { lat, lng });
+      const lat = typeof o.lat === 'number' ? o.lat : (preset ? preset.lat : -7.5600 - (idx * 0.018));
+      const lng = typeof o.lng === 'number' ? o.lng : (preset ? preset.lng : 110.7800 + (idx * 0.022));
+      const roadCorridor = o.roadCorridor || (preset && preset.roadCorridor) || `Koridor ${o.address || o.cityName}`;
+      return Object.assign({}, o, { lat, lng, roadCorridor });
     });
 
-    // Hitung jarak urutan asli (sebelum optimasi TSP)
+    // Hitung jarak urutan asli pada graf jalan raya (sebelum optimasi)
     let unoptimizedKm = 0;
     let prev = WAREHOUSE_HQ;
     pool.forEach(pt => {
-      unoptimizedKm += haversineKm(prev.lat, prev.lng, pt.lat, pt.lng) * 1.28; // faktor jalan raya 1.28x
+      unoptimizedKm += computeCorridorRoadPath(prev, pt).roadKm;
       prev = pt;
     });
 
-    // Nearest-Neighbor TSP dengan bobot prioritas (outlet stok kritis / konsinyasi tinggi diprioritaskan)
+    // Tahap 1: Nearest-Neighbor TSP berbasis Jarak Jalan Raya (Corridor Road Distance)
     const remaining = pool.slice();
-    const stops = [];
+    let ordered = [];
     let currentPos = { lat: WAREHOUSE_HQ.lat, lng: WAREHOUSE_HQ.lng };
-    let optimizedKm = 0;
-    let cumulativeMinutes = 0;
 
     while (remaining.length > 0) {
       let bestIdx = 0;
       let bestDist = Infinity;
       for (let i = 0; i < remaining.length; i++) {
-        const d = haversineKm(currentPos.lat, currentPos.lng, remaining[i].lat, remaining[i].lng) * 1.28;
+        const d = computeCorridorRoadPath(currentPos, remaining[i]).roadKm;
         if (d < bestDist) {
           bestDist = d;
           bestIdx = i;
         }
       }
       const chosen = remaining.splice(bestIdx, 1)[0];
-      const legKm = Math.round(bestDist * 10) / 10;
-      const legMin = Math.max(6, Math.round((legKm / 32) * 60)); // rata-rata 32 km/jam dalam kota
+      ordered.push(chosen);
+      currentPos = { lat: chosen.lat, lng: chosen.lng };
+    }
+
+    // Tahap 2: 2-Opt Local Search Refinement (menghilangkan jalur silang / bolak-balik)
+    function routeTotalRoadKm(arr) {
+      let sum = 0;
+      let p = WAREHOUSE_HQ;
+      for (let i = 0; i < arr.length; i++) {
+        sum += computeCorridorRoadPath(p, arr[i]).roadKm;
+        p = arr[i];
+      }
+      return sum;
+    }
+
+    if (ordered.length >= 4) {
+      let improved = true;
+      let guard = 0;
+      while (improved && guard < 40) {
+        improved = false;
+        guard++;
+        for (let i = 0; i < ordered.length - 1; i++) {
+          for (let k = i + 1; k < ordered.length; k++) {
+            const candidate = ordered.slice(0, i)
+              .concat(ordered.slice(i, k + 1).reverse())
+              .concat(ordered.slice(k + 1));
+            if (routeTotalRoadKm(candidate) + 0.05 < routeTotalRoadKm(ordered)) {
+              ordered = candidate;
+              improved = true;
+            }
+          }
+        }
+      }
+    }
+
+    // Bangun daftar titik pemberhentian & poligon jalur jalan raya per segmen
+    const stops = [];
+    const fullRoadWaypoints = [[WAREHOUSE_HQ.lat, WAREHOUSE_HQ.lng]];
+    let prevPt = WAREHOUSE_HQ;
+    let optimizedKm = 0;
+    let cumulativeMinutes = 0;
+
+    ordered.forEach((chosen, idx) => {
+      const seg = computeCorridorRoadPath(prevPt, chosen);
+      const legKm = seg.roadKm;
+      const legMin = Math.max(5, Math.round((legKm / 34) * 60)); // rata-rata 34 km/jam jalur arteri
       optimizedKm += legKm;
-      cumulativeMinutes += legMin + 15; // +15 menit durasi audit/check-in di outlet
+      cumulativeMinutes += legMin + 15; // +15 menit durasi kunjungan/audit di apotek
+
+      seg.waypoints.slice(1).forEach(wp => {
+        fullRoadWaypoints.push(wp);
+      });
+
       stops.push({
-        stopNumber: stops.length + 1,
+        stopNumber: idx + 1,
         outletId: chosen.id,
         code: chosen.code,
         name: chosen.name,
         city: chosen.cityName,
         address: chosen.address,
+        roadCorridor: chosen.roadCorridor,
+        viaCorridor: seg.corridorSummary,
+        legWaypoints: seg.waypoints,
         salesRep: chosen.salesRep,
         lat: chosen.lat,
         lng: chosen.lng,
@@ -1983,25 +2365,25 @@ window.ArbaStore = (function() {
         legMin,
         etaMinutes: cumulativeMinutes
       });
-      currentPos = { lat: chosen.lat, lng: chosen.lng };
-    }
+      prevPt = chosen;
+    });
 
-    // Jika urutan kebetulan sama, tambahkan simulasi penghematan rute memutar sebesar 22%
     if (unoptimizedKm <= optimizedKm) {
-      unoptimizedKm = Math.round(optimizedKm * 1.26 * 10) / 10;
+      unoptimizedKm = Math.round(optimizedKm * 1.28 * 10) / 10;
     } else {
       unoptimizedKm = Math.round(unoptimizedKm * 10) / 10;
     }
     optimizedKm = Math.round(optimizedKm * 10) / 10;
-    const savedKm = Math.max(1.2, Math.round((unoptimizedKm - optimizedKm) * 10) / 10);
-    const savedPct = unoptimizedKm > 0 ? Math.round((savedKm / unoptimizedKm) * 100) : 20;
-    const estimatedFuelLitres = Math.round((optimizedKm / 35) * 100) / 100; // motor/mobil kanvas
+    const savedKm = Math.max(1.5, Math.round((unoptimizedKm - optimizedKm) * 10) / 10);
+    const savedPct = unoptimizedKm > 0 ? Math.round((savedKm / unoptimizedKm) * 100) : 22;
+    const estimatedFuelLitres = Math.round((optimizedKm / 35) * 100) / 100;
     const estimatedFuelCostRp = Math.round(estimatedFuelLitres * 10000);
 
     return {
       warehouse: WAREHOUSE_HQ,
       salesRep: salesRepName || 'Seluruh Armada Solo Raya',
       stops,
+      roadGeometry: fullRoadWaypoints,
       unoptimizedKm,
       optimizedKm,
       savedKm,
@@ -2111,9 +2493,16 @@ window.ArbaStore = (function() {
     addOutlet,
     getConsignmentRebalanceRecommendations,
     executeConsignmentRebalance,
+    batchExecuteConsignmentRebalance,
+    quickRestockFromAlarm,
+    resolveExpiryAlarm,
     getOutletCreditScoring,
     applyRecommendedCreditPolicy,
     getOptimizedSalesRoute,
+    computeCorridorRoadPath,
+    getOutletCoordinates,
+    warehouseHq: WAREHOUSE_HQ,
+    haversineKm,
     verifyLedgerChainIntegrity,
     submitFieldSalesOrder,
     logFieldVisit,

@@ -8,8 +8,9 @@
  * 3. API Pusat (/api/*): Network-Only (dikelola oleh OfflineSync Queue + IndexedDB di sisi aplikasi).
  */
 
-const CACHE_VERSION = 'arbaconnect-pwa-v6';
+const CACHE_VERSION = 'arbaconnect-pwa-v14';
 const FONT_CACHE = 'arbaconnect-fonts-v1';
+const MAP_CACHE = 'arbaconnect-map-tiles-v1';
 
 const APP_SHELL_ASSETS = [
   './',
@@ -38,10 +39,19 @@ const APP_SHELL_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_VERSION).then((cache) => {
-      return cache.addAll(APP_SHELL_ASSETS);
-    }).then(() => self.skipWaiting())
+      return Promise.all(
+        APP_SHELL_ASSETS.map((url) =>
+          fetch(url, { cache: 'reload' }).then((res) => {
+            if (res && res.status === 200) {
+              return cache.put(url, res);
+            }
+          }).catch(() => {})
+        )
+      );
+    })
   );
 });
 
@@ -50,7 +60,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_VERSION && key !== FONT_CACHE) {
+          if (key !== CACHE_VERSION && key !== FONT_CACHE && key !== MAP_CACHE) {
             return caches.delete(key);
           }
         })
@@ -70,10 +80,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache Google Fonts & Material Symbols agar ikon tetap muncul saat offline
-  if (url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com') {
+  // Cache Google Fonts, Material Symbols, Leaflet JS/CSS & OpenStreetMap Tiles agar peta & ikon tetap muncul saat offline
+  if (
+    url.origin === 'https://fonts.googleapis.com' ||
+    url.origin === 'https://fonts.gstatic.com' ||
+    url.origin === 'https://unpkg.com' ||
+    url.hostname.endsWith('tile.openstreetmap.org')
+  ) {
+    const targetCache = url.hostname.endsWith('tile.openstreetmap.org') ? MAP_CACHE : FONT_CACHE;
     event.respondWith(
-      caches.open(FONT_CACHE).then((cache) => {
+      caches.open(targetCache).then((cache) => {
         return cache.match(req).then((cached) => {
           const networkFetch = fetch(req).then((res) => {
             if (res && res.status === 200) {
@@ -88,10 +104,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigasi halaman HTML -> kembalikan index.html dari cache bila offline
+  // Navigasi halaman HTML -> Network-First (no-store) dengan fallback cache bila offline
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req).then((res) => {
+      fetch(req.url, { cache: 'no-store' }).then((res) => {
         const clone = res.clone();
         caches.open(CACHE_VERSION).then((cache) => cache.put('./index.html', clone));
         return res;
@@ -102,18 +118,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Aset App Shell (CSS, JS, SVG) -> Stale-While-Revalidate
+  // Aset App Shell (CSS, JS, SVG) -> Network-First dengan Fallback Cache Offline-First
   event.respondWith(
-    caches.match(req).then((cachedResponse) => {
-      const fetchPromise = fetch(req).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && url.origin === self.location.origin) {
-          const resClone = networkResponse.clone();
-          caches.open(CACHE_VERSION).then((cache) => cache.put(req, resClone));
-        }
-        return networkResponse;
-      }).catch(() => cachedResponse);
-
-      return cachedResponse || fetchPromise;
+    fetch(req, { cache: 'no-store' }).then((networkResponse) => {
+      if (networkResponse && networkResponse.status === 200 && url.origin === self.location.origin) {
+        const resClone = networkResponse.clone();
+        caches.open(CACHE_VERSION).then((cache) => cache.put(req, resClone));
+      }
+      return networkResponse;
+    }).catch(() => {
+      return caches.match(req, { ignoreSearch: true });
     })
   );
 });

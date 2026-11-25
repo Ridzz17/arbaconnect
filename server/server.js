@@ -27,8 +27,18 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const crypto = require('node:crypto');
 const { URL } = require('node:url');
 const { DatabaseSync } = require('node:sqlite');
+
+function hashCredential(raw) {
+  return 'sha256:' + crypto.createHash('sha256').update('ARBA-SALT-2026:' + String(raw || '')).digest('hex');
+}
+
+// Rate limiter anti brute-force login (maks 5 percobaan gagal per 30 detik per akun/IP)
+const loginAttempts = new Map();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_MS = 30 * 1000;
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -261,8 +271,8 @@ function syncStateToRelationalTables(state) {
       u.username || u.id.toLowerCase(),
       u.name,
       u.email,
-      String(u.password || '123'),
-      String(u.pin || '123456'),
+      hashCredential(u.password || '123'),
+      hashCredential(u.pin || '123456'),
       u.phone || '-',
       u.title || '-',
       u.division || '-',
@@ -276,7 +286,7 @@ function syncStateToRelationalTables(state) {
     const alreadyInUsers = usersList.some((u) => u.id === uid);
     if (!alreadyInUsers) {
       const email = `${rep.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@arbain.co.id`;
-      insUser.run(uid, uid.toLowerCase(), rep.name, email, '123', '123456', '-', 'Sales Rep', rep.division || 'Sales', 'sales', 1);
+      insUser.run(uid, uid.toLowerCase(), rep.name, email, hashCredential('123'), hashCredential('123456'), '-', 'Sales Rep', rep.division || 'Sales', 'sales', 1);
     }
     insTarget.run(`TGT-${uid}-202611`, uid, rep.monthlyRevenueTarget || 50000000, (rep.dailyVisitTarget || 6) * 25);
   });
@@ -284,15 +294,31 @@ function syncStateToRelationalTables(state) {
   // 2. Outlets
   const insOutlet = db.prepare(`
     INSERT OR REPLACE INTO outlets (
-      id, sales_id, kode, nama, jenis, alamat, kota, kontak_nama, kontak_telp,
+      id, sales_id, kode, nama, jenis, alamat, kota, lat, lng, kontak_nama, kontak_telp,
       termin_hari, limit_kredit, kredit_terpakai, status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
+  const defaultCoords = {
+    'AP-SLO-001': { lat: -7.5682, lng: 110.8091 },
+    'AP-SLO-002': { lat: -7.5588, lng: 110.8562 },
+    'MM-SKH-014': { lat: -7.6819, lng: 110.8408 },
+    'MM-SLO-009': { lat: -7.5812, lng: 110.8279 },
+    'AP-KRA-023': { lat: -7.5965, lng: 110.9461 },
+    'AP-KRA-004': { lat: -7.5684, lng: 110.8753 },
+    'AP-BYL-008': { lat: -7.5305, lng: 110.5964 },
+    'MM-BYL-003': { lat: -7.5358, lng: 110.6022 },
+    'MM-KLT-005': { lat: -7.7056, lng: 110.6015 },
+    'AP-SRG-019': { lat: -7.4272, lng: 111.0221 },
+    'AP-KRA-078': { lat: -7.5931, lng: 110.9384 }
+  };
   (state.outlets || []).forEach((o) => {
     const rep = (state.salesTeam || []).find((s) => s.name === o.salesRep);
     const jenis = /minimarket|swalayan|toserba/i.test(o.type || '')
       ? 'minimarket'
       : (/jaringan|kimia farma|k-24/i.test(o.type || '') ? 'jaringan_farmasi' : 'apotek');
+    const fallback = defaultCoords[o.id] || defaultCoords[o.code] || { lat: -7.5682, lng: 110.8091 };
+    const lat = typeof o.lat === 'number' ? o.lat : fallback.lat;
+    const lng = typeof o.lng === 'number' ? o.lng : fallback.lng;
     insOutlet.run(
       o.id,
       rep ? rep.id : null,
@@ -301,6 +327,8 @@ function syncStateToRelationalTables(state) {
       jenis,
       o.address || 'Solo Raya',
       o.cityName || o.city || 'Surakarta',
+      lat,
+      lng,
       o.picName || '-',
       o.picPhone || '-',
       /14/.test(o.terms || '') ? 14 : (/COD|Tunai/i.test(o.terms || '') ? 0 : 30),
@@ -942,6 +970,18 @@ function applyMutationOnCentralState(state, mutation) {
       if (!Array.isArray(state.users)) state.users = loadInitialMasterData().users || [];
       if (p.user && p.user.id && !state.users.some((u) => u.id === p.user.id)) {
         state.users.push(p.user);
+        if (p.user.role === 'field-sales' && Array.isArray(state.salesTeam) && !state.salesTeam.some((s) => s.id === p.user.id)) {
+          state.salesTeam.push({
+            id: p.user.id,
+            name: p.user.name,
+            division: p.user.division || 'Madu & Herbal',
+            area: 'Solo Raya',
+            dailyVisitTarget: 15,
+            monthlyRevenueTarget: 50000000,
+            monthlyRevenueBase: 0,
+            monthlyVisitBase: 0
+          });
+        }
       }
       break;
     }
@@ -954,42 +994,159 @@ function applyMutationOnCentralState(state, mutation) {
       break;
     }
 
+    case 'IMPORT_OUTLETS': {
+      (p.rows || []).forEach((r) => {
+        const name = r.nama_outlet || r.nama;
+        if (!name) return;
+        let city = String(r.kota || 'Solo').trim();
+        if (city === 'Surakarta') city = 'Solo';
+        const code = String(r.kode_outlet || '').trim() || `AP-${city.slice(0, 3).toUpperCase()}-${String(state.outlets.length + 1).padStart(3, '0')}`;
+        const limit = Number(String(r.limit_kredit || '10000000').replace(/[^0-9]/g, '')) || 10000000;
+        const existing = findOutlet(state, code);
+        if (existing) {
+          existing.name = name;
+          existing.address = r.alamat || existing.address;
+          existing.city = city;
+          existing.cityName = city === 'Solo' ? 'Surakarta' : city;
+          existing.creditLimit = limit;
+          existing.creditRemaining = Math.max(0, limit - (existing.creditUsed || 0));
+        } else {
+          state.outlets.push({
+            id: code,
+            code,
+            name,
+            address: r.alamat || 'Solo Raya',
+            city,
+            cityName: city === 'Solo' ? 'Surakarta' : city,
+            type: r.tipe || 'Apotek Mandiri',
+            picName: r.nama_pic || '-',
+            picRole: 'Apoteker Pengelola Apotek (APA)',
+            picPhone: String(r.telepon_pic || '').replace(/[^0-9]/g, ''),
+            salesRep: r.sales_rep || 'Budi Santoso',
+            salesArea: city,
+            terms: r.termin || 'Net 30 Hari',
+            creditLimit: limit,
+            creditUsed: 0,
+            creditRemaining: limit,
+            creditStatus: 'Lancar',
+            lastOrderDate: '-',
+            orderFrequency: 'Impor CSV',
+            ytdTotal: Number(String(r.omset_ytd || '0').replace(/[^0-9]/g, '')) || 0,
+            lastVisitDate: '-',
+            visitNotes: '"Data outlet hasil impor CSV."'
+          });
+        }
+      });
+      break;
+    }
+
+    case 'IMPORT_PRODUCTS': {
+      (p.rows || []).forEach((r) => {
+        const sku = String(r.sku || '').trim().toUpperCase();
+        const name = r.nama_produk || r.nama;
+        const stock = Number(String(r.stok || '0').replace(/[^0-9]/g, ''));
+        if (!sku || !name || isNaN(stock)) return;
+        const existing = state.products.find((pr) => pr.sku === sku);
+        const ss = Number(r.safety_stock) || 50;
+        const rop = Number(r.rop) || ss * 2;
+        const price = Number(r.harga_satuan) || 45000;
+        const batch = r.batch_aktif || (existing ? existing.activeBatch : 'BATCH-2026-MIG');
+        if (existing) {
+          existing.name = name;
+          existing.stock = stock;
+          existing.safetyStock = ss;
+          existing.rop = rop;
+          existing.unitPrice = price;
+          existing.activeBatch = batch;
+          existing.status = computeProductStatus(existing);
+        } else {
+          const prod = {
+            sku,
+            name,
+            category: r.kategori || 'Madu Herbal',
+            stock,
+            safetyStock: ss,
+            rop,
+            ropFormula: `SS=${ss} (impor)`,
+            activeBatch: batch,
+            fefoDate: r.tanggal_ed || '2027-12-31',
+            fefoStatus: 'Aman (>6 Bulan)',
+            status: stock <= rop ? 'below-rop' : 'optimal',
+            unitPrice: price,
+            icon: 'inventory_2'
+          };
+          state.products.push(prod);
+        }
+      });
+      break;
+    }
+
     case 'REBALANCE_CONSIGNMENT': {
-      const src = findOutlet(state, p.sourceOutletId);
-      const dst = findOutlet(state, p.targetOutletId);
-      const qty = Number(p.transferQty) || 0;
-      if (src && dst && qty > 0) {
-        const srcItem = (src.consignmentItems || []).find((c) => c.sku === p.sku);
-        if (srcItem && (srcItem.remainingQty || 0) >= qty) {
-          srcItem.remainingQty = Math.max(0, srcItem.remainingQty - qty);
-          srcItem.consignedQty = (srcItem.soldQty || 0) + srcItem.remainingQty;
-          if (!Array.isArray(dst.consignmentItems)) dst.consignmentItems = [];
-          const dstItem = dst.consignmentItems.find((c) => c.sku === p.sku);
-          if (dstItem) {
-            dstItem.remainingQty = (dstItem.remainingQty || 0) + qty;
-            dstItem.consignedQty = (dstItem.soldQty || 0) + dstItem.remainingQty;
-            dstItem.velocity = 'LARIS';
-          } else {
-            dst.consignmentItems.push({
-              sku: srcItem.sku,
-              name: srcItem.name,
-              batch: srcItem.batch,
-              expiry: srcItem.expiry,
-              consignedQty: qty,
-              soldQty: 0,
-              remainingQty: qty,
-              unitPrice: srcItem.unitPrice,
-              velocity: 'LARIS',
-              daysInOutlet: 1,
-              nearExpiry: srcItem.nearExpiry
-            });
+      const applyOneRebalance = (item) => {
+        const src = findOutlet(state, item.sourceOutletId);
+        const dst = findOutlet(state, item.targetOutletId);
+        const qty = Number(item.transferQty) || 0;
+        if (src && dst && qty > 0) {
+          const srcItem = (src.consignmentItems || []).find((c) => c.sku === item.sku);
+          if (srcItem && (srcItem.remainingQty || 0) >= qty) {
+            srcItem.remainingQty = Math.max(0, srcItem.remainingQty - qty);
+            srcItem.consignedQty = (srcItem.soldQty || 0) + srcItem.remainingQty;
+            srcItem.velocity = 'LARIS';
+            srcItem.daysInOutlet = 1;
+            srcItem.nearExpiry = false;
+            srcItem.rebalanced = true;
+
+            if (!Array.isArray(dst.consignmentItems)) dst.consignmentItems = [];
+            const dstItem = dst.consignmentItems.find((c) => c.sku === item.sku);
+            if (dstItem) {
+              dstItem.remainingQty = (dstItem.remainingQty || 0) + qty;
+              dstItem.consignedQty = (dstItem.soldQty || 0) + dstItem.remainingQty;
+              dstItem.velocity = 'LARIS';
+            } else {
+              dst.consignmentItems.push({
+                sku: srcItem.sku,
+                name: srcItem.name,
+                batch: srcItem.batch,
+                expiry: srcItem.expiry,
+                consignedQty: qty,
+                soldQty: 0,
+                remainingQty: qty,
+                unitPrice: srcItem.unitPrice,
+                velocity: 'LARIS',
+                daysInOutlet: 1,
+                nearExpiry: false,
+                rebalanced: true
+              });
+            }
+            src.consignmentTotalUnits = (src.consignmentItems || []).reduce((s, c) => s + (c.remainingQty || 0), 0);
+            src.consignmentBillableAmount = (src.consignmentItems || []).reduce((s, c) => s + (c.soldQty || 0) * c.unitPrice, 0);
+            dst.consignmentTotalUnits = (dst.consignmentItems || []).reduce((s, c) => s + (c.remainingQty || 0), 0);
+            dst.consignmentBillableAmount = (dst.consignmentItems || []).reduce((s, c) => s + (c.soldQty || 0) * c.unitPrice, 0);
           }
-          src.consignmentTotalUnits = (src.consignmentItems || []).reduce((s, c) => s + (c.remainingQty || 0), 0);
-          dst.consignmentTotalUnits = (dst.consignmentItems || []).reduce((s, c) => s + (c.remainingQty || 0), 0);
+          if (item.ledgerEntry && !state.ledger.some((l) => l.id === item.ledgerEntry.id)) {
+            state.ledger = [item.ledgerEntry, ...state.ledger];
+          }
         }
-        if (p.ledgerEntry && !state.ledger.some((l) => l.id === p.ledgerEntry.id)) {
-          state.ledger = [p.ledgerEntry, ...state.ledger];
-        }
+      };
+      applyOneRebalance(p);
+      break;
+    }
+
+    case 'BATCH_REBALANCE_CONSIGNMENT': {
+      (p.items || []).forEach((item) => {
+        applyMutationOnCentralState(state, { type: 'REBALANCE_CONSIGNMENT', payload: item });
+      });
+      break;
+    }
+
+    case 'RESOLVE_EXPIRY_ALARM': {
+      const prod = state.products.find((pr) => pr.sku === p.sku || pr.activeBatch === p.batch);
+      if (prod) {
+        prod.fefoStatus = 'Prioritas FEFO Terjadwal';
+        prod.status = prod.stock <= prod.rop ? 'below-rop' : 'optimal';
+      }
+      if (p.ledgerEntry && !state.ledger.some((l) => l.id === p.ledgerEntry.id)) {
+        state.ledger = [p.ledgerEntry, ...state.ledger];
       }
       break;
     }
@@ -1001,6 +1158,7 @@ function applyMutationOnCentralState(state, mutation) {
         if (p.terms !== undefined) target.terms = p.terms;
         if (p.creditRemaining !== undefined) target.creditRemaining = Number(p.creditRemaining);
         if (p.creditStatus !== undefined) target.creditStatus = p.creditStatus;
+        if (p.aiCreditOptimized !== undefined) target.aiCreditOptimized = Boolean(p.aiCreditOptimized);
       }
       break;
     }
@@ -1043,6 +1201,10 @@ function sendJson(res, statusCode, body) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'X-XSS-Protection': '1; mode=block',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type'
@@ -1155,6 +1317,17 @@ const server = http.createServer(async (req, res) => {
       const body = await readJsonBody(req);
       const q = String(body.identifier || '').trim().toLowerCase();
       const pw = String(body.password || '').trim();
+      const attemptKey = `${req.socket.remoteAddress || 'local'}:${q}`;
+      const attemptInfo = loginAttempts.get(attemptKey);
+
+      if (attemptInfo && attemptInfo.count >= MAX_LOGIN_ATTEMPTS && (Date.now() - attemptInfo.lastAttempt) < LOCKOUT_MS) {
+        const waitSec = Math.ceil((LOCKOUT_MS - (Date.now() - attemptInfo.lastAttempt)) / 1000);
+        return sendJson(res, 429, {
+          status: 'error',
+          message: `Terlalu banyak percobaan login gagal. Silakan tunggu ${waitSec} detik lagi.`
+        });
+      }
+
       const centralState = getCentralState();
       const matched = (centralState.users || []).find(
         (u) =>
@@ -1165,6 +1338,8 @@ const server = http.createServer(async (req, res) => {
       );
 
       if (!matched) {
+        const prev = loginAttempts.get(attemptKey) || { count: 0 };
+        loginAttempts.set(attemptKey, { count: prev.count + 1, lastAttempt: Date.now() });
         return sendJson(res, 401, {
           status: 'error',
           message: 'Akun pengguna tidak ditemukan.'
@@ -1172,18 +1347,22 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (matched.active === false) {
-        return sendJson(res, 401, {
+        return sendJson(res, 403, {
           status: 'error',
           message: 'Akun ini sedang dinonaktifkan oleh Super Admin.'
         });
       }
 
       if (pw !== String(matched.password) && (!matched.pin || pw !== String(matched.pin))) {
+        const prev = loginAttempts.get(attemptKey) || { count: 0 };
+        loginAttempts.set(attemptKey, { count: prev.count + 1, lastAttempt: Date.now() });
         return sendJson(res, 401, {
           status: 'error',
-          message: 'Password atau PIN Offline tidak sesuai.'
+          message: 'Kata sandi atau PIN Offline tidak sesuai.'
         });
       }
+
+      loginAttempts.delete(attemptKey);
 
       // Pastikan juga user tercatat di tabel SQL `users`
       const sqlUser = db.prepare('SELECT id, username, nama, email, peran, aktif FROM users WHERE email = ? OR id = ?').get(matched.email, matched.id);
@@ -1234,6 +1413,23 @@ const server = http.createServer(async (req, res) => {
           logStmt.run(mid, clientId, mut.type || 'UNKNOWN', mut.summary || '', JSON.stringify(mut.payload || {}));
           if (mut.summary) summaries.push(mut.summary);
           appliedCount++;
+        }
+
+        // Sinkronkan juga snapshot state klien bila disertakan agar paritas data 100% terjaga
+        if (body.clientState && typeof body.clientState === 'object') {
+          const cs = body.clientState;
+          if (Array.isArray(cs.users) && cs.users.length) state.users = cs.users;
+          if (Array.isArray(cs.products) && cs.products.length) state.products = cs.products;
+          if (Array.isArray(cs.ledger) && cs.ledger.length) state.ledger = cs.ledger;
+          if (Array.isArray(cs.outlets) && cs.outlets.length) state.outlets = cs.outlets;
+          if (Array.isArray(cs.orders) && cs.orders.length) state.orders = cs.orders;
+          if (Array.isArray(cs.supplierPOs)) state.supplierPOs = cs.supplierPOs;
+          if (Array.isArray(cs.salesVisits)) state.salesVisits = cs.salesVisits;
+          if (Array.isArray(cs.driverManifests)) state.driverManifests = cs.driverManifests;
+          if (Array.isArray(cs.salesTeam)) state.salesTeam = cs.salesTeam;
+          if (Array.isArray(cs.salesLoadings)) state.salesLoadings = cs.salesLoadings;
+          if (Array.isArray(cs.visitLogs)) state.visitLogs = cs.visitLogs;
+          if (appliedCount === 0) appliedCount = 1;
         }
 
         if (appliedCount > 0) {
@@ -1315,9 +1511,37 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 7) Melayani Berkas Statis PWA (index.html, sw.js, manifest.json, css/*, js/*, icons/*)
+  // 7) Melayani Berkas Statis PWA (Hanya direktori frontend publik yang diizinkan)
   let relPath = pathname === '/' ? '/index.html' : pathname;
-  relPath = decodeURIComponent(relPath);
+  try {
+    relPath = decodeURIComponent(relPath);
+  } catch (e) {
+    res.writeHead(400);
+    return res.end('Bad Request');
+  }
+
+  // Blokir akses langsung ke direktori/berkas sensitif server & database SQLite
+  const normalizedRel = relPath.replace(/\\/g, '/').toLowerCase();
+  if (
+    normalizedRel.includes('..') ||
+    normalizedRel.startsWith('/database') ||
+    normalizedRel.startsWith('/server') ||
+    normalizedRel.startsWith('/.') ||
+    normalizedRel.startsWith('/node_modules') ||
+    normalizedRel === '/package.json' ||
+    normalizedRel === '/package-lock.json' ||
+    normalizedRel.endsWith('.sqlite') ||
+    normalizedRel.endsWith('.sqlite-wal') ||
+    normalizedRel.endsWith('.sqlite-shm') ||
+    normalizedRel.endsWith('.sql')
+  ) {
+    res.writeHead(403, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'X-Content-Type-Options': 'nosniff'
+    });
+    return res.end('403 Forbidden: Access to protected server/database resource is denied.');
+  }
+
   const safePath = path.normalize(path.join(ROOT_DIR, relPath));
 
   if (!safePath.startsWith(ROOT_DIR)) {
@@ -1334,7 +1558,12 @@ const server = http.createServer(async (req, res) => {
           res.writeHead(404);
           return res.end('Not Found');
         }
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8',
+          'X-Content-Type-Options': 'nosniff',
+          'X-Frame-Options': 'SAMEORIGIN',
+          'Referrer-Policy': 'strict-origin-when-cross-origin'
+        });
         res.end(content);
       });
       return;
@@ -1344,7 +1573,12 @@ const server = http.createServer(async (req, res) => {
     const mime = MIME_TYPES[ext] || 'application/octet-stream';
     const headers = {
       'Content-Type': mime,
-      'Cache-Control': ext === '.html' || safePath.endsWith('sw.js') ? 'no-cache' : 'public, max-age=3600'
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'SAMEORIGIN',
+      'Referrer-Policy': 'strict-origin-when-cross-origin'
     };
     if (safePath.endsWith('sw.js')) {
       headers['Service-Worker-Allowed'] = '/';

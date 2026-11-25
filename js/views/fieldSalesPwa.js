@@ -16,7 +16,7 @@
   window.ArbaViews = window.ArbaViews || {};
 
   var state = {
-    isPhoneFrame: true,
+    isPhoneFrame: false,
     selectedOutletCode: 'AP-SLO-001',
     activeCategory: 'all',
     productSearch: '',
@@ -111,54 +111,57 @@
     // Validasi plafon kredit outlet (hanya untuk termin Jatuh Tempo non-Konsinyasi & non-COD)
     var isCreditTerm = /Net|Jatuh Tempo/i.test(state.selectedTerm);
     var overCredit = isCreditTerm && totalAmount > (currentOutlet.creditRemaining || 0);
+    var isSuperAdminUser = appState.currentUser && appState.currentUser.role === 'super-admin';
+    var usePhoneFrame = isSuperAdminUser && state.isPhoneFrame;
 
     var html = `
       <div class="flex flex-col items-center w-full pb-12">
-        <!-- Viewport Control Bar (Disesuaikan dengan Role Sales vs Direksi/Admin) -->
-        <div class="w-full max-w-xl flex items-center justify-between mb-4 bg-surface-container-lowest p-3 rounded-xl border border-border-subtle/50 text-xs text-on-surface-variant">
-          <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary text-[18px]">smartphone</span>
-            <span class="font-semibold text-on-surface">${isFieldSalesRole ? 'Aplikasi Kerja Harian Sales: ' + currentRep : 'Mode Pantau &amp; Simulasi Aplikasi HP Sales'}</span>
-            <span class="hidden sm:inline">· ${isFieldSalesRole ? 'Bisa Tanpa Sinyal' : 'Pilih Nama Sales di Layar HP'}</span>
+        ${isSuperAdminUser ? `
+          <!-- Viewport Control Bar (Khusus Super Admin) -->
+          <div class="w-full max-w-2xl flex items-center justify-between mb-4 bg-surface-container-lowest p-3 rounded-xl border border-border-subtle/50 text-xs text-on-surface-variant">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-[18px]">smartphone</span>
+              <span class="font-semibold text-on-surface">Pratinjau Responsif Aplikasi Sales (Super Admin)</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button
+                id="btn-viewport-phone"
+                class="px-2.5 py-1 rounded-md font-medium cursor-pointer transition-colors border-0 text-xs ${
+                  state.isPhoneFrame
+                    ? 'bg-primary text-white font-semibold'
+                    : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
+                }"
+                type="button"
+              >
+                Ukuran HP (390px)
+              </button>
+              <button
+                id="btn-viewport-full"
+                class="px-2.5 py-1 rounded-md font-medium cursor-pointer transition-colors border-0 text-xs ${
+                  !state.isPhoneFrame
+                    ? 'bg-primary text-white font-semibold'
+                    : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
+                }"
+                type="button"
+              >
+                Layar Penuh
+              </button>
+            </div>
           </div>
-          <div class="flex items-center gap-1.5">
-            <button
-              id="btn-viewport-phone"
-              class="px-2.5 py-1 rounded-md font-medium cursor-pointer transition-colors border-0 text-xs ${
-                state.isPhoneFrame
-                  ? 'bg-primary text-white font-semibold'
-                  : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
-              }"
-              type="button"
-            >
-              Ukuran HP (390px)
-            </button>
-            <button
-              id="btn-viewport-full"
-              class="px-2.5 py-1 rounded-md font-medium cursor-pointer transition-colors border-0 text-xs ${
-                !state.isPhoneFrame
-                  ? 'bg-primary text-white font-semibold'
-                  : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
-              }"
-              type="button"
-            >
-              Layar Lebar
-            </button>
-          </div>
-        </div>
+        ` : ''}
 
-        <!-- Smartphone Body Simulation Container -->
+        <!-- Field Sales Main Application Container -->
         <div
           class="w-full transition-all duration-200 ${
-            state.isPhoneFrame
+            usePhoneFrame
               ? 'max-w-[420px] rounded-3xl border border-border-subtle/70 bg-surface shadow-xl overflow-hidden'
-              : 'max-w-2xl bg-surface rounded-2xl border border-border-subtle/60 p-4'
+              : 'max-w-3xl bg-surface rounded-2xl border border-border-subtle/60 shadow-xs overflow-hidden'
           }"
-          style="${state.isPhoneFrame ? 'max-width: 420px; border-radius: 28px;' : ''}"
+          style="${usePhoneFrame ? 'max-width: 420px; border-radius: 28px;' : ''}"
         >
-          <!-- Smartphone App Frame -->
+          <!-- App Frame -->
           <div class="flex flex-col min-h-[680px] bg-white text-slate-900 relative rounded-2xl overflow-hidden" style="position:relative; background:#fff; min-height:680px;">
-            <!-- Top Bar - Sales Profile & Offline Switch -->
+            <!-- Top Bar - Sales Profile & Sync Status -->
             <div class="bg-[#005c55] text-white px-4 py-3 sticky top-0 z-30 shadow-xs flex items-center justify-between" style="background:#005c55; color:#fff;">
               <div class="flex items-center gap-2.5">
                 <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-xs text-white" style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center;">
@@ -167,7 +170,7 @@
                 <div class="flex flex-col">
                   ${isFieldSalesRole ? `
                     <span class="font-bold text-xs leading-tight text-white">${currentRep}</span>
-                    <span class="text-[11px] text-teal-100 font-medium">${appState.currentUser.division || 'Sales Rep'} · Terkunci</span>
+                    <span class="text-[11px] text-teal-100 font-medium">${appState.currentUser.division || 'Sales Lapangan'}</span>
                   ` : `
                     <select
                       id="pwa-rep-select"
@@ -179,15 +182,15 @@
                         return `<option value="${s.name}" style="color:#0f172a;" ${s.name === currentRep ? 'selected' : ''}>${s.name}</option>`;
                       }).join('')}
                     </select>
-                    <span class="text-[11px] text-teal-100 font-medium">Sales Rep · Solo Raya</span>
+                    <span class="text-[11px] text-teal-100 font-medium">Sales Lapangan · Solo Raya</span>
                   `}
                 </div>
               </div>
 
-              <!-- Offline/Online Network Indicator Button -->
+              <!-- Network Sync Status Indicator Button -->
               <button
                 id="btn-pwa-online-toggle"
-                title="Klik untuk simulasi mode Online/Offline"
+                title="Status Koneksi & Sinkronisasi Data"
                 class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors border-0 ${
                   isOnline
                     ? 'bg-white/15 text-white hover:bg-white/25'
@@ -200,7 +203,7 @@
                   class="w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-300' : 'bg-amber-950'}"
                   style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${isOnline ? '#6ee7b7' : '#451a03'};"
                 ></span>
-                <span>${isOnline ? 'Online' : 'Offline'}</span>
+                <span>${isOnline ? 'Tersinkron' : 'Mode Lokal'}</span>
                 ${!isOnline && offlineQueue.length > 0 ? `
                   <span class="ml-1 px-1 bg-amber-900 text-amber-200 text-[10px] rounded">
                     ${offlineQueue.length}
@@ -308,40 +311,68 @@
                   </div>
                 </div>
 
+                <!-- Peta Lokasi Nyata Geofence GPS Apotek Target (Leaflet + OpenStreetMap) -->
+                ${(function () {
+                  var coords = window.ArbaStore.getOutletCoordinates ? window.ArbaStore.getOutletCoordinates(currentOutlet) : { lat: currentOutlet.lat || -7.5682, lng: currentOutlet.lng || 110.8091 };
+                  var gmapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(coords.lat + ',' + coords.lng) + '&travelmode=driving';
+                  return `
+                    <div class="rounded-lg overflow-hidden border border-slate-200 bg-white mt-1.5" style="border:1px solid #cbd5e1; border-radius:10px;">
+                      <div class="px-2.5 py-1.5 flex items-center justify-between text-[10px] bg-slate-100 border-b border-slate-200" style="background:#f1f5f9; border-bottom:1px solid #e2e8f0;">
+                        <span class="font-bold text-slate-700 flex items-center gap-1">
+                          <span class="material-symbols-outlined text-[13px] text-teal-700">my_location</span>
+                          <span>Titik GPS: <b class="font-mono">${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}</b></span>
+                        </span>
+                        <a href="${gmapsUrl}" target="_blank" rel="noreferrer" class="font-bold text-teal-800 hover:underline flex items-center gap-0.5" style="color:#005c55;">
+                          <span class="material-symbols-outlined text-[13px]">directions</span>
+                          <span>Navigasi Google Maps</span>
+                        </a>
+                      </div>
+                      <div
+                        id="pwa-checkin-leaflet-map"
+                        data-lat="${coords.lat}"
+                        data-lng="${coords.lng}"
+                        data-name="${window.ArbaUtils.escapeHtml(currentOutlet.name)}"
+                        data-addr="${window.ArbaUtils.escapeHtml(currentOutlet.address + ', ' + currentOutlet.cityName)}"
+                        style="width:100%; height:130px; z-index:1; background:#e2e8f0;"
+                      ></div>
+                    </div>
+                  `;
+                })()}
+
                 <!-- Ringkasan Stok Titipan di Apotek Ini & Alarm Pink Expired -->
                 ${(currentOutlet.consignmentItems && currentOutlet.consignmentItems.length > 0) ? `
                   <div class="p-2 rounded-lg text-[11px] space-y-1" style="background:#fdf2f8; border:1px solid #f472b6; color:#831843; margin-top:0.35rem;">
                     <div class="font-bold flex items-center justify-between">
-                      <span>📦 Stok Titipan di Apotek: ${currentOutlet.consignmentTotalUnits || 0} unit</span>
-                      <span>Laku: ${currentOutlet.consignmentItems.reduce(function (s, c) { return s + c.soldQty; }, 0)} unit</span>
+                      <span>📦 Saldo Konsinyasi Mitra: ${currentOutlet.consignmentTotalUnits || 0} unit</span>
+                      <span>Terjual: ${currentOutlet.consignmentItems.reduce(function (s, c) { return s + c.soldQty; }, 0)} unit</span>
                     </div>
                     ${currentOutlet.consignmentItems.filter(function (c) { return c.nearExpiry; }).map(function (c) {
-                      return `<div class="text-[10px] font-semibold" style="color:#be185d;">🩷 Alarm Pink: <b>${c.name}</b> (${c.remainingQty} btl, ED ${c.expiry}) — Minta apotek jual dulu!</div>`;
+                      return `<div class="text-[10px] font-semibold" style="color:#be185d;">Peringatan FEFO: <b>${c.name}</b> (${c.remainingQty} unit, ED ${c.expiry}) — Prioritaskan distribusi batch ini.</div>`;
                     }).join('')}
                   </div>
                 ` : ''}
 
-                <!-- Quick Actions: Tagih & Isi Ulang Konsinyasi (1-Tap), Rute TSP & Kunjungan Tanpa Order -->
+                <!-- Quick Actions: Rekonsiliasi & Restock Konsinyasi, Optimasi Rute & Log Kunjungan -->
                 <div class="flex flex-wrap gap-1.5" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.5rem;">
                   <button
                     type="button"
                     id="btn-pwa-repeat-order"
                     class="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-semibold cursor-pointer border-0"
                     style="flex:1; background:#e0f2fe; color:#075985; border-radius:8px; padding:0.45rem;"
-                    title="Otomatis isi jumlah barang konsinyasi yang laku terjual di apotek ini untuk ditagih & diganti stok baru"
+                    title="Muat kuantitas produk konsinyasi yang telah terjual di mitra ini untuk penagihan dan pengisian ulang stok"
                   >
                     <span class="material-symbols-outlined text-[15px]">sync_saved_locally</span>
-                    <span>Tagih &amp; Isi Ulang</span>
+                    <span>Rekonsiliasi &amp; Restock</span>
                   </button>
                   <button
                     type="button"
                     id="btn-pwa-tsp-route"
                     class="flex items-center justify-center gap-1 py-2 px-2.5 rounded-lg text-[11px] font-bold cursor-pointer border-0"
                     style="background:#d1fae5; color:#065f46; border-radius:8px; padding:0.45rem 0.6rem;"
-                    title="Lihat Peta Lokasi Apotek & Urutan Rute Kunjungan Terdekat (Hemat BBM)"
+                    title="Buka Peta Lokasi Mitra & Optimasi Rute Kunjungan"
                   >
                     <span class="material-symbols-outlined text-[15px]">route</span>
-                    <span>Rute Terdekat</span>
+                    <span>Optimasi Rute</span>
                   </button>
                   <button
                     type="button"
@@ -350,7 +381,7 @@
                     style="background:#f1f5f9; color:#334155; border-radius:8px; padding:0.45rem 0.6rem;"
                   >
                     <span class="material-symbols-outlined text-[15px]">where_to_vote</span>
-                    <span>Kunjungan Saja</span>
+                    <span>Log Kunjungan</span>
                   </button>
                 </div>
               </div>
@@ -359,7 +390,7 @@
               <div class="space-y-2 mb-3">
                 <div class="flex items-center justify-between mb-1.5">
                   <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                    2. Pilih Barang / Scan Kemasan
+                    2. Katalog Pemesanan Produk Herbal
                   </span>
                   <div class="flex items-center gap-2">
                     <button
@@ -367,13 +398,13 @@
                       id="btn-pwa-scan-qr"
                       class="px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 cursor-pointer border-0"
                       style="background:#005c55; color:#ffffff;"
-                      title="Scan QR pada Botol/Karton Herbal untuk Masukkan ke Nota"
+                      title="Pindai Kode QR Batch Produk Herbal untuk Memasukkan ke Faktur"
                     >
                       <span class="material-symbols-outlined text-[14px]">qr_code_scanner</span>
-                      <span>Scan QR Botol</span>
+                      <span>Pindai QR Batch</span>
                     </button>
                     <span class="text-[11px] text-teal-800 font-semibold" style="color:#005c55;">
-                      ${totalQuantity} botol
+                      ${totalQuantity} unit
                     </span>
                   </div>
                 </div>
@@ -450,16 +481,16 @@
                           </div>
                           ${consItem ? `
                             <div class="text-[10px] font-semibold mt-0.5" style="color:${consItem.nearExpiry ? '#be185d' : '#0f766e'};">
-                              Di Apotek: Titip ${consItem.consignedQty} · Laku <b>${consItem.soldQty}</b> · Sisa ${consItem.remainingQty}${consItem.nearExpiry ? ' · 🩷 Hampir ED!' : ''}
+                              Konsinyasi Mitra: Kuota ${consItem.consignedQty} · Terjual <b>${consItem.soldQty}</b> · Saldo ${consItem.remainingQty}${consItem.nearExpiry ? ' · Mendekati ED' : ''}
                             </div>
                           ` : ''}
                           ${prod.stock === 0 ? `
                             <div class="text-[10px] font-semibold mt-0.5" style="color:#be123c;">
-                              Stok gudang habis — tidak dapat dipesan
+                              Persediaan gudang habis — tidak dapat dipesan
                             </div>
                           ` : isLow ? `
                             <div class="text-[10px] font-semibold mt-0.5" style="color:#ea580c;">
-                              🟧 Alarm Oranye: Stok Gudang &le; ROP (${prod.rop})${atMax && qty > 0 ? ' · batas stok' : ''}
+                              Peringatan ROP: Persediaan Gudang &le; Ambang Minimum (${prod.rop} unit)${atMax && qty > 0 ? ' · batas stok' : ''}
                             </div>
                           ` : (atMax && qty > 0 ? `
                             <div class="text-[10px] text-amber-700 font-medium mt-0.5">Batas stok gudang tercapai</div>
@@ -529,20 +560,11 @@
                     <div class="flex items-center gap-1">
                       <button
                         type="button"
-                        id="btn-pwa-auto-sign"
-                        class="px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer border-0"
-                        style="background:#e0f2fe; color:#0369a1;"
-                        title="Buat tanda tangan digital apoteker otomatis"
-                      >
-                        TTD Cepat
-                      </button>
-                      <button
-                        type="button"
                         id="btn-pwa-clear-sign"
                         class="px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer border-0"
                         style="background:#f1f5f9; color:#475569;"
                       >
-                        Hapus
+                        Bersihkan TTD
                       </button>
                     </div>
                   </div>
@@ -635,6 +657,50 @@
 
   function bindEvents(container, currentOutlet, products, totalAmount, ctx) {
     ctx = ctx || {};
+
+    // Inisialisasi Peta Nyata Geofence GPS Apotek Target di PWA Sales
+    var pwaMapEl = container.querySelector('#pwa-checkin-leaflet-map');
+    if (pwaMapEl && typeof window.L !== 'undefined') {
+      try {
+        if (window.__arbaPwaCheckinMap) {
+          try { window.__arbaPwaCheckinMap.remove(); } catch (e) {}
+          window.__arbaPwaCheckinMap = null;
+        }
+        var pLat = Number(pwaMapEl.getAttribute('data-lat')) || -7.5682;
+        var pLng = Number(pwaMapEl.getAttribute('data-lng')) || 110.8091;
+        var pName = pwaMapEl.getAttribute('data-name') || currentOutlet.name;
+        var pMap = window.L.map(pwaMapEl, {
+          center: [pLat, pLng],
+          zoom: 16,
+          zoomControl: false
+        });
+        window.__arbaPwaCheckinMap = pMap;
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OSM'
+        }).addTo(pMap);
+
+        // Radius Geofence 50m di sekitar titik Apotek
+        window.L.circle([pLat, pLng], {
+          color: '#005c55',
+          fillColor: '#10b981',
+          fillOpacity: 0.2,
+          radius: 45,
+          weight: 1.5
+        }).addTo(pMap);
+
+        var pIcon = window.L.divIcon({
+          className: 'pwa-outlet-pin',
+          html: '<div style="width:24px;height:24px;border-radius:50%;background:#005c55;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">📍</div>',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+        window.L.marker([pLat, pLng], { icon: pIcon })
+          .addTo(pMap)
+          .bindPopup('<div style="font-size:11px;font-weight:700;">' + pName + '</div>');
+        setTimeout(function () { pMap.invalidateSize(); }, 80);
+      } catch (err) {}
+    }
 
     // Sales rep account switch
     var repSelect = container.querySelector('#pwa-rep-select');
@@ -834,11 +900,16 @@
       });
     }
 
-    // Online / Offline toggle
+    // Online / Offline sync action
     var btnOnline = container.querySelector('#btn-pwa-online-toggle');
     if (btnOnline) {
       btnOnline.addEventListener('click', function () {
-        window.ArbaStore.toggleOnlineStatus();
+        var st = window.ArbaStore.getState();
+        if (st.currentUser && st.currentUser.role === 'super-admin') {
+          window.ArbaStore.toggleOnlineStatus();
+        } else {
+          window.ArbaStore.syncNow();
+        }
       });
     }
 
@@ -865,21 +936,28 @@
           renderFieldSalesPwa(container);
         };
 
+        var targetCoords = window.ArbaStore.getOutletCoordinates
+          ? window.ArbaStore.getOutletCoordinates(currentOutlet)
+          : { lat: currentOutlet.lat || -7.5682, lng: currentOutlet.lng || 110.8091 };
+
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             function (pos) {
-              var lat = pos.coords.latitude.toFixed(5);
-              var lng = pos.coords.longitude.toFixed(5);
-              var acc = Math.min(25, Math.max(5, Math.round(pos.coords.accuracy || 12)));
-              finishCheckin(acc, lat + ', ' + lng + ' (GPS Perangkat)');
+              var lat = pos.coords.latitude;
+              var lng = pos.coords.longitude;
+              var realKm = window.ArbaStore.haversineKm
+                ? window.ArbaStore.haversineKm(lat, lng, targetCoords.lat, targetCoords.lng)
+                : 0.012;
+              var distMeter = realKm < 1.5 ? Math.max(4, Math.round(realKm * 1000)) : Math.min(25, Math.max(5, Math.round(pos.coords.accuracy || 12)));
+              finishCheckin(distMeter, lat.toFixed(5) + ', ' + lng.toFixed(5) + ' (GPS Perangkat)');
             },
             function () {
-              finishCheckin(Math.floor(8 + Math.random() * 12), '-7.5583, 110.8214 (Presisi GPS)');
+              finishCheckin(Math.floor(8 + Math.random() * 12), targetCoords.lat.toFixed(4) + ', ' + targetCoords.lng.toFixed(4) + ' (Presisi GPS)');
             },
             { enableHighAccuracy: true, timeout: 2500, maximumAge: 60000 }
           );
         } else {
-          finishCheckin(Math.floor(8 + Math.random() * 12), '-7.5583, 110.8214 (Presisi GPS)');
+          finishCheckin(Math.floor(8 + Math.random() * 12), targetCoords.lat.toFixed(4) + ', ' + targetCoords.lng.toFixed(4) + ' (Presisi GPS)');
         }
       });
     }

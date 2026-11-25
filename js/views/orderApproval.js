@@ -562,9 +562,16 @@
                             <span class="font-code-table text-code-table text-on-surface truncate font-semibold font-mono">
                               ${order.geofenceCoords}
                             </span>
-                            <span class="font-body-sm text-body-sm text-emerald-700 font-semibold text-[11px]">
-                              Lokasi Terotentikasi di Titik Toko
-                            </span>
+                            <div class="flex items-center gap-2 mt-0.5">
+                              <span class="font-body-sm text-body-sm text-emerald-700 font-semibold text-[11px]">
+                                Lokasi Terotentikasi
+                              </span>
+                              ${(function () {
+                                var m = /(-?\d+\.\d+)\s*,\s*(\d+\.\d+)/.exec(order.geofenceCoords || '');
+                                var coordQ = m ? (m[1] + ',' + m[2]) : encodeURIComponent(order.outletName + ' ' + order.city);
+                                return `<a href="https://www.google.com/maps/search/?api=1&query=${coordQ}" target="_blank" rel="noreferrer" class="text-[11px] font-bold text-primary hover:underline flex items-center gap-0.5"><span class="material-symbols-outlined text-[13px]">map</span><span>Lihat Peta</span></a>`;
+                              })()}
+                            </div>
                           </div>
                         </div>
 

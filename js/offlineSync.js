@@ -204,11 +204,13 @@ window.ArbaOfflineSync = (function () {
     return null;
   }
 
+  let syncChain = Promise.resolve();
+
   /**
-   * Mencatat aksi mutasi (Order, Kunjungan, Stok, Otorisasi, dll.).
+   * Mencatat aksi mutasi (Order, Kunjungan, Stok, Otorisasi, Realokasi, dll.).
    * - Jika sedang Offline: Disimpan ke IndexedDB `mutation_queue` + `offlineQueue` lokal.
-   * - Jika sedang Online: Langsung dikirim ke Server Pusat (`POST /api/sync`).
-   *   Bila koneksi tiba-tiba gagal, otomatis dialihkan ke antrean offline lokal.
+   * - Jika sedang Online: Dikirim secara berurutan (sequential queue) ke Server Pusat (`POST /api/sync`)
+   *   tanpa menimpa ulang state lokal yang baru saja dimutasi oleh pengguna.
    */
   async function recordOrSyncMutation(type, payload, summaryLabel) {
     const mutationId = (payload && (payload.clientUuid || payload.id)) ||
@@ -235,37 +237,41 @@ window.ArbaOfflineSync = (function () {
       return { queuedOffline: true, mutationId };
     }
 
-    // Bila sedang Online -> Kirim ke Server Pusat
-    try {
-      const res = await fetch('/api/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientId,
-          mutations: [mutation]
-        })
-      });
+    // Antrekan request ke server secara berurutan agar tidak saling balapan (race condition)
+    const runSync = async () => {
+      try {
+        const currentSnapshot = window.ArbaStore ? window.ArbaStore.getState() : null;
+        if (currentSnapshot) {
+          await saveSnapshotToIDB(currentSnapshot);
+        }
+        const res = await fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clientId,
+            mutations: [mutation],
+            clientState: currentSnapshot
+          })
+        });
 
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      serverAvailable = true;
-      lastSyncTimestamp = Date.now();
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        serverAvailable = true;
+        lastSyncTimestamp = Date.now();
+        return { queuedOffline: false, synced: true, mutationId, serverResponse: data };
+      } catch (err) {
+        serverAvailable = false;
+        await saveMutationToIDB(mutation);
+        if (window.ArbaStore && typeof window.ArbaStore.addOfflineQueueEntry === 'function') {
+          window.ArbaStore.addOfflineQueueEntry(mutation);
+        }
+        registerBackgroundSync();
+        return { queuedOffline: true, mutationId, error: err.message };
+      }
+    };
 
-      if (data && data.state && window.ArbaStore && typeof window.ArbaStore.applyServerState === 'function') {
-        await saveSnapshotToIDB(data.state);
-        window.ArbaStore.applyServerState(data.state, { silent: true });
-      }
-      return { queuedOffline: false, synced: true, mutationId, serverResponse: data };
-    } catch (err) {
-      // Koneksi ke pusat putus mendadak -> Simpan ke antrean lokal (Offline Fallback)
-      serverAvailable = false;
-      await saveMutationToIDB(mutation);
-      if (window.ArbaStore && typeof window.ArbaStore.addOfflineQueueEntry === 'function') {
-        window.ArbaStore.addOfflineQueueEntry(mutation);
-      }
-      registerBackgroundSync();
-      return { queuedOffline: true, mutationId, error: err.message };
-    }
+    syncChain = syncChain.then(runSync, runSync);
+    return syncChain;
   }
 
   /**

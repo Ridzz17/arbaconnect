@@ -223,93 +223,49 @@
 
     renderRoleContextBanner: function (state, activeRole) {
       var strip = document.getElementById('role-context-strip');
+      var subtitleEl = document.getElementById('header-brand-subtitle');
+      var roleSubtitles = {
+        'super-admin': 'Administrasi Sistem & Keamanan',
+        'executive': 'Direksi & Manajemen Operasional',
+        'inventory': 'Divisi Gudang & Logistik FEFO',
+        'sales-ops': 'Divisi Penjualan & Piutang Apotek',
+        'field-sales': 'Operasional Kunjungan Sales Lapangan'
+      };
+      if (subtitleEl) {
+        subtitleEl.textContent = roleSubtitles[activeRole] || "Sistem Distribusi & Stok Herbal CV Arba'in";
+      }
+
       if (!strip) return;
-      if (!state.currentUser) {
+
+      // Untuk seluruh pengguna selain Super Admin, sembunyikan banner konteks prototipe agar tampilan bersih & siap produksi
+      if (!state.currentUser || state.currentUser.role !== 'super-admin' || activeRole === 'super-admin') {
         strip.innerHTML = '';
+        strip.style.display = 'none';
         return;
       }
 
-      var user = state.currentUser;
-      var analytics = window.ArbaStore.getAnalytics ? window.ArbaStore.getAnalytics() : {};
-      var pendingCount = state.orders.filter(function (o) { return o.status === 'PENDING'; }).length;
-      var orangeCount = (analytics.orangeStockAlarms && analytics.orangeStockAlarms.length) || 0;
-      var pinkCount = (analytics.pinkExpiryAlarms && analytics.pinkExpiryAlarms.length) || 0;
-      var usersCount = (state.users && state.users.length) || 12;
-
-      var roleConfigs = {
-        'super-admin': {
-          bg: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
-          border: '#c4b5fd',
-          badgeBg: '#6d28d9',
-          icon: 'shield_person',
-          roleTitle: 'SUPER ADMINISTRATOR (AKSES PENUH SELURUH DIVISI)',
-          headline: 'Halo, ' + user.name + ' — Pusat Kendali Sistem & Hak Akses Pegawai',
-          desc: 'Anda dapat mengakses seluruh 7 halaman operasional, mengelola ' + usersCount + ' akun pegawai, mengganti password user mana pun, serta menggunakan pengubah tampilan divisi di kanan atas untuk mengecek layar Direktur, Gudang, Admin Penjualan, maupun Sales.'
-        },
-        'executive': {
-          bg: 'linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%)',
-          border: '#5eead4',
-          badgeBg: '#005c55',
-          icon: 'monitoring',
-          roleTitle: 'PERSPEKTIF DIREKTUR & MANAJEMEN PUNCAK',
-          headline: 'Ringkasan Eksekutif Harian untuk ' + user.name + ' (' + user.title + ')',
-          desc: 'Istilah & informasi disesuaikan untuk pengambilan keputusan direksi: Capaian Omset Bulanan (' + (analytics.revenuePct || 0) + '% dari target), ' + orangeCount + ' Peringatan Stok Menipis (Alarm Oranye), ' + pinkCount + ' Peringatan Barang Hampir Kedaluwarsa (Alarm Pink), serta Perkiraan Produksi Pabrik Bulan Depan.'
-        },
-        'inventory': {
-          bg: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-          border: '#7dd3fc',
-          badgeBg: '#0369a1',
-          icon: 'warehouse',
-          roleTitle: 'RUANG KERJA DIVISI GUDANG & LOGISTIK FEFO',
-          headline: 'Selamat Bertugas, ' + user.name + ' — Gudang Utama Kartasura',
-          desc: 'Istilah disesuaikan untuk operasional gudang: Fokus pada Stok Fisik Botol/Karton, Urutan Keluar Kedaluwarsa Terdekat (FEFO), ' + orangeCount + ' Produk di Bawah Batas Stok Aman (ROP), Penyiapan Barang untuk ' + pendingCount + ' Faktur Baru, serta Cek Fisik Barang Bawaan Sales Pagi vs Kembali Sore.'
-        },
-        'sales-ops': {
-          bg: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-          border: '#d8b4fe',
-          badgeBg: '#7e22ce',
-          icon: 'fact_check',
-          roleTitle: 'MEJA KERJA DIVISI ADMIN PENJUALAN & PIUTANG APOTEK',
-          headline: 'Selamat Bertugas, ' + user.name + ' — Verifikasi Faktur & Administrasi Konsinyasi',
-          desc: 'Istilah disesuaikan untuk administrasi penjualan & keuangan: Fokus pada pemeriksaan ' + pendingCount + ' Faktur Pesanan Masuk dari HP Sales, pengecekan Sisa Plafon Kredit Apotek, pemeriksaan Tanda Tangan Apoteker & Foto Rak, serta pemantauan Tagihan Barang Titip Jual (Konsinyasi) yang sudah laku.'
-        },
-        'field-sales': {
-          bg: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
-          border: '#fcd34d',
-          badgeBg: '#b45309',
-          icon: 'Directions_Bike',
-          roleTitle: 'APLIKASI KERJA HARIAN SALES LAPANGAN',
-          headline: 'Selamat Bertugas di Lapangan, ' + user.name + ' (' + user.division + ')',
-          desc: 'Tampilan & istilah disederhanakan khusus untuk kunjungan apotek: 1) Pilih Apotek & Absen Lokasi GPS, 2) Hitung Barang Titipan yang Laku / Scan QR Kemasan, 3) Minta Tanda Tangan Apoteker & Foto Rak, lalu Simpan Nota (tetap berjalan lancar meskipun sinyal internet mati).'
-        }
-      };
-
-      var cfg = roleConfigs[activeRole] || roleConfigs['executive'];
-      var subtitleEl = document.getElementById('header-brand-subtitle');
-      if (subtitleEl) {
-        subtitleEl.textContent = cfg.roleTitle;
-      }
-
+      strip.style.display = '';
       strip.innerHTML = `
-        <div style="background:${cfg.bg}; border:1.5px solid ${cfg.border}; border-radius:14px; padding:12px 16px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-          <div style="display:flex; align-items:flex-start; gap:12px; flex:1; min-width:260px;">
-            <div style="width:38px; height:38px; border-radius:10px; background:${cfg.badgeBg}; color:#ffffff; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px;">
-              <span class="material-symbols-outlined" style="font-size:20px;">${cfg.icon}</span>
-            </div>
-            <div>
-              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                <span style="font-size:10px; font-weight:800; letter-spacing:0.05em; padding:2px 8px; border-radius:999px; background:${cfg.badgeBg}; color:#ffffff;">
-                  ${cfg.roleTitle}
-                </span>
-                <span style="font-size:13px; font-weight:800; color:#0f172a;">${cfg.headline}</span>
-              </div>
-              <p style="font-size:11.5px; color:#334155; margin:4px 0 0 0; line-height:1.45;">
-                ${cfg.desc}
-              </p>
-            </div>
+        <div style="background:linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border:1px solid #c4b5fd; border-radius:10px; padding:8px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; font-size:12px;">
+          <div style="display:flex; align-items:center; gap:8px; color:#4c1d95;">
+            <span class="material-symbols-outlined" style="font-size:18px; color:#6d28d9;">visibility</span>
+            <span><b>Mode Pratinjau Super Admin:</b> Anda sedang melihat tampilan untuk role <b>${roleSubtitles[activeRole] || activeRole}</b>.</span>
           </div>
+          <button
+            id="btn-reset-superadmin-role"
+            type="button"
+            style="background:#6d28d9; color:#ffffff; border:0; border-radius:6px; padding:4px 10px; font-size:11px; font-weight:700; cursor:pointer;"
+          >
+            Kembali ke Tampilan Super Admin
+          </button>
         </div>
       `;
+      var btnResetRole = document.getElementById('btn-reset-superadmin-role');
+      if (btnResetRole) {
+        btnResetRole.onclick = function () {
+          window.ArbaStore.setRole('super-admin');
+        };
+      }
     },
 
     // Header interaction handling
@@ -380,11 +336,16 @@
         });
       }
 
-      // Online status toggle button
+      // Online status indicator button
       var onlineBtn = document.getElementById('header-online-btn');
       if (onlineBtn) {
         onlineBtn.addEventListener('click', function () {
-          window.ArbaStore.toggleOnlineStatus();
+          var st = window.ArbaStore.getState();
+          if (st.currentUser && st.currentUser.role === 'super-admin') {
+            window.ArbaStore.toggleOnlineStatus();
+          } else {
+            window.ArbaStore.syncNow();
+          }
         });
       }
 
@@ -459,23 +420,28 @@
         }
       }
 
-      // User profile pill click -> Open RBAC Profile & Account Switcher Modal
+      // User profile pill click -> Untuk user selain Super Admin, langsung masuk ke halaman user-profile-settings
       var profilePill = document.getElementById('header-profile-pill');
       if (profilePill) {
         profilePill.addEventListener('click', function () {
+          var st = window.ArbaStore.getState();
+          if (st.currentUser && st.currentUser.role !== 'super-admin') {
+            self.navigate('user-profile-settings');
+            return;
+          }
           if (window.ArbaAuth && typeof window.ArbaAuth.openProfileModal === 'function') {
             window.ArbaAuth.openProfileModal();
           } else {
-            var role = window.ArbaStore.getState().currentRole;
-            self.showToast(`Login sebagai: ${role.toUpperCase()} (CV Arba'in Logistik)`, 'account_circle');
+            self.navigate('user-profile-settings');
           }
         });
       }
 
-      // Header Logout / Switch Role button -> Open Full Login Portal
+      // Header Logout button -> Langsung Logout sesi & kembali ke Halaman Login Resmi
       var logoutBtn = document.getElementById('header-logout-btn');
       if (logoutBtn) {
         logoutBtn.addEventListener('click', function () {
+          window.ArbaStore.logoutUser();
           if (window.ArbaAuth && typeof window.ArbaAuth.showLoginPortal === 'function') {
             window.ArbaAuth.showLoginPortal();
           }
@@ -611,11 +577,11 @@
       var profileAvatar = document.getElementById('header-profile-avatar');
       if (profilePill) {
         var roleLabelMap = {
-          'super-admin': ['Farid Super Administrator', 'Super Admin & RBAC Manager'],
-          'executive': ['H. Ahmad Zaini, S.E.', 'Direktur & Manajemen (6 Pilar)'],
-          'inventory': ['Slamet Riadi', 'Kepala Gudang & Stok FEFO'],
-          'sales-ops': ['Dewi Sartika, S.Ak.', 'Koordinator Admin Penjualan'],
-          'field-sales': [state.currentSalesRep || 'Budi Santoso', 'Sales Lapangan (Mobile PWA)']
+          'super-admin': ['Farid Super Administrator', 'Super Administrator Sistem'],
+          'executive': ['H. Ahmad Zaini, S.E.', 'Direktur Operasional & Manajemen'],
+          'inventory': ['Slamet Riadi', 'Kepala Gudang & Logistik FEFO'],
+          'sales-ops': ['Dewi Sartika, S.Ak.', 'Koordinator Administrasi Penjualan'],
+          'field-sales': [state.currentSalesRep || 'Budi Santoso', 'Personel Distribusi Sales Lapangan']
         };
         var labels = state.currentUser
           ? [state.currentUser.name, state.currentUser.title]

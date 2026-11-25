@@ -117,23 +117,21 @@
 
               <button
                 id="btn-qr-batch-modal"
-                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors cursor-pointer border"
-                style="background:#ecfdf5; color:#047857; border-color:#a7f3d0;"
+                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
                 type="button"
                 title="Scan QR Botol/Karton atau Cetak Stiker Nomor Batch Gudang"
               >
-                <span class="material-symbols-outlined text-[15px]">qr_code_scanner</span>
+                <span class="material-symbols-outlined text-[15px] text-primary">qr_code_scanner</span>
                 <span>Scan &amp; Cetak Stiker QR</span>
               </button>
 
               <button
                 id="btn-chain-audit-modal"
-                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors cursor-pointer border"
-                style="background:#f5f3ff; color:#6d28d9; border-color:#ddd6fe;"
+                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
                 type="button"
                 title="Periksa Keaslian Catatan Keluar-Masuk Stok & Cetak Sertifikat Audit CDOB"
               >
-                <span class="material-symbols-outlined text-[15px]">verified_user</span>
+                <span class="material-symbols-outlined text-[15px] text-emerald-600">verified_user</span>
                 <span>Cek Keaslian Stok (CDOB)</span>
               </button>
 
@@ -642,20 +640,20 @@
           </div>
         </section>
 
-        <!-- SECTION 1B: Kontrol Barang Bawaan Sales dari Gudang (Ambil Gudang Pagi vs Laku di Apotek vs Kembali ke Gudang — Anti-Fraud) -->
+        <!-- SECTION 1B: Rekonsiliasi Manifest Barang Bawaan Armada Sales -->
         <section class="flex flex-col gap-space-md bg-surface-container-lowest p-space-lg rounded-xl shadow-xs border border-border-subtle/40">
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md">
             <div>
               <div class="flex items-center gap-2">
                 <h2 class="font-headline-md text-headline-md text-on-surface font-bold text-lg">
-                  Kontrol Barang Bawaan Sales Keliling (Ambil Gudang vs Laku Apotek vs Kembali Gudang)
+                  Rekonsiliasi Manifest Barang Bawaan Armada Sales (Pengambilan vs Penyerahan vs Pengembalian)
                 </h2>
-                <span class="px-2 py-0.5 rounded-full text-xs font-bold" style="background:#fff7ed; color:#c2410c; border:1px solid #fb923c;">
-                  Anti-Fraud Gudang
+                <span class="badge badge-warning">
+                  Audit Manifest Kanvas
                 </span>
               </div>
               <p class="font-body-sm text-body-sm text-on-surface-variant text-xs">
-                Mencegah selisih barang bawaan sales (contoh: ambil 15 dari gudang, masuk kantor 12, selisih 3 langsung terdeteksi otomatis)
+                Memverifikasi kesesuaian kuantitas fisik produk yang dibawa personel sales saat keberangkatan dengan bukti penyerahan outlet dan sisa pengembalian ke gudang.
               </p>
             </div>
             <button
@@ -664,7 +662,7 @@
               class="px-3.5 py-2 rounded-lg bg-primary text-white text-xs font-semibold cursor-pointer border-0 flex items-center gap-1.5 shrink-0"
             >
               <span class="material-symbols-outlined text-[16px]">local_shipping</span>
-              <span>+ Catat Sales Ambil Barang Gudang</span>
+              <span>+ Catat Pengeluaran Manifest Sales</span>
             </button>
           </div>
 
@@ -672,44 +670,42 @@
             ${salesLoadings.map(function (ld) {
               var hasDiscrepancy = ld.status === 'SELISIH_AUDIT' || (ld.items || []).some(function (i) { return i.discrepancy > 0; });
               var isKlop = ld.status === 'TERVERIFIKASI_KLOP' && !hasDiscrepancy;
-              var badgeBg = hasDiscrepancy ? '#fef2f2' : (isKlop ? '#ecfdf5' : '#fffbeb');
-              var badgeBorder = hasDiscrepancy ? '#f87171' : (isKlop ? '#34d399' : '#fbbf24');
-              var badgeColor = hasDiscrepancy ? '#b91c1c' : (isKlop ? '#047857' : '#92400e');
-              var badgeLabel = hasDiscrepancy ? '⚠ SELISIH TERDETEKSI' : (isKlop ? '✓ KEMBALI GUDANG KLOP' : 'SEDANG KELILING');
+              var badgeCls = hasDiscrepancy ? 'badge-danger' : (isKlop ? 'badge-success' : 'badge-warning');
+              var badgeLabel = hasDiscrepancy ? '⚠ SELISIH AUDIT' : (isKlop ? '✓ TERVERIFIKASI SESUAI' : 'DALAM PERJALANAN');
 
               return `
-                <div class="rounded-xl p-4 flex flex-col justify-between gap-3" style="background:${badgeBg}; border:1.5px solid ${badgeBorder};">
+                <div class="rounded-xl p-4 flex flex-col justify-between gap-3 bg-surface-container-low border border-border-subtle">
                   <div>
-                    <div class="flex items-center justify-between gap-2 mb-1">
+                    <div class="flex items-center justify-between gap-2 mb-2">
                       <div>
-                        <div class="font-bold text-sm text-slate-900">${ld.salesRep}</div>
-                        <div class="text-[11px] text-slate-600">${ld.division} · ${ld.routeArea}</div>
+                        <div class="font-bold text-sm text-on-surface">${ld.salesRep}</div>
+                        <div class="text-[11px] text-on-surface-variant">${ld.division} · ${ld.routeArea}</div>
                       </div>
-                      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold" style="background:#fff; color:${badgeColor}; border:1px solid ${badgeBorder};">
+                      <span class="badge ${badgeCls}">
                         ${badgeLabel}
                       </span>
                     </div>
 
                     ${ld.auditNote ? `
-                      <div class="p-2 rounded-lg text-[11px] font-semibold mb-2" style="background:#fee2e2; color:#991b1b;">
+                      <div class="p-2 rounded-lg text-[11px] font-semibold mb-2 bg-status-danger-bg text-status-danger-text">
                         ${ld.auditNote}
                       </div>
                     ` : ''}
 
-                    <div class="bg-white/90 rounded-lg p-2.5 space-y-1.5 border border-slate-200/80 text-xs">
-                      <div class="grid grid-cols-12 text-[10px] font-bold text-slate-500 uppercase pb-1 border-b border-slate-200">
+                    <div class="bg-surface-container-lowest rounded-lg p-2.5 space-y-1.5 border border-border-subtle text-xs">
+                      <div class="grid grid-cols-12 text-[10px] font-bold text-on-surface-variant uppercase pb-1 border-b border-border-subtle">
                         <span class="col-span-5">SKU Produk</span>
-                        <span class="col-span-2 text-center">Ambil</span>
-                        <span class="col-span-2 text-center">Drop</span>
+                        <span class="col-span-2 text-center">Kuota</span>
+                        <span class="col-span-2 text-center">Diserahkan</span>
                         <span class="col-span-3 text-right">Kembali</span>
                       </div>
                       ${(ld.items || []).map(function (it) {
                         return `
-                          <div class="grid grid-cols-12 items-center text-[11px] text-slate-800">
+                          <div class="grid grid-cols-12 items-center text-[11px] text-on-surface">
                             <span class="col-span-5 font-semibold truncate" title="${it.name}">${it.name}</span>
                             <span class="col-span-2 text-center font-mono font-bold">${it.loadedQty}</span>
-                            <span class="col-span-2 text-center font-mono text-emerald-700 font-bold">${it.droppedQty}</span>
-                            <span class="col-span-3 text-right font-mono font-bold ${it.discrepancy > 0 ? 'text-rose-600' : 'text-slate-800'}">
+                            <span class="col-span-2 text-center font-mono text-emerald-600 font-bold">${it.droppedQty}</span>
+                            <span class="col-span-3 text-right font-mono font-bold ${it.discrepancy > 0 ? 'text-rose-600' : 'text-on-surface'}">
                               ${it.returnedQty}${it.discrepancy > 0 ? ` (-${it.discrepancy}!)` : ''}
                             </span>
                           </div>
@@ -719,14 +715,13 @@
                   </div>
 
                   <div class="flex items-center justify-between pt-1 text-xs">
-                    <span class="text-slate-700">Setoran Tagihan: <b class="text-slate-900">${window.ArbaUtils.formatRupiah(ld.cashCollected)}</b></span>
+                    <span class="text-on-surface-variant">Nilai Penagihan: <b class="text-on-surface">${window.ArbaUtils.formatRupiah(ld.cashCollected)}</b></span>
                     <button
                       type="button"
-                      class="btn-reconcile-load px-2.5 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer border-0"
-                      style="background:#005c55; color:#fff;"
+                      class="btn-reconcile-load px-2.5 py-1.5 rounded-lg bg-primary hover:bg-primary-container text-white text-[11px] font-semibold cursor-pointer border-0"
                       data-load-id="${ld.id}"
                     >
-                      ${hasDiscrepancy ? 'Selesaikan Selisih & Klopkan' : 'Verifikasi Kembali Gudang'}
+                      ${hasDiscrepancy ? 'Rekonsiliasi Selisih Fisik' : 'Verifikasi Pengembalian'}
                     </button>
                   </div>
                 </div>
@@ -1061,7 +1056,7 @@
           <div class="flex items-center gap-2.5">
             <span class="material-symbols-outlined text-primary text-[22px]">fact_check</span>
             <div>
-              <h3 class="font-bold text-sm text-on-surface">Rekonsiliasi Sisa Barang Bawaan Sales (Anti-Fraud Sore)</h3>
+              <h3 class="font-bold text-sm text-on-surface">Formulir Rekonsiliasi Pengembalian Manifest Sales</h3>
               <p class="text-[11px] text-on-surface-variant">${loadRec.salesRep} (${loadRec.division}) • ${loadRec.id}</p>
             </div>
           </div>
@@ -1073,7 +1068,7 @@
         <form id="form-reconcile-loading">
           <div class="modal-body text-xs space-y-3">
             <div class="p-2.5 rounded-lg bg-surface-container-low border border-border-subtle/50 text-on-surface-variant">
-              Masukkan jumlah fisik barang yang dikembalikan sales ke gudang sore ini. Jika jumlah fisik yang kembali kurang dari <b>Wajib Kembali (Bawa Pagi - Laku Apotek)</b>, sistem otomatis menandai <b>SELISIH AUDIT</b>.
+              Masukkan kuantitas fisik produk yang dikembalikan ke gudang. Apabila terdapat perbedaan terhadap saldo seharusnya (<b>Kuota Awal dikurangi Penyerahan Outlet</b>), sistem secara otomatis mencatat status <b>Selisih Audit</b>.
             </div>
 
             <div class="overflow-x-auto rounded-lg border border-border-subtle/50">
@@ -1081,9 +1076,9 @@
                 <thead>
                   <tr class="bg-surface-container-low text-on-surface-variant text-[10px] uppercase">
                     <th class="p-2">Produk Herbal</th>
-                    <th class="p-2 text-center">Bawa Pagi</th>
-                    <th class="p-2 text-center">Laku Apotek</th>
-                    <th class="p-2 text-center">Wajib Kembali</th>
+                    <th class="p-2 text-center">Kuota Awal</th>
+                    <th class="p-2 text-center">Diserahkan ke Outlet</th>
+                    <th class="p-2 text-center">Saldo Seharusnya</th>
                     <th class="p-2 text-center">Fisik Kembali (Unit)</th>
                   </tr>
                 </thead>
@@ -1124,11 +1119,11 @@
               id="btn-reconcile-auto-klop"
               class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer border-0"
             >
-              Set Semua Sesuai &amp; Klop 100%
+              Verifikasi Seluruh Kuantitas Sesuai (100%)
             </button>
             <div class="flex items-center gap-2">
               <button type="button" class="btn btn-outline" onclick="window.ArbaApp.closeModal()">Batal</button>
-              <button type="submit" class="btn btn-primary">Simpan Hasil Hitung Fisik</button>
+              <button type="submit" class="btn btn-primary">Simpan Hasil Rekonsiliasi</button>
             </div>
           </div>
         </form>
@@ -1172,8 +1167,8 @@
           <div class="flex items-center gap-2.5">
             <span class="material-symbols-outlined text-primary text-[20px]">local_shipping</span>
             <div>
-              <h3 class="font-bold text-sm text-on-surface">Catat Pengambilan Barang Sales dari Gudang</h3>
-              <p class="text-[11px] text-on-surface-variant">Pencatatan stok yang dibawa sales keliling (wajib klop saat kembali sore)</p>
+              <h3 class="font-bold text-sm text-on-surface">Pencatatan Pengeluaran Manifest Sales dari Gudang</h3>
+              <p class="text-[11px] text-on-surface-variant">Pencatatan inventaris gudang yang dibawa personel sales untuk distribusi lapangan</p>
             </div>
           </div>
           <button class="icon-btn" onclick="window.ArbaApp.closeModal()">
