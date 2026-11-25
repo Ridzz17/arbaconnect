@@ -622,6 +622,33 @@
                   </div>
                 </div>
 
+                <!-- Peta Lokasi Nyata Mitra Apotek (Leaflet + OpenStreetMap + Google Maps Directions) -->
+                ${(function () {
+                  var coords = window.ArbaStore.getOutletCoordinates ? window.ArbaStore.getOutletCoordinates(selectedOutlet) : { lat: selectedOutlet.lat || -7.5682, lng: selectedOutlet.lng || 110.8091 };
+                  var hq = window.ArbaStore.warehouseHq || { lat: -7.5561, lng: 110.7422 };
+                  var gmapsDirUrl = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(hq.lat + ',' + hq.lng) + '&destination=' + encodeURIComponent(coords.lat + ',' + coords.lng) + '&travelmode=driving';
+                  var gmapsPlaceUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(coords.lat + ',' + coords.lng);
+                  return `
+                    <div class="rounded-xl overflow-hidden border border-border-subtle bg-surface-container-low">
+                      <div class="px-3 py-2 flex items-center justify-between text-[11px] border-b border-border-subtle">
+                        <span class="font-bold text-on-surface flex items-center gap-1">
+                          <span class="material-symbols-outlined text-[15px] text-primary">location_on</span>
+                          <span>Peta Lokasi Mitra (<span class="font-mono">${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}</span>)</span>
+                        </span>
+                        <div class="flex items-center gap-1.5">
+                          <a href="${gmapsPlaceUrl}" target="_blank" rel="noreferrer" class="text-primary hover:underline font-semibold">Google Maps</a>
+                          <span>·</span>
+                          <a href="${gmapsDirUrl}" target="_blank" rel="noreferrer" class="text-emerald-700 hover:underline font-bold flex items-center gap-0.5">
+                            <span class="material-symbols-outlined text-[13px]">directions</span>
+                            <span>Rute</span>
+                          </a>
+                        </div>
+                      </div>
+                      <div id="crm-drawer-leaflet-map" data-lat="${coords.lat}" data-lng="${coords.lng}" data-name="${window.ArbaUtils.escapeHtml(selectedOutlet.name)}" data-addr="${window.ArbaUtils.escapeHtml(selectedOutlet.address + ', ' + selectedOutlet.cityName)}" style="width:100%; height:165px; z-index:1; background:#e2e8f0;"></div>
+                    </div>
+                  `;
+                })()}
+
                 <!-- Omset Performa Snapshot & Chart Widget -->
                 <div class="bg-surface-container-low p-space-md rounded-lg flex flex-col gap-space-sm border border-border-subtle/30 p-3">
                   <div class="flex items-center justify-between">
@@ -998,8 +1025,72 @@
       });
     });
 
-    // Drawer buttons
+    // Drawer buttons & Real Leaflet Mini-Map with Road Route from Gudang Kartasura
     if (selectedOutlet) {
+      var drawerMapEl = container.querySelector('#crm-drawer-leaflet-map');
+      if (drawerMapEl && typeof window.L !== 'undefined') {
+        try {
+          if (window.__arbaCrmDrawerMap) {
+            try { window.__arbaCrmDrawerMap.remove(); } catch (e) {}
+            window.__arbaCrmDrawerMap = null;
+          }
+          var dLat = Number(drawerMapEl.getAttribute('data-lat')) || -7.5682;
+          var dLng = Number(drawerMapEl.getAttribute('data-lng')) || 110.8091;
+          var dName = drawerMapEl.getAttribute('data-name') || selectedOutlet.name;
+          var dAddr = drawerMapEl.getAttribute('data-addr') || selectedOutlet.address;
+          var hq = window.ArbaStore.warehouseHq || { lat: -7.5561, lng: 110.7422, name: 'Gudang Kartasura' };
+
+          var dMap = window.L.map(drawerMapEl, {
+            center: [dLat, dLng],
+            zoom: 14,
+            zoomControl: true
+          });
+          window.__arbaCrmDrawerMap = dMap;
+          window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+          }).addTo(dMap);
+
+          var hqPin = window.L.divIcon({
+            className: 'crm-hq-pin',
+            html: '<div style="width:24px;height:24px;border-radius:6px;background:#0284c7;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">HQ</div>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          });
+          window.L.marker([hq.lat, hq.lng], { icon: hqPin }).addTo(dMap).bindPopup('<b>Gudang Utama Kartasura</b>');
+
+          var pin = window.L.divIcon({
+            className: 'crm-drawer-pin',
+            html: '<div style="width:28px;height:28px;border-radius:50%;background:#005c55;color:#fff;display:flex;align-items:center;justify-content:center;border:2.5px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,0.35);font-size:14px;">📍</div>',
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
+          });
+          window.L.marker([dLat, dLng], { icon: pin })
+            .addTo(dMap)
+            .bindPopup('<div style="font-size:11px;font-family:Inter,sans-serif;"><b>' + dName + '</b><br/>' + dAddr + '</div>');
+
+          var corridor = window.ArbaStore.computeCorridorRoadPath
+            ? window.ArbaStore.computeCorridorRoadPath(hq, { lat: dLat, lng: dLng })
+            : { waypoints: [[hq.lat, hq.lng], [dLat, dLng]] };
+
+          var dLineCasing = window.L.polyline(corridor.waypoints, { color: '#ffffff', weight: 6, opacity: 0.9 }).addTo(dMap);
+          var dLine = window.L.polyline(corridor.waypoints, { color: '#005c55', weight: 3.5, opacity: 0.92 }).addTo(dMap);
+          dMap.fitBounds(dLine.getBounds().pad(0.18));
+
+          if (window.ArbaAdvanced && window.ArbaAdvanced.fetchRealRoadGeometryOsrm) {
+            window.ArbaAdvanced.fetchRealRoadGeometryOsrm([hq, { lat: dLat, lng: dLng }], function (osrmRes) {
+              if (osrmRes && osrmRes.latLngs && window.__arbaCrmDrawerMap === dMap) {
+                dLineCasing.setLatLngs(osrmRes.latLngs);
+                dLine.setLatLngs(osrmRes.latLngs);
+                dMap.fitBounds(dLine.getBounds().pad(0.15));
+              }
+            });
+          }
+
+          setTimeout(function () { dMap.invalidateSize(); }, 80);
+        } catch (err) {}
+      }
+
       var btnWa = container.querySelector('#btn-drawer-whatsapp');
       if (btnWa) {
         btnWa.addEventListener('click', function () {
@@ -1242,6 +1333,28 @@
                 <textarea id="new-address" required rows="2" placeholder="Jl. Raya No. XX, Kelurahan, Kecamatan..." class="bg-surface-container-low text-on-surface px-3 py-2 rounded-lg text-xs border border-border-subtle/50"></textarea>
               </div>
 
+              <!-- Peta Nyata Pemilihan Titik Koordinat GPS Apotek Baru (Leaflet + OpenStreetMap) -->
+              <div class="md:col-span-2 flex flex-col gap-1.5" style="grid-column: span 2 / span 2;">
+                <div class="flex items-center justify-between">
+                  <label class="font-semibold text-on-surface flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[16px] text-primary">pin_drop</span>
+                    <span>Titik Lokasi Peta Nyata (Klik pada Peta untuk Menentukan Lokasi Apotek)</span>
+                  </label>
+                  <span class="text-[11px] font-mono text-primary font-semibold" id="new-coords-display">-7.5682, 110.8091</span>
+                </div>
+                <div id="new-outlet-picker-map" style="width:100%; height:190px; border-radius:10px; border:1px solid var(--color-border-subtle); z-index:1; background:#e2e8f0;"></div>
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[11px] text-on-surface-variant">Latitude:</span>
+                    <input id="new-lat" type="number" step="0.00001" value="-7.56820" class="flex-1 bg-surface-container-low text-on-surface px-2.5 py-1.5 rounded-lg font-mono text-xs border border-border-subtle/50" />
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[11px] text-on-surface-variant">Longitude:</span>
+                    <input id="new-lng" type="number" step="0.00001" value="110.80910" class="flex-1 bg-surface-container-low text-on-surface px-2.5 py-1.5 rounded-lg font-mono text-xs border border-border-subtle/50" />
+                  </div>
+                </div>
+              </div>
+
               <div class="flex flex-col gap-1">
                 <label class="font-semibold text-on-surface">Termin Pembayaran Disepakati *</label>
                 <select id="new-terms" required class="bg-surface-container-low text-on-surface px-3 py-2 rounded-lg text-xs border border-border-subtle/50 cursor-pointer">
@@ -1274,11 +1387,73 @@
 
     setTimeout(function () {
       var form = document.getElementById('form-new-outlet');
+      var latInput = document.getElementById('new-lat');
+      var lngInput = document.getElementById('new-lng');
+      var citySelect = document.getElementById('new-city');
+      var coordsLabel = document.getElementById('new-coords-display');
+      var pickerMapEl = document.getElementById('new-outlet-picker-map');
+      var pickerMap = null;
+      var pickerMarker = null;
+
+      var cityCoords = {
+        Solo: { lat: -7.5682, lng: 110.8091 },
+        Sukoharjo: { lat: -7.6819, lng: 110.8408 },
+        Karanganyar: { lat: -7.5965, lng: 110.9461 },
+        Klaten: { lat: -7.7056, lng: 110.6015 },
+        Boyolali: { lat: -7.5305, lng: 110.5964 },
+        Sragen: { lat: -7.4272, lng: 111.0221 }
+      };
+
+      function updatePickerCoords(lat, lng, panMap) {
+        var fLat = Number(lat).toFixed(5);
+        var fLng = Number(lng).toFixed(5);
+        if (latInput) latInput.value = fLat;
+        if (lngInput) lngInput.value = fLng;
+        if (coordsLabel) coordsLabel.textContent = fLat + ', ' + fLng;
+        if (pickerMarker) pickerMarker.setLatLng([Number(fLat), Number(fLng)]);
+        if (panMap && pickerMap) pickerMap.setView([Number(fLat), Number(fLng)], 14);
+      }
+
+      if (pickerMapEl && typeof window.L !== 'undefined') {
+        try {
+          pickerMap = window.L.map(pickerMapEl, {
+            center: [-7.5682, 110.8091],
+            zoom: 13
+          });
+          window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+          }).addTo(pickerMap);
+          pickerMarker = window.L.marker([-7.5682, 110.8091], { draggable: true }).addTo(pickerMap);
+          pickerMarker.on('dragend', function (ev) {
+            var pos = ev.target.getLatLng();
+            updatePickerCoords(pos.lat, pos.lng, false);
+          });
+          pickerMap.on('click', function (ev) {
+            updatePickerCoords(ev.latlng.lat, ev.latlng.lng, false);
+          });
+          setTimeout(function () { pickerMap.invalidateSize(); }, 90);
+        } catch (err) {}
+      }
+
+      if (citySelect) {
+        citySelect.onchange = function (e) {
+          var c = cityCoords[e.target.value];
+          if (c) updatePickerCoords(c.lat, c.lng, true);
+        };
+      }
+
       if (form) {
         form.onsubmit = function (e) {
           e.preventDefault();
           var cityVal = document.getElementById('new-city').value;
           var limitVal = Number(document.getElementById('new-limit').value);
+          var latVal = latInput ? Number(latInput.value) : undefined;
+          var lngVal = lngInput ? Number(lngInput.value) : undefined;
+
+          if (pickerMap) {
+            try { pickerMap.remove(); } catch (err) {}
+          }
 
           window.ArbaStore.addOutlet({
             name: document.getElementById('new-name').value,
@@ -1287,6 +1462,8 @@
             picPhone: document.getElementById('new-phone').value,
             city: cityVal,
             cityName: cityVal === 'Solo' ? 'Surakarta' : cityVal,
+            lat: latVal,
+            lng: lngVal,
             salesRep: document.getElementById('new-sales').value,
             address: document.getElementById('new-address').value,
             terms: document.getElementById('new-terms').value,

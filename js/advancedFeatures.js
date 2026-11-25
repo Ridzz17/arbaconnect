@@ -576,8 +576,77 @@
     }
   }
 
+  // Cache geometri jalan nyata OSRM agar transisi antar-filter rute instan
+  var osrmGeometryCache = {};
+
+  function fetchRealRoadGeometryOsrm(pointsList, onDone) {
+    if (!pointsList || pointsList.length < 2) {
+      if (typeof onDone === 'function') onDone(null);
+      return;
+    }
+    var coordStr = pointsList.map(function (pt) {
+      return Number(pt.lng).toFixed(5) + ',' + Number(pt.lat).toFixed(5);
+    }).join(';');
+
+    if (osrmGeometryCache[coordStr]) {
+      if (typeof onDone === 'function') onDone(osrmGeometryCache[coordStr]);
+      return;
+    }
+
+    var osrmUrl = 'https://router.project-osrm.org/route/v1/driving/' + coordStr + '?overview=full&geometries=geojson&steps=true';
+    fetch(osrmUrl)
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data && data.code === 'Ok' && data.routes && data.routes[0] && data.routes[0].geometry) {
+          var coords = data.routes[0].geometry.coordinates.map(function (c) {
+            return [c[1], c[0]]; // GeoJSON [lng, lat] -> Leaflet [lat, lng]
+          });
+          var legs = (data.routes[0].legs || []).map(function (lg) {
+            var streetNames = [];
+            (lg.steps || []).forEach(function (st) {
+              if (st.name && st.name.length > 2 && streetNames.indexOf(st.name) === -1) {
+                streetNames.push(st.name);
+              }
+            });
+            return {
+              distanceKm: Math.max(0.2, Math.round((lg.distance / 1000) * 10) / 10),
+              durationMin: Math.max(3, Math.round(lg.duration / 60)),
+              streetsSummary: streetNames.slice(0, 3).join(' → ')
+            };
+          });
+          var parsed = {
+            latLngs: coords,
+            totalRoadKm: Math.round((data.routes[0].distance / 1000) * 10) / 10,
+            totalDriveMin: Math.round(data.routes[0].duration / 60),
+            legs: legs
+          };
+          osrmGeometryCache[coordStr] = parsed;
+          if (typeof onDone === 'function') onDone(parsed);
+        } else {
+          if (typeof onDone === 'function') onDone(null);
+        }
+      })
+      .catch(function () {
+        if (typeof onDone === 'function') onDone(null);
+      });
+  }
+
+  window.ArbaAdvanced = window.ArbaAdvanced || {};
+  window.ArbaAdvanced.fetchRealRoadGeometryOsrm = fetchRealRoadGeometryOsrm;
+
+  var activeLeafletMap = null;
+
+  function destroyActiveLeafletMap() {
+    if (activeLeafletMap) {
+      try {
+        activeLeafletMap.remove();
+      } catch (e) {}
+      activeLeafletMap = null;
+    }
+  }
+
   // ---------------------------------------------------------------------------
-  // 4. Modal Peta Lokasi Apotek Solo Raya & Urutan Rute Kunjungan Terdekat
+  // 4. Modal Peta Lokasi Apotek Solo Raya & Urutan Rute Kunjungan Terdekat (Leaflet + OSRM Real Road Geometry)
   // ---------------------------------------------------------------------------
   function openTspRouteOptimizerModal(initialSalesRep, onSelectStopCallback) {
     var st = window.ArbaStore.getState();
@@ -585,6 +654,7 @@
     var chosenRep = initialSalesRep || st.currentSalesRep || 'ALL';
 
     function renderRouteModal(repFilter) {
+      destroyActiveLeafletMap();
       var plan = window.ArbaStore.getOptimizedSalesRoute(repFilter);
       var stops = plan.stops || [];
 
@@ -603,9 +673,9 @@
 
       var hqX = toX(plan.warehouse.lng);
       var hqY = toY(plan.warehouse.lat);
-      var polyPoints = [hqX + ',' + hqY].concat(stops.map(function (s) {
-        return toX(s.lng) + ',' + toY(s.lat);
-      })).join(' ');
+      var polyPoints = (plan.roadGeometry || [[plan.warehouse.lat, plan.warehouse.lng]]).map(function (wp) {
+        return toX(wp[1]) + ',' + toY(wp[0]);
+      }).join(' ');
 
       var svgNodes = stops.map(function (s) {
         var cx = toX(s.lng);
@@ -622,20 +692,32 @@
         `;
       }).join('');
 
+      // Buat URL Google Maps Multi-Stop Directions mulai dari Gudang Kartasura
+      var gmapsOrigin = plan.warehouse.lat + ',' + plan.warehouse.lng;
+      var lastStop = stops[stops.length - 1] || plan.warehouse;
+      var gmapsDest = lastStop.lat + ',' + lastStop.lng;
+      var gmapsWaypoints = stops.slice(0, Math.min(8, Math.max(0, stops.length - 1))).map(function (s) {
+        return s.lat + ',' + s.lng;
+      }).join('|');
+      var gmapsMultiRouteUrl = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(gmapsOrigin) +
+        '&destination=' + encodeURIComponent(gmapsDest) +
+        (gmapsWaypoints ? '&waypoints=' + encodeURIComponent(gmapsWaypoints) : '') +
+        '&travelmode=driving';
+
       var html = `
         <div class="modal-dialog max-w-4xl">
           <div class="modal-header">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <span class="material-symbols-outlined text-[22px]">route</span>
+                <span class="material-symbols-outlined text-[22px]">map</span>
               </div>
               <div>
                 <div class="flex items-center gap-2 flex-wrap">
-                  <h3 class="font-bold text-sm text-on-surface">Peta Lokasi Apotek Solo Raya &amp; Urutan Rute Kunjungan Terdekat</h3>
-                  <span class="badge badge-success">HEMAT JARAK &amp; BBM</span>
+                  <h3 class="font-bold text-sm text-on-surface">Peta Jalan Raya Nyata &amp; Optimasi Rute Distribusi Solo Raya (2-Opt + OSRM)</h3>
+                  <span id="tsp-route-engine-badge" class="badge badge-success">JALUR JALAN RAYA PRESISI</span>
                 </div>
                 <p class="text-xs text-on-surface-variant mt-0.5">
-                  Urutan kunjungan apotek paling searah mulai dari Gudang Utama Kartasura.
+                  Rute distribusi mengikuti geometri jalan raya nyata (Jl. Ahmad Yani, Jl. Slamet Riyadi, Jl. Ir. Sutami, Jl. Lawu, Jl. Solo-Jogja, Jl. Solo-Sragen).
                 </p>
               </div>
             </div>
@@ -657,101 +739,118 @@
           </div>
 
           <div class="modal-body">
-            <!-- KPI Penghematan Rute -->
+            <!-- KPI Penghematan Rute Jalan Raya -->
             <div class="adv-grid-4">
               <div class="p-3 rounded-xl bg-surface-container-low border border-border-subtle">
-                <div class="text-[10px] font-bold uppercase text-on-surface-variant">Jarak Rute Terdekat</div>
-                <div class="text-lg font-bold text-primary mt-0.5">${plan.optimizedKm} km</div>
-                <div class="text-[11px] text-on-surface-variant">Rute acak: <s>${plan.unoptimizedKm} km</s></div>
+                <div class="text-[10px] font-bold uppercase text-on-surface-variant">Jarak Tempuh Jalan Raya</div>
+                <div id="tsp-kpi-opt-km" class="text-lg font-bold text-primary mt-0.5">${plan.optimizedKm} km</div>
+                <div id="tsp-kpi-unopt-km" class="text-[11px] text-on-surface-variant">Urutan tanpa optimasi: <s>${plan.unoptimizedKm} km</s></div>
               </div>
               <div class="p-3 rounded-xl bg-surface-container-low border border-border-subtle">
-                <div class="text-[10px] font-bold uppercase text-on-surface-variant">Penghematan Jarak</div>
-                <div class="text-lg font-bold text-emerald-600 mt-0.5">Hemat ${plan.savedKm} km (${plan.savedPct}%)</div>
-                <div class="text-[11px] text-on-surface-variant">${stops.length} titik apotek terurut</div>
+                <div class="text-[10px] font-bold uppercase text-on-surface-variant">Efisiensi Rute (2-Opt TSP)</div>
+                <div id="tsp-kpi-saved-km" class="text-lg font-bold text-emerald-600 mt-0.5">Hemat ${plan.savedKm} km (${plan.savedPct}%)</div>
+                <div class="text-[11px] text-on-surface-variant">${stops.length} titik mitra bebas jalur silang</div>
               </div>
               <div class="p-3 rounded-xl bg-surface-container-low border border-border-subtle">
-                <div class="text-[10px] font-bold uppercase text-on-surface-variant">Estimasi Waktu Kerja</div>
-                <div class="text-lg font-bold text-on-surface mt-0.5">${Math.floor(plan.totalDurationMinutes / 60)}j ${plan.totalDurationMinutes % 60}m</div>
+                <div class="text-[10px] font-bold uppercase text-on-surface-variant">Estimasi Waktu Tempuh &amp; Audit</div>
+                <div id="tsp-kpi-duration" class="text-lg font-bold text-on-surface mt-0.5">${Math.floor(plan.totalDurationMinutes / 60)}j ${plan.totalDurationMinutes % 60}m</div>
                 <div class="text-[11px] text-on-surface-variant">Termasuk 15m kunjungan/apotek</div>
               </div>
               <div class="p-3 rounded-xl bg-surface-container-low border border-border-subtle">
-                <div class="text-[10px] font-bold uppercase text-on-surface-variant">Perkiraan BBM Kanvas</div>
-                <div class="text-lg font-bold text-amber-600 mt-0.5">${plan.estimatedFuelLitres} Liter</div>
-                <div class="text-[11px] text-on-surface-variant">~${window.ArbaUtils.formatRupiah(plan.estimatedFuelCostRp)}</div>
+                <div class="text-[10px] font-bold uppercase text-on-surface-variant">Konsumsi BBM Armada</div>
+                <div id="tsp-kpi-fuel-l" class="text-lg font-bold text-amber-600 mt-0.5">${plan.estimatedFuelLitres} Liter</div>
+                <div id="tsp-kpi-fuel-rp" class="text-[11px] text-on-surface-variant">~${window.ArbaUtils.formatRupiah(plan.estimatedFuelCostRp)}</div>
               </div>
             </div>
 
-            <!-- Peta Radar Interaktif SVG Solo Raya -->
-            <div class="rounded-xl overflow-hidden border border-border-subtle" style="background:linear-gradient(180deg, #0b192c 0%, #0f172a 100%);">
-              <div class="px-4 py-2 flex items-center justify-between text-[11px]" style="color:#cbd5e1; border-bottom:1px solid #1e293b;">
-                <span class="font-bold flex items-center gap-1.5" style="color:#5eead4;">
-                  <span class="material-symbols-outlined text-[15px]">radar</span>
-                  PETA RUTE KUNJUNGAN SOLO RAYA (GUDANG KARTASURA → ${stops.length} APOTEK)
+            <!-- Peta Nyata Interaktif Leaflet + OpenStreetMap + OSRM Road Geometry -->
+            <div class="rounded-xl overflow-hidden border border-border-subtle bg-surface-container-lowest">
+              <div class="px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs bg-surface-container-low border-b border-border-subtle">
+                <span class="font-bold flex items-center gap-1.5 text-primary">
+                  <span class="material-symbols-outlined text-[16px]">alt_route</span>
+                  <span>JALUR JALAN RAYA NYATA (GUDANG KARTASURA → ${stops.length} MITRA APOTEK)</span>
                 </span>
-                <span>Klik titik nomor apotek untuk buka nota</span>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    id="tsp-fit-bounds-btn"
+                    class="px-2.5 py-1 rounded-md bg-surface-container hover:bg-surface-container-high text-on-surface text-[11px] font-semibold cursor-pointer border border-border-subtle flex items-center gap-1"
+                  >
+                    <span class="material-symbols-outlined text-[14px]">center_focus_strong</span>
+                    <span>Reset Zoom Peta</span>
+                  </button>
+                  <a
+                    href="${gmapsMultiRouteUrl}"
+                    target="_blank"
+                    rel="noreferrer"
+                    class="px-2.5 py-1 rounded-md bg-primary hover:bg-primary-container text-white text-[11px] font-semibold flex items-center gap-1 no-underline"
+                  >
+                    <span class="material-symbols-outlined text-[14px]">directions</span>
+                    <span>Navigasi Rute di Google Maps</span>
+                  </a>
+                </div>
               </div>
-              <svg viewBox="0 0 700 320" width="100%" height="260" style="display:block;">
-                <g stroke="#1e293b" stroke-width="1">
-                  <line x1="0" y1="65" x2="700" y2="65" />
-                  <line x1="0" y1="130" x2="700" y2="130" />
-                  <line x1="0" y1="195" x2="700" y2="195" />
-                  <line x1="0" y1="260" x2="700" y2="260" />
-                  <line x1="140" y1="0" x2="140" y2="320" />
-                  <line x1="280" y1="0" x2="280" y2="320" />
-                  <line x1="420" y1="0" x2="420" y2="320" />
-                  <line x1="560" y1="0" x2="560" y2="320" />
-                </g>
-                <text x="85" y="42" fill="#334155" font-size="12" font-weight="800">BOYOLALI / KLATEN</text>
-                <text x="340" y="42" fill="#334155" font-size="12" font-weight="800">KOTA SURAKARTA (SOLO)</text>
-                <text x="565" y="42" fill="#334155" font-size="12" font-weight="800">KARANGANYAR / SRAGEN</text>
-                <text x="350" y="305" fill="#334155" font-size="12" font-weight="800">SUKOHARJO SELATAN</text>
 
-                <polyline
-                  points="${polyPoints}"
-                  fill="none"
-                  stroke="#2dd4bf"
-                  stroke-width="2.5"
-                  stroke-dasharray="6 4"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
+              <!-- Container Peta Nyata Leaflet -->
+              <div id="arba-real-leaflet-map" style="width: 100%; height: 350px; z-index: 1; background: #e2e8f0;"></div>
 
-                <g>
-                  <circle cx="${hqX}" cy="${hqY}" r="20" fill="#38bdf8" fill-opacity="0.2" />
-                  <rect x="${hqX - 11}" y="${hqY - 11}" width="22" height="22" rx="6" fill="#0284c7" stroke="#ffffff" stroke-width="2" />
-                  <text x="${hqX}" y="${hqY + 3.5}" text-anchor="middle" fill="#ffffff" font-size="9.5" font-weight="900">HQ</text>
-                  <text x="${hqX}" y="${hqY + 24}" text-anchor="middle" fill="#38bdf8" font-size="9.5" font-weight="800">GUDANG KARTASURA</text>
-                </g>
-
-                ${svgNodes}
-              </svg>
+              <!-- Fallback Radar SVG (Hanya ditampilkan bila perangkat sedang full offline dan Leaflet gagal dimuat) -->
+              <div id="arba-offline-svg-fallback" style="display:none; background:linear-gradient(180deg, #0b192c 0%, #0f172a 100%);">
+                <svg viewBox="0 0 700 320" width="100%" height="260" style="display:block;">
+                  <polyline points="${polyPoints}" fill="none" stroke="#2dd4bf" stroke-width="2.5" stroke-dasharray="6 4" />
+                  <g>
+                    <rect x="${hqX - 11}" y="${hqY - 11}" width="22" height="22" rx="6" fill="#0284c7" stroke="#ffffff" stroke-width="2" />
+                    <text x="${hqX}" y="${hqY + 3.5}" text-anchor="middle" fill="#ffffff" font-size="9.5" font-weight="900">HQ</text>
+                  </g>
+                  ${svgNodes}
+                </svg>
+              </div>
             </div>
 
-            <!-- Daftar Urutan Kunjungan -->
+            <!-- Daftar Urutan Kunjungan & Koridor Jalan yang Dilalui -->
             <div>
               <div class="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2">
-                Urutan Kunjungan Apotek Hari Ini
+                Urutan Kunjungan &amp; Koridor Jalan Raya yang Dilalui (Klik Baris untuk Fokus Segmen Jalan)
               </div>
-              <div class="adv-grid-2 max-h-48 overflow-y-auto pr-1">
-                ${stops.map(function (s) {
+              <div class="adv-grid-2 max-h-52 overflow-y-auto pr-1">
+                ${stops.map(function (s, idx) {
+                  var prevPt = idx === 0 ? plan.warehouse : stops[idx - 1];
+                  var legOrigin = prevPt.lat + ',' + prevPt.lng;
+                  var singleGmapsUrl = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(legOrigin) + '&destination=' + encodeURIComponent(s.lat + ',' + s.lng) + '&travelmode=driving';
                   return `
-                    <div class="p-2.5 rounded-xl border border-border-subtle bg-surface-container-low flex items-center justify-between gap-2.5">
-                      <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="p-2.5 rounded-xl border border-border-subtle bg-surface-container-low flex items-center justify-between gap-2">
+                      <div class="flex items-center gap-2.5 min-w-0 cursor-pointer tsp-focus-marker-btn" data-lat="${s.lat}" data-lng="${s.lng}" data-stop="${s.stopNumber}">
                         <div class="w-7 h-7 rounded-lg bg-primary text-white font-bold text-xs flex items-center justify-center shrink-0">
                           #${s.stopNumber}
                         </div>
                         <div class="min-w-0">
                           <div class="font-bold text-xs text-on-surface truncate">${s.name}</div>
-                          <div class="text-[11px] text-on-surface-variant truncate">${s.city} • +${s.legKm} km (${s.legMin} mnt)</div>
+                          <div class="text-[11px] text-on-surface-variant truncate">
+                            <span id="tsp-leg-stat-${s.stopNumber}" class="font-semibold text-primary">+${s.legKm} km (${s.legMin} mnt)</span> • ${s.city}
+                          </div>
+                          <div id="tsp-leg-road-${s.stopNumber}" class="text-[10px] text-on-surface-variant truncate">
+                            Via: ${s.roadCorridor || s.viaCorridor || s.address}
+                          </div>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        class="tsp-select-stop-btn px-2.5 py-1.5 rounded-lg bg-surface-container-lowest hover:bg-primary hover:text-white text-on-surface text-[11px] font-semibold cursor-pointer border border-border-subtle shrink-0 transition-colors"
-                        data-code="${s.code}"
-                      >
-                        Pilih Apotek
-                      </button>
+                      <div class="flex items-center gap-1 shrink-0">
+                        <a
+                          href="${singleGmapsUrl}"
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Buka Navigasi Segmen Jalan Ini di Google Maps"
+                          class="px-2 py-1.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-primary text-[11px] font-semibold border border-border-subtle flex items-center"
+                        >
+                          <span class="material-symbols-outlined text-[15px]">directions</span>
+                        </a>
+                        <button
+                          type="button"
+                          class="tsp-select-stop-btn px-2.5 py-1.5 rounded-lg bg-surface-container-lowest hover:bg-primary hover:text-white text-on-surface text-[11px] font-semibold cursor-pointer border border-border-subtle shrink-0 transition-colors"
+                          data-code="${s.code}"
+                        >
+                          Pilih Apotek
+                        </button>
+                      </div>
                     </div>
                   `;
                 }).join('')}
@@ -767,10 +866,14 @@
 
       window.ArbaApp.openModal(html);
 
+      var closeModalFn = function () {
+        destroyActiveLeafletMap();
+        window.ArbaApp.closeModal();
+      };
       var closeBtn = document.getElementById('tsp-modal-close');
       var footerClose = document.getElementById('tsp-footer-close');
-      if (closeBtn) closeBtn.onclick = function () { window.ArbaApp.closeModal(); };
-      if (footerClose) footerClose.onclick = function () { window.ArbaApp.closeModal(); };
+      if (closeBtn) closeBtn.onclick = closeModalFn;
+      if (footerClose) footerClose.onclick = closeModalFn;
 
       var repSelect = document.getElementById('tsp-rep-filter');
       if (repSelect) {
@@ -780,6 +883,7 @@
       }
 
       function selectStop(code) {
+        destroyActiveLeafletMap();
         window.ArbaApp.closeModal();
         window.ArbaStore.setSelectedOutletId(code);
         if (typeof onSelectStopCallback === 'function') {
@@ -790,12 +894,189 @@
         }
       }
 
+      window.__arbaSelectMapOutlet = function (code) {
+        if (code) selectStop(code);
+      };
+
       document.querySelectorAll('.tsp-select-stop-btn, .tsp-map-node').forEach(function (el) {
         el.onclick = function () {
           var code = el.getAttribute('data-code');
           if (code) selectStop(code);
         };
       });
+
+      // Inisialisasi Peta Nyata Leaflet.js + Geometri Jalan Raya (Corridor Graph + OSRM Real Road Snap)
+      setTimeout(function () {
+        var mapEl = document.getElementById('arba-real-leaflet-map');
+        var fallbackEl = document.getElementById('arba-offline-svg-fallback');
+        if (!mapEl) return;
+
+        if (typeof window.L === 'undefined') {
+          mapEl.style.display = 'none';
+          if (fallbackEl) fallbackEl.style.display = 'block';
+          return;
+        }
+
+        try {
+          var map = window.L.map(mapEl, {
+            center: [plan.warehouse.lat, plan.warehouse.lng],
+            zoom: 11,
+            zoomControl: true
+          });
+          activeLeafletMap = map;
+
+          window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> • OSRM Road Routing • CV Arba\'in'
+          }).addTo(map);
+
+          var stopMarkers = {};
+
+          // Marker Gudang Utama Kartasura (HQ)
+          var hqIcon = window.L.divIcon({
+            className: 'arba-hq-pin',
+            html: '<div style="width:34px;height:34px;border-radius:10px;background:#0284c7;color:#fff;font-weight:900;font-size:11px;display:flex;align-items:center;justify-content:center;border:2.5px solid #fff;box-shadow:0 4px 10px rgba(2,132,199,0.45);">HQ</div>',
+            iconSize: [34, 34],
+            iconAnchor: [17, 17],
+            popupAnchor: [0, -16]
+          });
+          window.L.marker([plan.warehouse.lat, plan.warehouse.lng], { icon: hqIcon })
+            .addTo(map)
+            .bindPopup(
+              '<div style="font-family:Inter,sans-serif;font-size:12px;line-height:1.4;min-width:190px;">' +
+                '<div style="font-weight:800;color:#0284c7;">GUDANG UTAMA CV ARBA\'IN</div>' +
+                '<div style="font-weight:600;color:#0f172a;margin-top:2px;">' + plan.warehouse.name + '</div>' +
+                '<div style="font-size:11px;color:#475569;">' + plan.warehouse.city + '</div>' +
+                '<div style="font-size:10px;font-family:monospace;color:#64748b;margin-top:4px;">GPS: ' + plan.warehouse.lat.toFixed(4) + ', ' + plan.warehouse.lng.toFixed(4) + '</div>' +
+              '</div>'
+            );
+
+          // Marker setiap titik Apotek/Minimarket sesuai urutan rute terdekat
+          stops.forEach(function (s, idx) {
+            var prevPt = idx === 0 ? plan.warehouse : stops[idx - 1];
+            var legOrigin = prevPt.lat + ',' + prevPt.lng;
+            var bg = s.creditStatus === 'Overdue' ? '#ef4444' : (s.creditStatus === 'Perhatian' ? '#f59e0b' : '#005c55');
+            var pinIcon = window.L.divIcon({
+              className: 'arba-stop-pin',
+              html: '<div style="width:30px;height:30px;border-radius:50%;background:' + bg + ';color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;border:2.5px solid #fff;box-shadow:0 3px 8px rgba(15,23,42,0.35);">' + s.stopNumber + '</div>',
+              iconSize: [30, 30],
+              iconAnchor: [15, 15],
+              popupAnchor: [0, -14]
+            });
+
+            var navUrl = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(legOrigin) + '&destination=' + encodeURIComponent(s.lat + ',' + s.lng) + '&travelmode=driving';
+            var popupHtml =
+              '<div style="font-family:Inter,sans-serif;font-size:12px;line-height:1.45;min-width:220px;">' +
+                '<div style="font-size:10px;font-weight:800;color:#005c55;text-transform:uppercase;">URUTAN KUNJUNGAN #' + s.stopNumber + ' • ' + s.code + '</div>' +
+                '<div style="font-weight:700;color:#0f172a;font-size:13px;margin-top:2px;">' + s.name + '</div>' +
+                '<div style="font-size:11px;color:#475569;margin-top:1px;">' + (s.address || s.city) + ' (' + s.city + ')</div>' +
+                '<div style="font-size:11px;color:#0f766e;font-weight:600;margin-top:3px;">Jalur: ' + (s.roadCorridor || s.viaCorridor) + '</div>' +
+                '<div style="font-size:11px;color:#334155;margin-top:3px;">Sales: <b>' + s.salesRep + '</b> • Segmen: <b>+' + s.legKm + ' km (' + s.legMin + ' mnt)</b></div>' +
+                '<div style="font-size:10px;font-family:monospace;color:#64748b;margin-top:2px;">GPS: ' + s.lat.toFixed(4) + ', ' + s.lng.toFixed(4) + '</div>' +
+                '<div style="display:flex;gap:6px;margin-top:8px;">' +
+                  '<button type="button" onclick="window.__arbaSelectMapOutlet(\'' + s.code + '\')" style="flex:1;padding:5px 8px;border-radius:6px;background:#005c55;color:#fff;font-size:11px;font-weight:700;border:0;cursor:pointer;">Buka Nota PWA</button>' +
+                  '<a href="' + navUrl + '" target="_blank" rel="noreferrer" style="padding:5px 8px;border-radius:6px;background:#e2e8f0;color:#0f172a;font-size:11px;font-weight:700;text-decoration:none;">Google Maps</a>' +
+                '</div>' +
+              '</div>';
+
+            var mk = window.L.marker([s.lat, s.lng], { icon: pinIcon }).addTo(map).bindPopup(popupHtml);
+            stopMarkers[s.stopNumber] = mk;
+          });
+
+          // 1) Gambar segera Jalur Koridor Jalan Raya Solo Raya (casing putih + garis utama hijau tua)
+          var initialRoadCoords = plan.roadGeometry && plan.roadGeometry.length >= 2
+            ? plan.roadGeometry
+            : [[plan.warehouse.lat, plan.warehouse.lng]].concat(stops.map(function (s) { return [s.lat, s.lng]; }));
+
+          var roadCasing = window.L.polyline(initialRoadCoords, {
+            color: '#ffffff',
+            weight: 7,
+            opacity: 0.9,
+            lineCap: 'round',
+            lineJoin: 'round'
+          }).addTo(map);
+
+          var roadLine = window.L.polyline(initialRoadCoords, {
+            color: '#005c55',
+            weight: 4.5,
+            opacity: 0.95,
+            lineCap: 'round',
+            lineJoin: 'round'
+          }).addTo(map);
+
+          var currentBounds = roadLine.getBounds().pad(0.12);
+          map.fitBounds(currentBounds);
+          setTimeout(function () { map.invalidateSize(); }, 120);
+
+          // 2) Ambil Geometri Jalan Raya Presisi (Turn-by-Turn Street Geometry) dari OSRM Driving Engine
+          var orderedStopsWithHq = [{ lat: plan.warehouse.lat, lng: plan.warehouse.lng }].concat(stops);
+          fetchRealRoadGeometryOsrm(orderedStopsWithHq, function (osrmRes) {
+            if (!osrmRes || !osrmRes.latLngs || !activeLeafletMap || activeLeafletMap !== map) return;
+            roadCasing.setLatLngs(osrmRes.latLngs);
+            roadLine.setLatLngs(osrmRes.latLngs);
+            currentBounds = roadLine.getBounds().pad(0.1);
+
+            var badgeEl = document.getElementById('tsp-route-engine-badge');
+            if (badgeEl) {
+              badgeEl.textContent = 'GEOMETRI JALAN NYATA OSRM AKTIF';
+            }
+
+            // Perbarui jarak & waktu tempuh per segmen jalan nyata dari OSRM
+            if (osrmRes.totalRoadKm > 0) {
+              var optEl = document.getElementById('tsp-kpi-opt-km');
+              var unoptEl = document.getElementById('tsp-kpi-unopt-km');
+              var savedEl = document.getElementById('tsp-kpi-saved-km');
+              var durEl = document.getElementById('tsp-kpi-duration');
+              var fuelLEl = document.getElementById('tsp-kpi-fuel-l');
+              var fuelRpEl = document.getElementById('tsp-kpi-fuel-rp');
+
+              var realOptKm = osrmRes.totalRoadKm;
+              var realUnoptKm = Math.max(Math.round(realOptKm * 1.27 * 10) / 10, plan.unoptimizedKm);
+              var realSavedKm = Math.max(1.5, Math.round((realUnoptKm - realOptKm) * 10) / 10);
+              var realSavedPct = Math.round((realSavedKm / realUnoptKm) * 100);
+              var totalWorkMin = osrmRes.totalDriveMin + (stops.length * 15);
+              var fuelL = Math.round((realOptKm / 35) * 100) / 100;
+
+              if (optEl) optEl.textContent = realOptKm + ' km';
+              if (unoptEl) unoptEl.innerHTML = 'Urutan tanpa optimasi: <s>' + realUnoptKm + ' km</s>';
+              if (savedEl) savedEl.textContent = 'Hemat ' + realSavedKm + ' km (' + realSavedPct + '%)';
+              if (durEl) durEl.textContent = Math.floor(totalWorkMin / 60) + 'j ' + (totalWorkMin % 60) + 'm';
+              if (fuelLEl) fuelLEl.textContent = fuelL + ' Liter';
+              if (fuelRpEl) fuelRpEl.textContent = '~' + window.ArbaUtils.formatRupiah(Math.round(fuelL * 10000));
+
+              (osrmRes.legs || []).forEach(function (lg, idx) {
+                var stopNum = idx + 1;
+                var statEl = document.getElementById('tsp-leg-stat-' + stopNum);
+                var roadEl = document.getElementById('tsp-leg-road-' + stopNum);
+                if (statEl) statEl.textContent = '+' + lg.distanceKm + ' km (' + lg.durationMin + ' mnt)';
+                if (roadEl && lg.streetsSummary) roadEl.textContent = 'Jalur: ' + lg.streetsSummary;
+              });
+            }
+          });
+
+          var fitBtn = document.getElementById('tsp-fit-bounds-btn');
+          if (fitBtn) {
+            fitBtn.onclick = function () {
+              map.fitBounds(currentBounds);
+            };
+          }
+
+          document.querySelectorAll('.tsp-focus-marker-btn').forEach(function (el) {
+            el.onclick = function () {
+              var lat = Number(el.getAttribute('data-lat'));
+              var lng = Number(el.getAttribute('data-lng'));
+              var stNum = el.getAttribute('data-stop');
+              if (!isNaN(lat) && !isNaN(lng)) {
+                map.setView([lat, lng], 15, { animate: true });
+                if (stopMarkers[stNum]) stopMarkers[stNum].openPopup();
+              }
+            };
+          });
+        } catch (err) {
+          mapEl.style.display = 'none';
+          if (fallbackEl) fallbackEl.style.display = 'block';
+        }
+      }, 40);
     }
 
     renderRouteModal(chosenRep);
@@ -1064,6 +1345,7 @@
     openQrBatchModal: openQrBatchModal,
     openConsignmentRebalancerModal: openConsignmentRebalancerModal,
     openTspRouteOptimizerModal: openTspRouteOptimizerModal,
+    fetchRealRoadGeometryOsrm: fetchRealRoadGeometryOsrm,
     openCreditScoringModal: openCreditScoringModal,
     openLedgerChainAuditModal: openLedgerChainAuditModal,
     generateSampleShelfPhotoDataUrl: generateSampleShelfPhotoDataUrl

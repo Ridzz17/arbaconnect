@@ -294,15 +294,31 @@ function syncStateToRelationalTables(state) {
   // 2. Outlets
   const insOutlet = db.prepare(`
     INSERT OR REPLACE INTO outlets (
-      id, sales_id, kode, nama, jenis, alamat, kota, kontak_nama, kontak_telp,
+      id, sales_id, kode, nama, jenis, alamat, kota, lat, lng, kontak_nama, kontak_telp,
       termin_hari, limit_kredit, kredit_terpakai, status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
+  const defaultCoords = {
+    'AP-SLO-001': { lat: -7.5682, lng: 110.8091 },
+    'AP-SLO-002': { lat: -7.5588, lng: 110.8562 },
+    'MM-SKH-014': { lat: -7.6819, lng: 110.8408 },
+    'MM-SLO-009': { lat: -7.5812, lng: 110.8279 },
+    'AP-KRA-023': { lat: -7.5965, lng: 110.9461 },
+    'AP-KRA-004': { lat: -7.5684, lng: 110.8753 },
+    'AP-BYL-008': { lat: -7.5305, lng: 110.5964 },
+    'MM-BYL-003': { lat: -7.5358, lng: 110.6022 },
+    'MM-KLT-005': { lat: -7.7056, lng: 110.6015 },
+    'AP-SRG-019': { lat: -7.4272, lng: 111.0221 },
+    'AP-KRA-078': { lat: -7.5931, lng: 110.9384 }
+  };
   (state.outlets || []).forEach((o) => {
     const rep = (state.salesTeam || []).find((s) => s.name === o.salesRep);
     const jenis = /minimarket|swalayan|toserba/i.test(o.type || '')
       ? 'minimarket'
       : (/jaringan|kimia farma|k-24/i.test(o.type || '') ? 'jaringan_farmasi' : 'apotek');
+    const fallback = defaultCoords[o.id] || defaultCoords[o.code] || { lat: -7.5682, lng: 110.8091 };
+    const lat = typeof o.lat === 'number' ? o.lat : fallback.lat;
+    const lng = typeof o.lng === 'number' ? o.lng : fallback.lng;
     insOutlet.run(
       o.id,
       rep ? rep.id : null,
@@ -311,6 +327,8 @@ function syncStateToRelationalTables(state) {
       jenis,
       o.address || 'Solo Raya',
       o.cityName || o.city || 'Surakarta',
+      lat,
+      lng,
       o.picName || '-',
       o.picPhone || '-',
       /14/.test(o.terms || '') ? 14 : (/COD|Tunai/i.test(o.terms || '') ? 0 : 30),

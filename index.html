@@ -24,11 +24,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
     <!-- Pure Vanilla Stylesheets -->
-    <link rel="stylesheet" href="css/tokens.css?v=12" />
-    <link rel="stylesheet" href="css/layout.css?v=12" />
-    <link rel="stylesheet" href="css/components.css?v=12" />
-    <link rel="stylesheet" href="css/utilities.css?v=12" />
-    <link rel="stylesheet" href="css/print.css?v=12" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <link rel="stylesheet" href="css/tokens.css?v=14" />
+    <link rel="stylesheet" href="css/layout.css?v=14" />
+    <link rel="stylesheet" href="css/components.css?v=14" />
+    <link rel="stylesheet" href="css/utilities.css?v=14" />
+    <link rel="stylesheet" href="css/print.css?v=14" />
   </head>
   <body>
     <!-- App Shell Container -->
@@ -293,7 +294,7 @@
       if ('caches' in window) {
         caches.keys().then(function (keys) {
           keys.forEach(function (k) {
-            if (k.indexOf('arbaconnect-pwa-') === 0 && k !== 'arbaconnect-pwa-v12') {
+            if (k.indexOf('arbaconnect-pwa-') === 0 && k !== 'arbaconnect-pwa-v14') {
               caches.delete(k);
             }
           });
@@ -305,18 +306,19 @@
         });
       }
     </script>
-    <script src="js/data.js?v=12"></script>
-    <script src="js/utils.js?v=12"></script>
-    <script src="js/offlineSync.js?v=12"></script>
-    <script src="js/store.js?v=12"></script>
-    <script src="js/auth.js?v=12"></script>
-    <script src="js/advancedFeatures.js?v=12"></script>
-    <script src="js/views/executiveDashboard.js?v=12"></script>
-    <script src="js/views/inventoryLedger.js?v=12"></script>
-    <script src="js/views/b2bCrm.js?v=12"></script>
-    <script src="js/views/orderApproval.js?v=12"></script>
-    <script src="js/views/fieldSalesPwa.js?v=12"></script>
-    <script src="js/views/userProfileAndAdmin.js?v=12"></script>
-    <script src="js/app.js?v=12"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="js/data.js?v=14"></script>
+    <script src="js/utils.js?v=14"></script>
+    <script src="js/offlineSync.js?v=14"></script>
+    <script src="js/store.js?v=14"></script>
+    <script src="js/auth.js?v=14"></script>
+    <script src="js/advancedFeatures.js?v=14"></script>
+    <script src="js/views/executiveDashboard.js?v=14"></script>
+    <script src="js/views/inventoryLedger.js?v=14"></script>
+    <script src="js/views/b2bCrm.js?v=14"></script>
+    <script src="js/views/orderApproval.js?v=14"></script>
+    <script src="js/views/fieldSalesPwa.js?v=14"></script>
+    <script src="js/views/userProfileAndAdmin.js?v=14"></script>
+    <script src="js/app.js?v=14"></script>
   </body>
 </html>

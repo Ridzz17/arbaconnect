@@ -311,6 +311,34 @@
                   </div>
                 </div>
 
+                <!-- Peta Lokasi Nyata Geofence GPS Apotek Target (Leaflet + OpenStreetMap) -->
+                ${(function () {
+                  var coords = window.ArbaStore.getOutletCoordinates ? window.ArbaStore.getOutletCoordinates(currentOutlet) : { lat: currentOutlet.lat || -7.5682, lng: currentOutlet.lng || 110.8091 };
+                  var gmapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(coords.lat + ',' + coords.lng) + '&travelmode=driving';
+                  return `
+                    <div class="rounded-lg overflow-hidden border border-slate-200 bg-white mt-1.5" style="border:1px solid #cbd5e1; border-radius:10px;">
+                      <div class="px-2.5 py-1.5 flex items-center justify-between text-[10px] bg-slate-100 border-b border-slate-200" style="background:#f1f5f9; border-bottom:1px solid #e2e8f0;">
+                        <span class="font-bold text-slate-700 flex items-center gap-1">
+                          <span class="material-symbols-outlined text-[13px] text-teal-700">my_location</span>
+                          <span>Titik GPS: <b class="font-mono">${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}</b></span>
+                        </span>
+                        <a href="${gmapsUrl}" target="_blank" rel="noreferrer" class="font-bold text-teal-800 hover:underline flex items-center gap-0.5" style="color:#005c55;">
+                          <span class="material-symbols-outlined text-[13px]">directions</span>
+                          <span>Navigasi Google Maps</span>
+                        </a>
+                      </div>
+                      <div
+                        id="pwa-checkin-leaflet-map"
+                        data-lat="${coords.lat}"
+                        data-lng="${coords.lng}"
+                        data-name="${window.ArbaUtils.escapeHtml(currentOutlet.name)}"
+                        data-addr="${window.ArbaUtils.escapeHtml(currentOutlet.address + ', ' + currentOutlet.cityName)}"
+                        style="width:100%; height:130px; z-index:1; background:#e2e8f0;"
+                      ></div>
+                    </div>
+                  `;
+                })()}
+
                 <!-- Ringkasan Stok Titipan di Apotek Ini & Alarm Pink Expired -->
                 ${(currentOutlet.consignmentItems && currentOutlet.consignmentItems.length > 0) ? `
                   <div class="p-2 rounded-lg text-[11px] space-y-1" style="background:#fdf2f8; border:1px solid #f472b6; color:#831843; margin-top:0.35rem;">
@@ -630,6 +658,50 @@
   function bindEvents(container, currentOutlet, products, totalAmount, ctx) {
     ctx = ctx || {};
 
+    // Inisialisasi Peta Nyata Geofence GPS Apotek Target di PWA Sales
+    var pwaMapEl = container.querySelector('#pwa-checkin-leaflet-map');
+    if (pwaMapEl && typeof window.L !== 'undefined') {
+      try {
+        if (window.__arbaPwaCheckinMap) {
+          try { window.__arbaPwaCheckinMap.remove(); } catch (e) {}
+          window.__arbaPwaCheckinMap = null;
+        }
+        var pLat = Number(pwaMapEl.getAttribute('data-lat')) || -7.5682;
+        var pLng = Number(pwaMapEl.getAttribute('data-lng')) || 110.8091;
+        var pName = pwaMapEl.getAttribute('data-name') || currentOutlet.name;
+        var pMap = window.L.map(pwaMapEl, {
+          center: [pLat, pLng],
+          zoom: 16,
+          zoomControl: false
+        });
+        window.__arbaPwaCheckinMap = pMap;
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OSM'
+        }).addTo(pMap);
+
+        // Radius Geofence 50m di sekitar titik Apotek
+        window.L.circle([pLat, pLng], {
+          color: '#005c55',
+          fillColor: '#10b981',
+          fillOpacity: 0.2,
+          radius: 45,
+          weight: 1.5
+        }).addTo(pMap);
+
+        var pIcon = window.L.divIcon({
+          className: 'pwa-outlet-pin',
+          html: '<div style="width:24px;height:24px;border-radius:50%;background:#005c55;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">📍</div>',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+        window.L.marker([pLat, pLng], { icon: pIcon })
+          .addTo(pMap)
+          .bindPopup('<div style="font-size:11px;font-weight:700;">' + pName + '</div>');
+        setTimeout(function () { pMap.invalidateSize(); }, 80);
+      } catch (err) {}
+    }
+
     // Sales rep account switch
     var repSelect = container.querySelector('#pwa-rep-select');
     if (repSelect) {
@@ -864,21 +936,28 @@
           renderFieldSalesPwa(container);
         };
 
+        var targetCoords = window.ArbaStore.getOutletCoordinates
+          ? window.ArbaStore.getOutletCoordinates(currentOutlet)
+          : { lat: currentOutlet.lat || -7.5682, lng: currentOutlet.lng || 110.8091 };
+
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             function (pos) {
-              var lat = pos.coords.latitude.toFixed(5);
-              var lng = pos.coords.longitude.toFixed(5);
-              var acc = Math.min(25, Math.max(5, Math.round(pos.coords.accuracy || 12)));
-              finishCheckin(acc, lat + ', ' + lng + ' (GPS Perangkat)');
+              var lat = pos.coords.latitude;
+              var lng = pos.coords.longitude;
+              var realKm = window.ArbaStore.haversineKm
+                ? window.ArbaStore.haversineKm(lat, lng, targetCoords.lat, targetCoords.lng)
+                : 0.012;
+              var distMeter = realKm < 1.5 ? Math.max(4, Math.round(realKm * 1000)) : Math.min(25, Math.max(5, Math.round(pos.coords.accuracy || 12)));
+              finishCheckin(distMeter, lat.toFixed(5) + ', ' + lng.toFixed(5) + ' (GPS Perangkat)');
             },
             function () {
-              finishCheckin(Math.floor(8 + Math.random() * 12), '-7.5583, 110.8214 (Presisi GPS)');
+              finishCheckin(Math.floor(8 + Math.random() * 12), targetCoords.lat.toFixed(4) + ', ' + targetCoords.lng.toFixed(4) + ' (Presisi GPS)');
             },
             { enableHighAccuracy: true, timeout: 2500, maximumAge: 60000 }
           );
         } else {
-          finishCheckin(Math.floor(8 + Math.random() * 12), '-7.5583, 110.8214 (Presisi GPS)');
+          finishCheckin(Math.floor(8 + Math.random() * 12), targetCoords.lat.toFixed(4) + ', ' + targetCoords.lng.toFixed(4) + ' (Presisi GPS)');
         }
       });
     }

@@ -8,8 +8,9 @@
  * 3. API Pusat (/api/*): Network-Only (dikelola oleh OfflineSync Queue + IndexedDB di sisi aplikasi).
  */
 
-const CACHE_VERSION = 'arbaconnect-pwa-v12';
+const CACHE_VERSION = 'arbaconnect-pwa-v14';
 const FONT_CACHE = 'arbaconnect-fonts-v1';
+const MAP_CACHE = 'arbaconnect-map-tiles-v1';
 
 const APP_SHELL_ASSETS = [
   './',
@@ -59,7 +60,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_VERSION && key !== FONT_CACHE) {
+          if (key !== CACHE_VERSION && key !== FONT_CACHE && key !== MAP_CACHE) {
             return caches.delete(key);
           }
         })
@@ -79,10 +80,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache Google Fonts & Material Symbols agar ikon tetap muncul saat offline
-  if (url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com') {
+  // Cache Google Fonts, Material Symbols, Leaflet JS/CSS & OpenStreetMap Tiles agar peta & ikon tetap muncul saat offline
+  if (
+    url.origin === 'https://fonts.googleapis.com' ||
+    url.origin === 'https://fonts.gstatic.com' ||
+    url.origin === 'https://unpkg.com' ||
+    url.hostname.endsWith('tile.openstreetmap.org')
+  ) {
+    const targetCache = url.hostname.endsWith('tile.openstreetmap.org') ? MAP_CACHE : FONT_CACHE;
     event.respondWith(
-      caches.open(FONT_CACHE).then((cache) => {
+      caches.open(targetCache).then((cache) => {
         return cache.match(req).then((cached) => {
           const networkFetch = fetch(req).then((res) => {
             if (res && res.status === 200) {
