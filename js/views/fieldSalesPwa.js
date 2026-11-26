@@ -259,7 +259,7 @@
               <!-- Step 1: Outdoor GPS Check-In & Outlet Card -->
               <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2.5 mb-3" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:0.75rem;">
                 <div class="flex items-center justify-between mb-2">
-                  <label class="text-[11px] uppercase tracking-wider font-bold text-slate-600">
+                  <label for="pwa-outlet-select" class="text-[11px] uppercase tracking-wider font-bold text-slate-600">
                     Target Outlet Mitra
                   </label>
                   <!-- 1-Tap GPS Geofence Check-in Button -->
@@ -438,12 +438,13 @@
 
                 <!-- Quick Search -->
                 <div class="relative mb-2" style="position:relative;">
-                  <span class="material-symbols-outlined text-slate-400 absolute left-2.5 top-2 text-[16px] pointer-events-none" style="position:absolute; left:0.6rem; top:0.5rem; color:#94a3b8;">
+                  <span class="material-symbols-outlined text-slate-400 absolute left-2.5 top-2 text-[16px] pointer-events-none" style="position:absolute; left:0.6rem; top:0.5rem; color:#475569;" aria-hidden="true">
                     search
                   </span>
                   <input
                     id="pwa-search-input"
                     type="text"
+                    aria-label="Cari nama produk herbal atau SKU"
                     placeholder="Cari nama produk / SKU..."
                     value="${window.ArbaUtils.escapeHtml(state.productSearch)}"
                     class="w-full pl-8 pr-3 py-1.5 bg-slate-100 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none border-0"
@@ -504,6 +505,7 @@
                             class="btn-stepper-minus w-10 h-10 rounded-md bg-white text-slate-700 flex items-center justify-center font-bold text-base shadow-2xs hover:bg-slate-200 active:scale-95 disabled:opacity-30 cursor-pointer border-0"
                             style="width:36px; height:36px; background:#fff; border-radius:6px; cursor:pointer;"
                             data-sku="${prod.sku}"
+                            aria-label="Kurangi kuantitas ${window.ArbaUtils.escapeHtml(prod.name)}"
                             ${qty === 0 ? 'disabled' : ''}
                           >
                             -
@@ -516,6 +518,7 @@
                             class="btn-stepper-plus w-10 h-10 rounded-md bg-[#005c55] text-white flex items-center justify-center font-bold text-base shadow-2xs hover:bg-teal-800 active:scale-95 cursor-pointer border-0"
                             style="width:36px; height:36px; background:#005c55; color:#fff; border-radius:6px; cursor:pointer;"
                             data-sku="${prod.sku}"
+                            aria-label="Tambah kuantitas ${window.ArbaUtils.escapeHtml(prod.name)}"
                             ${atMax ? 'disabled' : ''}
                           >
                             +
@@ -530,9 +533,10 @@
               <!-- Step 3: Payment Terms, E-Signature Apoteker & Bukti Foto Etalase Offline -->
               <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2.5 mb-2" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:0.75rem;">
                 <div class="flex items-center justify-between text-xs mb-1">
-                  <span class="font-semibold text-slate-700">Skema Nota:</span>
+                  <label for="pwa-term-select" class="font-semibold text-slate-700">Skema Nota:</label>
                   <select
                     id="pwa-term-select"
+                    aria-label="Pilih skema pembayaran nota"
                     class="bg-white px-2.5 py-1 rounded-md text-xs font-semibold text-slate-800 border border-slate-200 cursor-pointer focus:outline-none"
                     style="border:1px solid #cbd5e1;"
                   >
@@ -544,6 +548,7 @@
                 <input
                   id="pwa-notes-input"
                   type="text"
+                  aria-label="Catatan tambahan apoteker"
                   value="${window.ArbaUtils.escapeHtml(state.orderNotes)}"
                   placeholder="Catatan tambahan apoteker (opsional)..."
                   class="w-full bg-white px-2.5 py-1.5 rounded-lg text-xs text-slate-800 border border-slate-200 placeholder:text-slate-400 focus:outline-none"

@@ -49,10 +49,10 @@
   --color-status-danger-bg: #fee2e2;
   --color-status-danger-text: #b91c1c;
 
-  /* Badges */
-  --color-badge-green: #22c55e;
-  --color-badge-amber: #f59e0b;
-  --color-badge-red: #ef4444;
+  /* Badges (WCAG AA >= 4.5:1 Contrast with White & Light Surfaces) */
+  --color-badge-green: #047857;
+  --color-badge-amber: #b45309;
+  --color-badge-red: #be123c;
 
   /* Typography Scales */
   --font-headline: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;

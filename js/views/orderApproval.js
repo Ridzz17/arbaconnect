@@ -224,11 +224,12 @@
           <!-- Filter Segments -->
           <div class="flex flex-wrap items-center gap-space-sm gap-2">
             <div class="relative min-w-[220px]">
-              <span class="material-symbols-outlined text-on-surface-variant absolute left-3 top-2.5 text-[18px] pointer-events-none" style="position:absolute; left:0.75rem; top:0.6rem;">
+              <span class="material-symbols-outlined text-on-surface-variant absolute left-3 top-2.5 text-[18px] pointer-events-none" style="position:absolute; left:0.75rem; top:0.6rem;" aria-hidden="true">
                 badge
               </span>
               <select
                 id="select-sales-rep"
+                aria-label="Filter berdasarkan Sales Representative"
                 class="w-full bg-surface-container-low font-body-md text-body-md text-on-surface pl-9 pr-8 py-2 rounded-lg border-0 cursor-pointer focus:outline-none text-xs"
                 style="padding-left: 2.25rem;"
               >
@@ -240,11 +241,12 @@
             </div>
 
             <div class="relative min-w-[210px]">
-              <span class="material-symbols-outlined text-on-surface-variant absolute left-3 top-2.5 text-[18px] pointer-events-none" style="position:absolute; left:0.75rem; top:0.6rem;">
+              <span class="material-symbols-outlined text-on-surface-variant absolute left-3 top-2.5 text-[18px] pointer-events-none" style="position:absolute; left:0.75rem; top:0.6rem;" aria-hidden="true">
                 sort
               </span>
               <select
                 id="select-sort-order"
+                aria-label="Urutkan daftar faktur pesanan"
                 class="w-full bg-surface-container-low font-body-md text-body-md text-on-surface pl-9 pr-8 py-2 rounded-lg border-0 cursor-pointer focus:outline-none text-xs"
                 style="padding-left: 2.25rem;"
               >
@@ -448,6 +450,7 @@
                             class="order-checkbox mt-1 w-5 h-5 rounded text-primary cursor-pointer"
                             type="checkbox"
                             data-order-id="${order.id}"
+                            aria-label="Pilih pesanan ${window.ArbaUtils.escapeHtml(order.outletName)} (${window.ArbaUtils.escapeHtml(order.clientUuid)})"
                             ${state.selectedOrderIds.indexOf(order.id) !== -1 ? 'checked' : ''}
                           />
                           <div>
@@ -751,6 +754,7 @@
                         class="order-checkbox w-5 h-5 rounded text-primary cursor-pointer"
                         type="checkbox"
                         data-order-id="${order.id}"
+                        aria-label="Pilih pesanan ${window.ArbaUtils.escapeHtml(order.outletName)} (${window.ArbaUtils.escapeHtml(order.clientUuid)})"
                         ${isChecked ? 'checked' : ''}
                       />
                       <div class="flex flex-col">
@@ -845,10 +849,10 @@
             <div>
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2">
-                  <span class="material-symbols-outlined text-primary text-[20px]">history_edu</span>
-                  <h4 class="font-title-sm text-title-sm font-bold text-on-surface text-sm">
+                  <span class="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">history_edu</span>
+                  <h3 class="font-title-sm text-title-sm font-bold text-on-surface text-sm">
                     Riwayat Alokasi Stok Otomatis Terbaru (FEFO Ledger)
-                  </h4>
+                  </h3>
                 </div>
                 <span class="font-code-table text-code-table text-emerald-700 font-medium text-xs font-mono">
                   Realtime WebSocket Sync
@@ -901,10 +905,10 @@
             <div>
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2">
-                  <span class="material-symbols-outlined text-secondary text-[20px]">local_shipping</span>
-                  <h4 class="font-title-sm text-title-sm font-bold text-on-surface text-sm">
+                  <span class="material-symbols-outlined text-secondary text-[20px]" aria-hidden="true">local_shipping</span>
+                  <h3 class="font-title-sm text-title-sm font-bold text-on-surface text-sm">
                     Jadwal Pengiriman Armada CV Arba'in
-                  </h4>
+                  </h3>
                 </div>
                 <span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container-high text-on-surface font-medium text-xs">
                   Wave 1 (Siang)

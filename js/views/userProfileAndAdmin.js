@@ -567,17 +567,19 @@
 
             <div class="flex flex-wrap items-center gap-2">
               <div class="flex items-center bg-surface-container-low px-3 py-1.5 rounded-lg border border-border-subtle/50">
-                <span class="material-symbols-outlined text-on-surface-variant text-[18px] mr-1.5">search</span>
+                <span class="material-symbols-outlined text-on-surface-variant text-[18px] mr-1.5" aria-hidden="true">search</span>
                 <input
                   type="text"
                   id="admin-user-search"
                   value="${window.ArbaUtils.escapeHtml(adminState.searchQuery)}"
+                  aria-label="Cari nama, username, atau email pengguna"
                   placeholder="Cari nama, username, email..."
                   class="bg-transparent text-xs text-on-surface focus:outline-none border-0 w-48"
                 />
               </div>
               <select
                 id="admin-role-filter"
+                aria-label="Filter berdasarkan role pengguna"
                 class="bg-surface-container-low px-3 py-1.5 rounded-lg border border-border-subtle/50 text-xs font-semibold text-on-surface cursor-pointer"
               >
                 <option value="ALL" ${adminState.roleFilter === 'ALL' ? 'selected' : ''}>Semua Role (${users.length})</option>
@@ -651,6 +653,7 @@
                             isActive ? 'bg-status-success-bg text-status-success-text' : 'bg-rose-100 text-rose-700'
                           }"
                           data-user-id="${u.id}"
+                          aria-label="${isActive ? 'Nonaktifkan akun ' : 'Aktifkan akun '}${window.ArbaUtils.escapeHtml(u.name)}"
                           title="Klik untuk mengaktifkan / menonaktifkan akun"
                         >
                           ${isActive ? 'AKTIF' : 'NONAKTIF'}
@@ -662,28 +665,31 @@
                             type="button"
                             class="btn-admin-edit-user px-2.5 py-1.5 rounded-lg bg-primary text-white hover:bg-primary-container font-bold text-[11px] flex items-center gap-1 cursor-pointer border-0"
                             data-user-id="${u.id}"
+                            aria-label="Edit detail profil, hak akses, dan password ${window.ArbaUtils.escapeHtml(u.name)}"
                             title="Edit Detail Profil, Hak Akses &amp; Ganti Password User Ini"
                           >
-                            <span class="material-symbols-outlined text-[14px]">edit_square</span>
+                            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">edit_square</span>
                             <span>Edit / Password</span>
                           </button>
                           <button
                             type="button"
                             class="btn-admin-impersonate px-2 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-semibold text-[11px] flex items-center gap-1 cursor-pointer border border-border-subtle"
                             data-user-id="${u.id}"
+                            aria-label="Masuk sebagai ${window.ArbaUtils.escapeHtml(u.name)}"
                             title="Masuk / Uji Tampilan sebagai User Ini"
                           >
-                            <span class="material-symbols-outlined text-[14px]">login</span>
+                            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">login</span>
                             <span>Masuk</span>
                           </button>
                           ${u.id !== 'USR-SUPER-01' ? `
                             <button
                               type="button"
-                              class="btn-admin-delete-user p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 cursor-pointer border border-rose-200"
+                              class="btn-admin-delete-user p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 cursor-pointer border border-rose-200"
                               data-user-id="${u.id}"
+                              aria-label="Hapus akun ${window.ArbaUtils.escapeHtml(u.name)}"
                               title="Hapus Akun User"
                             >
-                              <span class="material-symbols-outlined text-[15px]">delete</span>
+                              <span class="material-symbols-outlined text-[15px]" aria-hidden="true">delete</span>
                             </button>
                           ` : ''}
                         </div>

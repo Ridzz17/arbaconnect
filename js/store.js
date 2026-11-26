@@ -125,8 +125,12 @@ window.ArbaStore = (function() {
   const state = loadInitialState();
   const listeners = [];
   let toastTimer = null;
+  let stateRev = 1;
+  let cachedAnalyticsRev = 0;
+  let cachedAnalyticsResult = null;
 
   function persist() {
+    stateRev++;
     try {
       state.users = sanitizeUsersArray(state.users);
       if (state.currentUser) state.currentUser = sanitizeUserObj(state.currentUser);
@@ -1569,6 +1573,9 @@ window.ArbaStore = (function() {
   // Analitik Terhitung (Selector) — semua KPI dashboard dihitung dari state live
   // ---------------------------------------------------------------------------
   function getAnalytics() {
+    if (cachedAnalyticsResult && cachedAnalyticsRev === stateRev) {
+      return cachedAnalyticsResult;
+    }
     const now = new Date();
     const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
@@ -1743,7 +1750,7 @@ window.ArbaStore = (function() {
       return s + (l.items || []).reduce((a, it) => a + (it.discrepancy || 0), 0);
     }, 0);
 
-    return {
+    const analyticsResult = {
       revenueMonth,
       revenueTarget,
       revenuePct: revenueTarget ? Math.round((revenueMonth / revenueTarget) * 1000) / 10 : 0,
@@ -1775,6 +1782,9 @@ window.ArbaStore = (function() {
       pendingOrders: state.orders.filter(o => o.status === 'PENDING').length,
       waitingStockOrders: state.orders.filter(o => o.status === 'PENDING' && o.syncStatus === 'PENDING_WAREHOUSE').length
     };
+    cachedAnalyticsRev = stateRev;
+    cachedAnalyticsResult = analyticsResult;
+    return analyticsResult;
   }
 
   async function resetToDefaults() {
