@@ -1064,17 +1064,100 @@ window.ArbaData = (function() {
   };
 
   // ---------------------------------------------------------------------------
-  // Master Akun Pengguna & Kredensial RBAC (Mendukung Login Online & Offline)
+  // Fungsi Hash Kriptografis SHA-256 (FIPS 180-4) Deterministik untuk Kredensial
+  // Menghasilkan digest identik dengan Node.js crypto.createHash('sha256') di Server
   // ---------------------------------------------------------------------------
-  const users = [
+  function sha256Hex(ascii) {
+    function rightRotate(value, amount) {
+      return (value >>> amount) | (value << (32 - amount));
+    }
+    var mathPow = Math.pow;
+    var maxWord = mathPow(2, 32);
+    var lengthProperty = 'length';
+    var i, j;
+    var result = '';
+    var words = [];
+    var utf8 = unescape(encodeURIComponent(String(ascii)));
+    var asciiBitLength = utf8[lengthProperty] * 8;
+    var hash = [];
+    var k = [];
+    var primeCounter = 0;
+    var isComposite = {};
+    for (var candidate = 2; primeCounter < 64; candidate++) {
+      if (!isComposite[candidate]) {
+        for (i = 0; i < 313; i += candidate) {
+          isComposite[i] = candidate;
+        }
+        hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
+        k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+      }
+    }
+    utf8 += '\x80';
+    while ((utf8[lengthProperty] % 64) - 56) utf8 += '\x00';
+    for (i = 0; i < utf8[lengthProperty]; i++) {
+      j = utf8.charCodeAt(i);
+      words[i >> 2] |= j << ((3 - (i % 4)) * 8);
+    }
+    words[words[lengthProperty]] = (asciiBitLength / maxWord) | 0;
+    words[words[lengthProperty]] = asciiBitLength;
+    for (j = 0; j < words[lengthProperty]; ) {
+      var w = words.slice(j, (j += 16));
+      var oldHash = hash.slice(0, 8);
+      hash = hash.slice(0, 8);
+      for (i = 0; i < 64; i++) {
+        var w15 = w[i - 15], w2 = w[i - 2];
+        var a = hash[0], e = hash[4];
+        var temp1 =
+          hash[7] +
+          (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) +
+          ((e & hash[5]) ^ (~e & hash[6])) +
+          k[i] +
+          (w[i] =
+            i < 16
+              ? w[i]
+              : (w[i - 16] +
+                  (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3)) +
+                  w[i - 7] +
+                  (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))) |
+                0);
+        var temp2 =
+          (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) +
+          ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+        hash = [(temp1 + temp2) | 0].concat(hash);
+        hash[4] = (hash[4] + temp1) | 0;
+        hash.pop();
+      }
+      for (i = 0; i < 8; i++) {
+        hash[i] = (hash[i] + oldHash[i]) | 0;
+      }
+    }
+    for (i = 0; i < 8; i++) {
+      for (j = 3; j + 1; j--) {
+        var b = (hash[i] >> (j * 8)) & 255;
+        result += (b < 16 ? '0' : '') + b.toString(16);
+      }
+    }
+    return result;
+  }
+
+  function hashCredential(raw) {
+    var str = String(raw || '');
+    if (str.indexOf('sha256:') === 0 && str.length === 71) return str;
+    return 'sha256:' + sha256Hex('ARBA-SALT-2026:' + str);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Master Akun Pengguna & Kredensial RBAC (Disimpan Sebagai Hash SHA-256 Salted)
+  // ---------------------------------------------------------------------------
+  const rawUsers = [
     {
       id: 'USR-SUPER-01',
       name: 'Farid Super Administrator',
       username: 'superadmin',
       email: 'superadmin@arbain.co.id',
       phone: '081122334455',
-      password: 'admin123',
-      pin: '123456',
+      passwordHash: 'sha256:2530c91a2cdd960c3231d4ce5e20de420510d79cd3bd532cbcc9db045940a42d',
+      pinHash: 'sha256:a0e9ca0163fd1e7396c3770838981abaf6b2fec78a3b6ebbe907c6f597b4e5b5',
       role: 'super-admin',
       sqlRole: 'super_admin',
       title: 'Super Administrator IT & ERP',
@@ -1099,8 +1182,8 @@ window.ArbaData = (function() {
       username: 'direktur',
       email: 'direktur@arbain.co.id',
       phone: '081226001100',
-      password: '123',
-      pin: '123456',
+      passwordHash: 'sha256:f6f462a42a046b562a67c7a757be19d22f9727ccd66c7708a1178c6daef60179',
+      pinHash: 'sha256:a0e9ca0163fd1e7396c3770838981abaf6b2fec78a3b6ebbe907c6f597b4e5b5',
       role: 'executive',
       sqlRole: 'direktur',
       title: 'Direktur Operasional',
@@ -1123,8 +1206,8 @@ window.ArbaData = (function() {
       username: 'gudang',
       email: 'gudang@arbain.co.id',
       phone: '081329002211',
-      password: '123',
-      pin: '123456',
+      passwordHash: 'sha256:f6f462a42a046b562a67c7a757be19d22f9727ccd66c7708a1178c6daef60179',
+      pinHash: 'sha256:a0e9ca0163fd1e7396c3770838981abaf6b2fec78a3b6ebbe907c6f597b4e5b5',
       role: 'inventory',
       sqlRole: 'admin_gudang',
       title: 'Kepala Gudang Kartasura',
@@ -1145,8 +1228,8 @@ window.ArbaData = (function() {
       username: 'adminsales',
       email: 'salesops@arbain.co.id',
       phone: '081567003322',
-      password: '123',
-      pin: '123456',
+      passwordHash: 'sha256:f6f462a42a046b562a67c7a757be19d22f9727ccd66c7708a1178c6daef60179',
+      pinHash: 'sha256:a0e9ca0163fd1e7396c3770838981abaf6b2fec78a3b6ebbe907c6f597b4e5b5',
       role: 'sales-ops',
       sqlRole: 'admin_penjualan',
       title: 'Koordinator Admin Penjualan',
@@ -1167,8 +1250,8 @@ window.ArbaData = (function() {
       username: 'budi',
       email: 'budi.santoso@arbain.co.id',
       phone: '081234567801',
-      password: '123',
-      pin: '123456',
+      passwordHash: 'sha256:f6f462a42a046b562a67c7a757be19d22f9727ccd66c7708a1178c6daef60179',
+      pinHash: 'sha256:a0e9ca0163fd1e7396c3770838981abaf6b2fec78a3b6ebbe907c6f597b4e5b5',
       role: 'field-sales',
       sqlRole: 'sales',
       salesRepName: 'Budi Santoso',
@@ -1187,8 +1270,8 @@ window.ArbaData = (function() {
       username: 'anita',
       email: 'anita.rahmawati@arbain.co.id',
       phone: '081234567802',
-      password: '123',
-      pin: '123456',
+      passwordHash: 'sha256:f6f462a42a046b562a67c7a757be19d22f9727ccd66c7708a1178c6daef60179',
+      pinHash: 'sha256:a0e9ca0163fd1e7396c3770838981abaf6b2fec78a3b6ebbe907c6f597b4e5b5',
       role: 'field-sales',
       sqlRole: 'sales',
       salesRepName: 'Anita Rahmawati',
@@ -1207,8 +1290,8 @@ window.ArbaData = (function() {
       username: 'agus',
       email: 'agus.hermawan@arbain.co.id',
       phone: '081234567803',
-      password: '123',
-      pin: '123456',
+      passwordHash: 'sha256:f6f462a42a046b562a67c7a757be19d22f9727ccd66c7708a1178c6daef60179',
+      pinHash: 'sha256:a0e9ca0163fd1e7396c3770838981abaf6b2fec78a3b6ebbe907c6f597b4e5b5',
       role: 'field-sales',
       sqlRole: 'sales',
       salesRepName: 'Agus Hermawan',
@@ -1227,8 +1310,8 @@ window.ArbaData = (function() {
       username: 'tri',
       email: 'tri.wahyuni@arbain.co.id',
       phone: '081234567804',
-      password: '123',
-      pin: '123456',
+      passwordHash: 'sha256:f6f462a42a046b562a67c7a757be19d22f9727ccd66c7708a1178c6daef60179',
+      pinHash: 'sha256:a0e9ca0163fd1e7396c3770838981abaf6b2fec78a3b6ebbe907c6f597b4e5b5',
       role: 'field-sales',
       sqlRole: 'sales',
       salesRepName: 'Tri Wahyuni',
@@ -1247,8 +1330,8 @@ window.ArbaData = (function() {
       username: 'hadi',
       email: 'hadi.kurniawan@arbain.co.id',
       phone: '081234567805',
-      password: '123',
-      pin: '123456',
+      passwordHash: 'sha256:f6f462a42a046b562a67c7a757be19d22f9727ccd66c7708a1178c6daef60179',
+      pinHash: 'sha256:a0e9ca0163fd1e7396c3770838981abaf6b2fec78a3b6ebbe907c6f597b4e5b5',
       role: 'field-sales',
       sqlRole: 'sales',
       salesRepName: 'Hadi Kurniawan',
@@ -1267,8 +1350,8 @@ window.ArbaData = (function() {
       username: 'rian',
       email: 'rian.pratama@arbain.co.id',
       phone: '081234567806',
-      password: '123',
-      pin: '123456',
+      passwordHash: 'sha256:f6f462a42a046b562a67c7a757be19d22f9727ccd66c7708a1178c6daef60179',
+      pinHash: 'sha256:a0e9ca0163fd1e7396c3770838981abaf6b2fec78a3b6ebbe907c6f597b4e5b5',
       role: 'field-sales',
       sqlRole: 'sales',
       salesRepName: 'Rian Pratama',
@@ -1287,8 +1370,8 @@ window.ArbaData = (function() {
       username: 'rahmat',
       email: 'rahmat.adi@arbain.co.id',
       phone: '081234567807',
-      password: '123',
-      pin: '123456',
+      passwordHash: 'sha256:f6f462a42a046b562a67c7a757be19d22f9727ccd66c7708a1178c6daef60179',
+      pinHash: 'sha256:a0e9ca0163fd1e7396c3770838981abaf6b2fec78a3b6ebbe907c6f597b4e5b5',
       role: 'field-sales',
       sqlRole: 'sales',
       salesRepName: 'Rahmat Adi',
@@ -1307,8 +1390,8 @@ window.ArbaData = (function() {
       username: 'bambang',
       email: 'bambang.s@arbain.co.id',
       phone: '081234567808',
-      password: '123',
-      pin: '123456',
+      passwordHash: 'sha256:f6f462a42a046b562a67c7a757be19d22f9727ccd66c7708a1178c6daef60179',
+      pinHash: 'sha256:a0e9ca0163fd1e7396c3770838981abaf6b2fec78a3b6ebbe907c6f597b4e5b5',
       role: 'field-sales',
       sqlRole: 'sales',
       salesRepName: 'Bambang S.',
@@ -1323,8 +1406,19 @@ window.ArbaData = (function() {
     }
   ];
 
+  // Konversi seluruh kredensial awal menjadi hash SHA-256 salted & hapus plaintext password/pin
+  const users = rawUsers.map(function (u) {
+    const copy = Object.assign({}, u);
+    copy.passwordHash = copy.passwordHash || hashCredential(copy.password || '');
+    copy.pinHash = copy.pinHash || hashCredential(copy.pin || '');
+    delete copy.password;
+    delete copy.pin;
+    return copy;
+  });
+
   return {
     users,
+    hashCredential,
     products,
     ledger,
     outlets,

@@ -9,6 +9,21 @@
 
   window.ArbaApp = {
     init: function () {
+      // Bersihkan cache Service Worker versi lama agar perubahan terbaru langsung dimuat
+      if (typeof window !== 'undefined' && 'caches' in window) {
+        window.caches.keys().then(function (keys) {
+          keys.forEach(function (k) {
+            if (k.indexOf('arbaconnect-pwa-') === 0 && k !== 'arbaconnect-pwa-v21') {
+              window.caches.delete(k);
+            }
+          });
+        }).catch(function () {});
+      }
+      if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          regs.forEach(function (reg) { reg.update(); });
+        }).catch(function () {});
+      }
       this.initTheme();
       this.bindHeader();
       this.bindSidebar();
@@ -249,7 +264,7 @@
         <div style="background:linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border:1px solid #c4b5fd; border-radius:10px; padding:8px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; font-size:12px;">
           <div style="display:flex; align-items:center; gap:8px; color:#4c1d95;">
             <span class="material-symbols-outlined" style="font-size:18px; color:#6d28d9;">visibility</span>
-            <span><b>Mode Pratinjau Super Admin:</b> Anda sedang melihat tampilan untuk role <b>${roleSubtitles[activeRole] || activeRole}</b>.</span>
+            <span><b>Mode Pratinjau Super Admin:</b> Anda sedang melihat tampilan untuk role <b>${window.ArbaUtils.escapeHtml(roleSubtitles[activeRole] || activeRole)}</b>.</span>
           </div>
           <button
             id="btn-reset-superadmin-role"
@@ -485,9 +500,9 @@
             <div class="search-section-title">Mitra B2B Outlet</div>
             ${matchedOutlets.map(function (o) {
               return `
-                <div class="search-item search-outlet-item" data-outlet-id="${o.id}">
-                  <div class="font-medium text-on-surface">${o.name}</div>
-                  <span class="text-[11px] text-on-surface-variant">${o.cityName}</span>
+                <div class="search-item search-outlet-item" data-outlet-id="${window.ArbaUtils.escapeHtml(o.id)}">
+                  <div class="font-medium text-on-surface">${window.ArbaUtils.escapeHtml(o.name)}</div>
+                  <span class="text-[11px] text-on-surface-variant">${window.ArbaUtils.escapeHtml(o.cityName)}</span>
                 </div>
               `;
             }).join('')}
@@ -501,9 +516,9 @@
             <div class="search-section-title">Produk &amp; SKU Herbal</div>
             ${matchedProducts.map(function (p) {
               return `
-                <div class="search-item search-product-item" data-sku="${p.sku}">
-                  <div class="font-medium text-on-surface">${p.name}</div>
-                  <span class="text-[11px] font-mono text-primary font-semibold">Stok: ${p.stock}</span>
+                <div class="search-item search-product-item" data-sku="${window.ArbaUtils.escapeHtml(p.sku)}">
+                  <div class="font-medium text-on-surface">${window.ArbaUtils.escapeHtml(p.name)}</div>
+                  <span class="text-[11px] font-mono text-primary font-semibold">Stok: ${window.ArbaUtils.escapeHtml(p.stock)}</span>
                 </div>
               `;
             }).join('')}
@@ -517,10 +532,10 @@
             <div class="search-section-title">Faktur Pesanan B2B</div>
             ${matchedOrders.map(function (ord) {
               return `
-                <div class="search-item search-order-item" data-order-id="${ord.id}">
+                <div class="search-item search-order-item" data-order-id="${window.ArbaUtils.escapeHtml(ord.id)}">
                   <div>
-                    <span class="font-mono font-semibold text-primary">${ord.clientUuid}</span>
-                    <span class="ml-2 text-on-surface-variant">${ord.outletName}</span>
+                    <span class="font-mono font-semibold text-primary">${window.ArbaUtils.escapeHtml(ord.clientUuid)}</span>
+                    <span class="ml-2 text-on-surface-variant">${window.ArbaUtils.escapeHtml(ord.outletName)}</span>
                   </div>
                   <span class="font-semibold text-xs text-on-surface">${window.ArbaUtils.formatRupiah(ord.totalAmount)}</span>
                 </div>
@@ -804,13 +819,15 @@
       var toastContainer = document.getElementById('toast-container');
       if (!toastContainer) return;
 
-      var iconName = icon || 'check_circle';
+      var esc = (window.ArbaUtils && window.ArbaUtils.escapeHtml) || function (s) { return String(s || ''); };
+      var rawIcon = String(icon || 'check_circle').trim();
+      var safeIcon = /^[a-z0-9_]+$/i.test(rawIcon) ? rawIcon : 'check_circle';
       toastContainer.innerHTML = `
         <div class="toast-popup">
           <span class="material-symbols-outlined text-[22px] text-emerald-400" style="color: #22c55e;">
-            ${iconName}
+            ${esc(safeIcon)}
           </span>
-          <span class="font-medium text-xs">${message}</span>
+          <span class="font-medium text-xs">${esc(message)}</span>
         </div>
       `;
 

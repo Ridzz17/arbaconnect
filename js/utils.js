@@ -15,13 +15,59 @@ window.ArbaUtils = (function() {
   }
 
   function escapeHtml(str) {
-    if (!str) return '';
+    if (str === null || str === undefined) return '';
     return String(str)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+  }
+
+  function safeHexColor(val, fallback) {
+    const fb = fallback || '#005c55';
+    if (!val || typeof val !== 'string') return fb;
+    const trimmed = val.trim();
+    return /^#[0-9a-fA-F]{6}$/.test(trimmed) ? trimmed : fb;
+  }
+
+  function safeImageDataUrl(url) {
+    if (!url || typeof url !== 'string') return '';
+    const trimmed = url.trim();
+    if (/^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/i.test(trimmed)) {
+      return trimmed;
+    }
+    return '';
+  }
+
+  function safeCsvCell(val) {
+    if (val === null || val === undefined) return '""';
+    let s = String(val);
+    if (/^[=+\-@\t\r]/.test(s)) {
+      s = "'" + s;
+    }
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+
+  function hashCredential(raw) {
+    if (window.ArbaData && typeof window.ArbaData.hashCredential === 'function') {
+      return window.ArbaData.hashCredential(raw);
+    }
+    return String(raw || '');
+  }
+
+  function sanitizeUserRecord(u) {
+    if (!u || typeof u !== 'object') return u;
+    const copy = Object.assign({}, u);
+    if (copy.password) {
+      copy.passwordHash = hashCredential(copy.password);
+      delete copy.password;
+    }
+    if (copy.pin) {
+      copy.pinHash = hashCredential(copy.pin);
+      delete copy.pin;
+    }
+    return copy;
   }
 
   function downloadCsv(filename, content) {
@@ -58,22 +104,22 @@ window.ArbaUtils = (function() {
     ];
 
     const rows = outlets.map(o => [
-      `"${o.code}"`,
-      `"${o.name}"`,
-      `"${o.address}"`,
-      `"${o.cityName}"`,
-      `"${o.type}"`,
-      `"${o.picName}"`,
-      `"${o.picPhone}"`,
-      `"${o.salesRep}"`,
-      `"${o.salesArea}"`,
-      `"${o.terms}"`,
-      o.creditLimit,
-      o.creditUsed,
-      o.creditRemaining,
-      `"${o.creditStatus}"`,
-      `"${o.lastOrderDate}"`,
-      o.ytdTotal
+      safeCsvCell(o.code),
+      safeCsvCell(o.name),
+      safeCsvCell(o.address),
+      safeCsvCell(o.cityName),
+      safeCsvCell(o.type),
+      safeCsvCell(o.picName),
+      safeCsvCell(o.picPhone),
+      safeCsvCell(o.salesRep),
+      safeCsvCell(o.salesArea),
+      safeCsvCell(o.terms),
+      Number(o.creditLimit) || 0,
+      Number(o.creditUsed) || 0,
+      Number(o.creditRemaining) || 0,
+      safeCsvCell(o.creditStatus),
+      safeCsvCell(o.lastOrderDate),
+      Number(o.ytdTotal) || 0
     ]);
 
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -97,18 +143,18 @@ window.ArbaUtils = (function() {
     ];
 
     const rows = ledger.map(l => [
-      `"${l.id}"`,
-      `"${l.timestamp}"`,
-      `"${l.docRef}"`,
-      `"${l.skuCode}"`,
-      `"${l.skuName}"`,
-      `"${l.batch}"`,
-      `"${l.type}"`,
-      l.quantity,
-      l.finalStock,
-      `"${l.operator}"`,
-      `"${l.operatorRole}"`,
-      `"${l.hash}"`
+      safeCsvCell(l.id),
+      safeCsvCell(l.timestamp),
+      safeCsvCell(l.docRef),
+      safeCsvCell(l.skuCode),
+      safeCsvCell(l.skuName),
+      safeCsvCell(l.batch),
+      safeCsvCell(l.type),
+      Number(l.quantity) || 0,
+      Number(l.finalStock) || 0,
+      safeCsvCell(l.operator),
+      safeCsvCell(l.operatorRole),
+      safeCsvCell(l.hash)
     ]);
 
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -129,24 +175,24 @@ window.ArbaUtils = (function() {
 
     const perfHeaders = ['Sales Rep', 'Area', 'Kunjungan Hari Ini', 'Target Harian', 'Kunjungan Bulan Ini', 'Omset Bulan Ini (IDR)', 'Target Omset (IDR)', 'Capaian (%)', 'Effective Call (%)'];
     const perfRows = a ? a.salesPerformance.map(s => [
-      `"${s.name}"`, `"${s.area}"`, s.visitsToday, s.dailyVisitTarget, s.visitsMonth, s.revenueMonth, s.monthlyRevenueTarget, s.revenuePct, s.effectiveCallRate
+      safeCsvCell(s.name), safeCsvCell(s.area), Number(s.visitsToday) || 0, Number(s.dailyVisitTarget) || 0, Number(s.visitsMonth) || 0, Number(s.revenueMonth) || 0, Number(s.monthlyRevenueTarget) || 0, Number(s.revenuePct) || 0, Number(s.effectiveCallRate) || 0
     ]) : [];
 
     const orderHeaders = ['', '', ''];
     const orderTableHeaders = ['Client UUID', 'Nama Outlet', 'Kota', 'Sales Rep', 'Total (IDR)', 'Termin', 'Status'];
     const orderRows = orders.map(o => [
-      `"${o.clientUuid}"`,
-      `"${o.outletName}"`,
-      `"${o.city}"`,
-      `"${o.salesRep}"`,
-      o.totalAmount,
-      `"${o.terms}"`,
-      `"${o.status}"`
+      safeCsvCell(o.clientUuid),
+      safeCsvCell(o.outletName),
+      safeCsvCell(o.city),
+      safeCsvCell(o.salesRep),
+      Number(o.totalAmount) || 0,
+      safeCsvCell(o.terms),
+      safeCsvCell(o.status)
     ]);
 
     const csvContent = [
       headers.join(','),
-      ...summaryRows.map(r => r.map(c => `"${c}"`).join(',')),
+      ...summaryRows.map(r => r.map(c => safeCsvCell(c)).join(',')),
       orderHeaders.join(','),
       ['PERFORMA TIM SALES', '', ''].join(','),
       perfHeaders.join(','),
@@ -212,6 +258,11 @@ window.ArbaUtils = (function() {
     formatRupiah,
     formatNumber,
     escapeHtml,
+    safeHexColor,
+    safeImageDataUrl,
+    safeCsvCell,
+    hashCredential,
+    sanitizeUserRecord,
     downloadCsv,
     parseCsv,
     exportCrmToCsv,

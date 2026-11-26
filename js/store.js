@@ -16,6 +16,31 @@ window.ArbaStore = (function() {
     'user-profile-settings'
   ];
 
+  function hashCredential(raw) {
+    if (window.ArbaData && typeof window.ArbaData.hashCredential === 'function') {
+      return window.ArbaData.hashCredential(raw);
+    }
+    return String(raw || '');
+  }
+
+  function sanitizeUserObj(u) {
+    if (!u || typeof u !== 'object') return u;
+    const copy = Object.assign({}, u);
+    if (copy.password) {
+      copy.passwordHash = hashCredential(copy.password);
+      delete copy.password;
+    }
+    if (copy.pin) {
+      copy.pinHash = hashCredential(copy.pin);
+      delete copy.pin;
+    }
+    return copy;
+  }
+
+  function sanitizeUsersArray(arr) {
+    return (Array.isArray(arr) ? arr : []).map(sanitizeUserObj);
+  }
+
   // Load from local storage or fallback to ArbaData initial values
   function loadInitialState() {
     let hashPath = null;
@@ -49,8 +74,8 @@ window.ArbaStore = (function() {
         return {
           currentPath: hashPath || parsed.currentPath || 'executive-dashboard',
           currentRole: parsed.currentRole || 'executive',
-          currentUser: parsed.currentUser || null,
-          users: parsed.users || JSON.parse(JSON.stringify(ArbaData.users || [])),
+          currentUser: parsed.currentUser ? sanitizeUserObj(parsed.currentUser) : null,
+          users: sanitizeUsersArray(parsed.users || JSON.parse(JSON.stringify(ArbaData.users || []))),
           isOnline: parsed.isOnline !== undefined ? parsed.isOnline : true,
           isDarkMode: overrideDarkMode !== null ? overrideDarkMode : (parsed.isDarkMode || false),
           isSidebarCollapsed: overrideSidebarCollapsed !== null ? overrideSidebarCollapsed : (parsed.isSidebarCollapsed !== undefined ? parsed.isSidebarCollapsed : true),
@@ -77,7 +102,7 @@ window.ArbaStore = (function() {
       currentPath: hashPath || 'executive-dashboard',
       currentRole: 'executive',
       currentUser: null,
-      users: JSON.parse(JSON.stringify(ArbaData.users || [])),
+      users: sanitizeUsersArray(JSON.parse(JSON.stringify(ArbaData.users || []))),
       isOnline: true,
       isDarkMode: overrideDarkMode !== null ? overrideDarkMode : false,
       isSidebarCollapsed: overrideSidebarCollapsed !== null ? overrideSidebarCollapsed : true,
@@ -103,6 +128,8 @@ window.ArbaStore = (function() {
 
   function persist() {
     try {
+      state.users = sanitizeUsersArray(state.users);
+      if (state.currentUser) state.currentUser = sanitizeUserObj(state.currentUser);
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         currentPath: state.currentPath,
         currentRole: state.currentRole,
@@ -408,19 +435,20 @@ window.ArbaStore = (function() {
   function loginUser(userObj, options) {
     options = options || {};
     if (!userObj) return null;
+    const cleanIncoming = sanitizeUserObj(userObj);
     if (!Array.isArray(state.users)) state.users = [];
-    const existingIdx = state.users.findIndex(u => u.id === userObj.id);
+    const existingIdx = state.users.findIndex(u => u.id === cleanIncoming.id);
     if (existingIdx !== -1) {
-      state.users[existingIdx] = Object.assign({}, state.users[existingIdx], userObj);
+      state.users[existingIdx] = sanitizeUserObj(Object.assign({}, state.users[existingIdx], cleanIncoming));
     } else {
-      state.users.push(JSON.parse(JSON.stringify(userObj)));
+      state.users.push(JSON.parse(JSON.stringify(cleanIncoming)));
     }
-    const latestUser = state.users.find(u => u.id === userObj.id) || userObj;
+    const latestUser = state.users.find(u => u.id === cleanIncoming.id) || cleanIncoming;
     if (latestUser.active === false) {
       showToast('Akun ini sedang dinonaktifkan oleh Super Admin.', 'block');
       return null;
     }
-    state.currentUser = JSON.parse(JSON.stringify(latestUser));
+    state.currentUser = sanitizeUserObj(JSON.parse(JSON.stringify(latestUser)));
     state.currentRole = latestUser.role || 'executive';
     if (latestUser.salesRepName) {
       state.currentSalesRep = latestUser.salesRepName;
@@ -436,13 +464,32 @@ window.ArbaStore = (function() {
       showToast(`Selamat datang, ${latestUser.name} (${latestUser.title})!`, 'verified_user');
     }
     notify();
+    if (window.ArbaOfflineSync && typeof window.ArbaOfflineSync.onAuthenticated === 'function') {
+      window.ArbaOfflineSync.onAuthenticated();
+    }
     return state.currentUser;
   }
 
   function logoutUser() {
     const prevName = state.currentUser ? state.currentUser.name : 'Pengguna';
+    const loggedOutId = state.currentUser ? state.currentUser.id : null;
     state.currentUser = null;
     state.currentPath = 'login';
+    // Pada saat logout eksplisit dalam kondisi online di perangkat bersama, hapus passwordHash/pinHash sesi dari memori & localStorage
+    if (state.isOnline && loggedOutId && Array.isArray(state.users)) {
+      state.users = state.users.map(u => {
+        if (!u || typeof u !== 'object') return u;
+        const clean = Object.assign({}, u);
+        delete clean.passwordHash;
+        delete clean.pinHash;
+        delete clean.password;
+        delete clean.pin;
+        return clean;
+      });
+    }
+    if (window.ArbaOfflineSync && typeof window.ArbaOfflineSync.clearAuthSession === 'function') {
+      window.ArbaOfflineSync.clearAuthSession();
+    }
     if (typeof window !== 'undefined' && window.location) {
       window.location.hash = 'login';
     }
@@ -494,10 +541,12 @@ window.ArbaStore = (function() {
         target.defaultPath = updates.defaultPath;
       }
       if (updates.password !== undefined && String(updates.password).trim() !== '') {
-        target.password = String(updates.password).trim();
+        target.passwordHash = hashCredential(String(updates.password).trim());
+        delete target.password;
       }
       if (updates.pin !== undefined && String(updates.pin).trim() !== '') {
-        target.pin = String(updates.pin).trim();
+        target.pinHash = hashCredential(String(updates.pin).trim());
+        delete target.pin;
       }
     }
 
@@ -511,13 +560,13 @@ window.ArbaStore = (function() {
 
     // Jika yang diedit adalah user yang sedang login, perbarui state.currentUser
     if (state.currentUser && state.currentUser.id === userId) {
-      state.currentUser = JSON.parse(JSON.stringify(target));
+      state.currentUser = sanitizeUserObj(JSON.parse(JSON.stringify(target)));
       state.currentRole = target.role;
     }
 
     showToast(`Detail profil ${target.name} berhasil diperbarui!`, 'manage_accounts');
     notify();
-    syncMutationToServer('UPDATE_USER', { userId, user: target }, `Update Profil User: ${target.name}`);
+    syncMutationToServer('UPDATE_USER', { userId, user: sanitizeUserObj(target) }, `Update Profil User: ${target.name}`);
     return { ok: true, user: target };
   }
 
@@ -533,7 +582,9 @@ window.ArbaStore = (function() {
 
     if (!allowOverride) {
       const cur = String(currentPassword || '').trim();
-      if (cur !== target.password && cur !== target.pin) {
+      const curHash = hashCredential(cur);
+      const expectedPwHash = target.passwordHash || (target.password ? hashCredential(target.password) : '');
+      if (curHash !== expectedPwHash) {
         return { ok: false, message: 'Password saat ini tidak sesuai!' };
       }
     }
@@ -543,18 +594,26 @@ window.ArbaStore = (function() {
       return { ok: false, message: 'Password baru minimal harus 3 karakter.' };
     }
 
-    target.password = nextPw;
+    target.passwordHash = hashCredential(nextPw);
+    delete target.password;
     if (newPin && String(newPin).trim().length >= 4) {
-      target.pin = String(newPin).trim();
+      target.pinHash = hashCredential(String(newPin).trim());
+      delete target.pin;
     }
 
     if (state.currentUser && state.currentUser.id === userId) {
-      state.currentUser = JSON.parse(JSON.stringify(target));
+      state.currentUser = sanitizeUserObj(JSON.parse(JSON.stringify(target)));
     }
 
+    const curPwHash = allowOverride ? undefined : hashCredential(String(currentPassword || '').trim());
     showToast(`Password untuk akun ${target.name} berhasil diperbarui!`, 'lock_reset');
     notify();
-    syncMutationToServer('CHANGE_USER_PASSWORD', { userId, newPassword: target.password, newPin: target.pin }, `Ganti Password: ${target.name}`);
+    syncMutationToServer('CHANGE_USER_PASSWORD', {
+      userId,
+      currentPasswordHash: curPwHash,
+      newPasswordHash: target.passwordHash,
+      newPinHash: target.pinHash
+    }, `Ganti Password: ${target.name}`);
     return { ok: true, user: target };
   }
 
@@ -595,8 +654,8 @@ window.ArbaStore = (function() {
       username: String(userData.username || name.toLowerCase().replace(/[^a-z0-9]/g, '')).trim(),
       email: String(userData.email || `${name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@arbain.co.id`).trim(),
       phone: String(userData.phone || '081200000000').trim(),
-      password: String(userData.password || '123').trim(),
-      pin: String(userData.pin || '123456').trim(),
+      passwordHash: hashCredential(String(userData.password || '123').trim()),
+      pinHash: hashCredential(String(userData.pin || '123456').trim()),
       role,
       sqlRole: sqlMap[role] || 'sales',
       salesRepName: role === 'field-sales' ? name : undefined,
@@ -698,14 +757,24 @@ window.ArbaStore = (function() {
     options = options || {};
     if (!centralState) return;
     if (Array.isArray(centralState.users) && centralState.users.length > 0) {
-      state.users = centralState.users;
+      const prevUsersMap = new Map((state.users || []).map(u => [u.id, u]));
+      state.users = centralState.users.map(incomingU => {
+        const prevU = prevUsersMap.get(incomingU.id);
+        const merged = Object.assign({}, incomingU);
+        // Pertahankan passwordHash/pinHash lokal milik user yang sedang login apabila siaran SSE tidak menyertakannya
+        if (state.currentUser && incomingU.id === state.currentUser.id) {
+          if (!merged.passwordHash) merged.passwordHash = (prevU && prevU.passwordHash) || state.currentUser.passwordHash;
+          if (!merged.pinHash) merged.pinHash = (prevU && prevU.pinHash) || state.currentUser.pinHash;
+        }
+        return sanitizeUserObj(merged);
+      });
       if (state.currentUser) {
         const refreshed = state.users.find(u => u.id === state.currentUser.id);
         if (!refreshed || refreshed.active === false) {
           logoutUser();
           return;
         }
-        state.currentUser = JSON.parse(JSON.stringify(refreshed));
+        state.currentUser = sanitizeUserObj(JSON.parse(JSON.stringify(refreshed)));
       }
     }
     if (Array.isArray(centralState.products)) state.products = centralState.products;

@@ -99,7 +99,7 @@
             <div class="bg-surface-container-lowest p-6 rounded-xl border border-border-subtle/60 flex flex-col items-center text-center">
               <div
                 id="profile-preview-avatar"
-                style="width:72px; height:72px; border-radius:20px; background:${user.badgeColor || '#005c55'}; color:#ffffff; display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:800; box-shadow:0 10px 24px rgba(0,92,85,0.22); margin-bottom:12px;"
+                style="width:72px; height:72px; border-radius:20px; background:${window.ArbaUtils.safeHexColor(user.badgeColor, '#005c55')}; color:#ffffff; display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:800; box-shadow:0 10px 24px rgba(0,92,85,0.22); margin-bottom:12px;"
               >
                 ${window.ArbaUtils.escapeHtml(user.avatarInitials || 'US')}
               </div>
@@ -263,7 +263,7 @@
                     <input
                       type="color"
                       id="prof-color"
-                      value="${user.badgeColor || '#005c55'}"
+                      value="${window.ArbaUtils.safeHexColor(user.badgeColor, '#005c55')}"
                       class="w-full h-10 p-1 rounded-lg border border-border-subtle bg-surface-container-low cursor-pointer"
                     />
                   </div>
@@ -612,7 +612,7 @@
                     <tr class="hover:bg-surface-container-low/40 transition-colors ${!isActive ? 'opacity-50' : ''}">
                       <td class="py-3 px-4">
                         <div class="flex items-center gap-2.5">
-                          <div style="width:34px; height:34px; border-radius:9px; background:${u.badgeColor || '#005c55'}; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:11px; flex-shrink:0;">
+                          <div style="width:34px; height:34px; border-radius:9px; background:${window.ArbaUtils.safeHexColor(u.badgeColor, '#005c55')}; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:11px; flex-shrink:0;">
                             ${window.ArbaUtils.escapeHtml(u.avatarInitials || 'US')}
                           </div>
                           <div>
@@ -632,8 +632,8 @@
                         <div class="text-[11px] text-on-surface-variant mt-1">${window.ArbaUtils.escapeHtml(u.title)} · ${window.ArbaUtils.escapeHtml(u.division)}</div>
                       </td>
                       <td class="py-3 px-3 font-mono">
-                        <div>PW: <b class="text-primary">${adminState.showPasswords ? window.ArbaUtils.escapeHtml(u.password) : '••••••'}</b></div>
-                        <div class="text-[10px] text-on-surface-variant">PIN: ${adminState.showPasswords ? window.ArbaUtils.escapeHtml(u.pin || '123456') : '••••••'}</div>
+                        <div>PW: <b class="text-primary">${adminState.showPasswords ? window.ArbaUtils.escapeHtml((u.passwordHash || 'sha256:protected').slice(0, 19) + '...') : '•••••••• (SHA-256)'}</b></div>
+                        <div class="text-[10px] text-on-surface-variant">PIN: ${adminState.showPasswords ? window.ArbaUtils.escapeHtml((u.pinHash || 'sha256:protected').slice(0, 19) + '...') : '•••••• (SHA-256)'}</div>
                       </td>
                       <td class="py-3 px-3">
                         <div class="flex flex-wrap gap-1 max-w-[230px]">
@@ -865,16 +865,16 @@
             <div class="p-3 rounded-xl bg-amber-50/70 border border-amber-200 space-y-2">
               <div class="font-bold text-amber-900 flex items-center gap-1.5">
                 <span class="material-symbols-outlined text-[16px]">key</span>
-                <span>Kredensial Login (Password &amp; PIN Offline)</span>
+                <span>Kredensial Login (Disimpan sebagai Hash SHA-256 Salted)</span>
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label class="block font-semibold text-slate-700 mb-1">Password Login</label>
-                  <input type="text" id="adm-u-password" required value="${window.ArbaUtils.escapeHtml(u.password || '123')}" class="w-full p-2 rounded-lg border border-amber-300 bg-white text-slate-900 font-mono font-bold" />
+                  <label class="block font-semibold text-slate-700 mb-1">${isEdit ? 'Password Baru (Kosongkan jika tidak diubah)' : 'Password Login Awal'}</label>
+                  <input type="password" id="adm-u-password" ${isEdit ? '' : 'required'} value="${isEdit ? '' : '123'}" placeholder="${isEdit ? '•••••• (Tetap gunakan hash saat ini)' : 'Masukkan password awal'}" class="w-full p-2 rounded-lg border border-amber-300 bg-white text-slate-900 font-mono font-bold" />
                 </div>
                 <div>
-                  <label class="block font-semibold text-slate-700 mb-1">PIN Offline (6 Digit)</label>
-                  <input type="text" id="adm-u-pin" required value="${window.ArbaUtils.escapeHtml(u.pin || '123456')}" class="w-full p-2 rounded-lg border border-amber-300 bg-white text-slate-900 font-mono font-bold" />
+                  <label class="block font-semibold text-slate-700 mb-1">${isEdit ? 'PIN Offline Baru (Kosongkan jika tidak diubah)' : 'PIN Offline (6 Digit)'}</label>
+                  <input type="password" id="adm-u-pin" ${isEdit ? '' : 'required'} value="${isEdit ? '' : '123456'}" placeholder="${isEdit ? '•••••• (Tetap gunakan hash saat ini)' : '123456'}" class="w-full p-2 rounded-lg border border-amber-300 bg-white text-slate-900 font-mono font-bold" />
                 </div>
               </div>
             </div>
