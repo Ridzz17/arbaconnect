@@ -71,7 +71,7 @@
     var isSalesOpsRole = activeRole === 'sales-ops';
 
     var crmTitle = isSalesRole
-      ? 'Direktori Mitra Apotek & Rute Distribusi Wilayah (' + (appState.currentUser ? appState.currentUser.name : 'Sales') + ')'
+      ? 'Direktori Mitra Apotek & Rute Distribusi Wilayah (' + window.ArbaUtils.escapeHtml(appState.currentUser ? appState.currentUser.name : 'Sales') + ')'
       : isSalesOpsRole
       ? 'Manajemen Kemitraan Apotek, Evaluasi Plafon Kredit & Piutang Konsinyasi'
       : 'Direktori Kemitraan Apotek B2B, Plafon Kredit & Inventaris Konsinyasi Solo Raya';
@@ -402,18 +402,18 @@
                         class="crm-outlet-row cursor-pointer transition-colors ${
                           isSelected ? 'bg-surface-container' : 'hover:bg-surface-container-low/70'
                         }"
-                        data-outlet-id="${outlet.id}"
+                        data-outlet-id="${window.ArbaUtils.escapeHtml(outlet.id)}"
                       >
                         <td class="py-3.5 px-space-md">
                           <div class="flex flex-col">
                             <span class="font-label-sm text-label-sm text-primary font-semibold font-mono text-[11px]">
-                              ${outlet.code}
+                              ${window.ArbaUtils.escapeHtml(outlet.code)}
                             </span>
                             <span class="font-label-lg text-label-lg font-semibold text-on-surface leading-snug">
-                              ${outlet.name}
+                              ${window.ArbaUtils.escapeHtml(outlet.name)}
                             </span>
                             <span class="font-body-sm text-body-sm text-on-surface-variant truncate max-w-xs text-[11px]">
-                              ${outlet.address}
+                              ${window.ArbaUtils.escapeHtml(outlet.address)}
                             </span>
                           </div>
                         </td>
@@ -436,28 +436,28 @@
                         <td class="py-3.5 px-3">
                           <div class="flex flex-col">
                             <span class="font-label-md text-label-md text-on-surface font-medium">
-                              ${outlet.picName}
+                              ${window.ArbaUtils.escapeHtml(outlet.picName)}
                             </span>
                             <a
-                              href="https://wa.me/${outlet.picPhone}"
+                              href="https://wa.me/${encodeURIComponent(String(outlet.picPhone || '').replace(/[^0-9]/g, ''))}"
                               target="_blank"
                               rel="noreferrer"
                               class="font-label-sm text-label-sm text-primary hover:underline flex items-center gap-1 mt-0.5 text-[11px]"
                               onclick="event.stopPropagation()"
                             >
                               <span class="material-symbols-outlined text-[13px]">chat</span>
-                              ${outlet.picPhone.replace(/^62/, '0')}
+                              ${window.ArbaUtils.escapeHtml(String(outlet.picPhone || '').replace(/^62/, '0'))}
                             </a>
                           </div>
                         </td>
 
                         <td class="py-3.5 px-3 whitespace-nowrap">
-                          <span class="font-label-md text-label-md text-on-surface">${outlet.cityName}</span>
+                          <span class="font-label-md text-label-md text-on-surface">${window.ArbaUtils.escapeHtml(outlet.cityName)}</span>
                         </td>
 
                         <td class="py-3.5 px-3 whitespace-nowrap">
                           <span class="px-2 py-0.5 rounded bg-surface-container text-on-surface text-label-sm font-label-sm font-semibold">
-                            ${outlet.terms}
+                            ${window.ArbaUtils.escapeHtml(outlet.terms)}
                           </span>
                         </td>
 
@@ -495,10 +495,10 @@
                         <td class="py-3.5 px-3">
                           <div class="flex flex-col">
                             <span class="font-label-md text-label-md text-on-surface font-semibold">
-                              ${outlet.salesRep}
+                              ${window.ArbaUtils.escapeHtml(outlet.salesRep)}
                             </span>
                             <span class="font-label-sm text-label-sm text-on-surface-variant text-[11px]">
-                              ${outlet.salesArea}
+                              ${window.ArbaUtils.escapeHtml(outlet.salesArea)}
                             </span>
                           </div>
                         </td>
@@ -506,7 +506,7 @@
                         <td class="py-3.5 px-3 whitespace-nowrap">
                           <div class="flex flex-col">
                             <span class="font-label-md text-label-md text-on-surface">
-                              ${outlet.lastOrderDate}
+                              ${window.ArbaUtils.escapeHtml(outlet.lastOrderDate)}
                             </span>
                             <span
                               class="font-label-sm text-label-sm text-[11px] ${
@@ -517,7 +517,7 @@
                                   : 'text-on-surface-variant'
                               }"
                             >
-                              ${outlet.orderFrequency}
+                              ${window.ArbaUtils.escapeHtml(outlet.orderFrequency)}
                             </span>
                           </div>
                         </td>
@@ -527,7 +527,7 @@
                             <button
                               class="btn-outlet-history p-1.5 rounded-lg text-primary hover:bg-surface-container transition-colors cursor-pointer border-0 bg-transparent"
                               title="Profil &amp; Riwayat Transaksi"
-                              data-outlet-id="${outlet.id}"
+                              data-outlet-id="${window.ArbaUtils.escapeHtml(outlet.id)}"
                               type="button"
                               onclick="event.stopPropagation()"
                             >
@@ -536,7 +536,7 @@
                             <button
                               class="btn-outlet-visit p-1.5 rounded-lg text-primary hover:bg-surface-container transition-colors cursor-pointer border-0 bg-transparent"
                               title="Jadwalkan Kunjungan"
-                              data-outlet-id="${outlet.id}"
+                              data-outlet-id="${window.ArbaUtils.escapeHtml(outlet.id)}"
                               type="button"
                               onclick="event.stopPropagation()"
                             >
@@ -599,7 +599,7 @@
                   <div class="flex flex-col">
                     <div class="flex items-center gap-2">
                       <span class="px-2 py-0.5 rounded bg-primary text-white font-code-table text-code-table font-semibold text-xs font-mono">
-                        ${selectedOutlet.code}
+                        ${window.ArbaUtils.escapeHtml(selectedOutlet.code)}
                       </span>
                       <span
                         class="px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold text-xs ${
@@ -614,10 +614,10 @@
                       </span>
                     </div>
                     <h2 class="font-headline-md text-headline-md text-on-surface mt-2 font-bold leading-snug text-lg">
-                      ${selectedOutlet.name}
+                      ${window.ArbaUtils.escapeHtml(selectedOutlet.name)}
                     </h2>
                     <p class="font-body-sm text-body-sm text-on-surface-variant text-xs">
-                      ${selectedOutlet.address}, ${selectedOutlet.cityName}
+                      ${window.ArbaUtils.escapeHtml(selectedOutlet.address)}, ${window.ArbaUtils.escapeHtml(selectedOutlet.cityName)}
                     </p>
                   </div>
                 </div>
@@ -750,17 +750,17 @@
                     </div>
                     <div class="flex flex-col">
                       <span class="font-label-md text-label-md text-on-surface font-semibold">
-                        ${selectedOutlet.picName}
+                        ${window.ArbaUtils.escapeHtml(selectedOutlet.picName)}
                       </span>
                       <span class="font-body-sm text-body-sm text-on-surface-variant text-[11px]">
-                        ${selectedOutlet.picRole}
+                        ${window.ArbaUtils.escapeHtml(selectedOutlet.picRole)}
                       </span>
                     </div>
                   </div>
                   <div class="flex items-center justify-between pt-1 border-t border-border-subtle/30 text-[11px]">
                     <span class="font-label-sm text-label-sm text-on-surface-variant">Sales Dedikasi:</span>
                     <span class="font-label-sm text-label-sm text-on-surface font-semibold">
-                      ${selectedOutlet.salesRep} (${selectedOutlet.salesArea})
+                      ${window.ArbaUtils.escapeHtml(selectedOutlet.salesRep)} (${window.ArbaUtils.escapeHtml(selectedOutlet.salesArea)})
                     </span>
                   </div>
                 </div>
@@ -772,7 +772,7 @@
                       Rincian Inventaris Konsinyasi Mitra
                     </span>
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary">
-                      ${selectedOutlet.terms}
+                      ${window.ArbaUtils.escapeHtml(selectedOutlet.terms)}
                     </span>
                   </div>
                   <div class="space-y-1.5">
@@ -782,7 +782,7 @@
                       return `
                         <div class="p-2.5 rounded-lg border border-border-subtle bg-surface-container-low text-xs flex flex-col gap-1">
                           <div class="flex items-center justify-between gap-1">
-                            <span class="font-bold text-on-surface truncate">${ci.name}</span>
+                            <span class="font-bold text-on-surface truncate">${window.ArbaUtils.escapeHtml(ci.name)}</span>
                             <div class="flex items-center gap-1 shrink-0">
                               ${isPink ? `<span class="badge badge-danger">Mendekati ED</span>` : ''}
                               <span class="badge ${isSlow ? 'badge-warning' : 'badge-success'}">
@@ -792,7 +792,7 @@
                           </div>
                           <div class="flex items-center justify-between text-[11px] text-on-surface-variant">
                             <span>Kuota: <b>${ci.consignedQty}</b> · Terjual: <b class="text-emerald-600">${ci.soldQty}</b> · Saldo: <b class="text-on-surface">${ci.remainingQty}</b></span>
-                            <span>ED: <b class="${isPink ? 'text-rose-600' : 'text-on-surface'}">${ci.expiry}</b></span>
+                            <span>ED: <b class="${isPink ? 'text-rose-600' : 'text-on-surface'}">${window.ArbaUtils.escapeHtml(ci.expiry)}</b></span>
                           </div>
                         </div>
                       `;
@@ -807,11 +807,11 @@
                       Log Kunjungan Sales Terakhir
                     </span>
                     <span class="font-label-sm text-label-sm text-primary font-medium text-xs">
-                      ${selectedOutlet.lastVisitDate}
+                      ${window.ArbaUtils.escapeHtml(selectedOutlet.lastVisitDate)}
                     </span>
                   </div>
                   <div class="bg-surface-container-low/60 p-3 rounded-lg text-body-sm font-body-sm text-on-surface leading-relaxed border border-border-subtle/30 text-xs">
-                    <p class="m-0">${selectedOutlet.visitNotes}</p>
+                    <p class="m-0">${window.ArbaUtils.escapeHtml(selectedOutlet.visitNotes)}</p>
                   </div>
                 </div>
 
@@ -1067,7 +1067,7 @@
           });
           window.L.marker([dLat, dLng], { icon: pin })
             .addTo(dMap)
-            .bindPopup('<div style="font-size:11px;font-family:Inter,sans-serif;"><b>' + dName + '</b><br/>' + dAddr + '</div>');
+            .bindPopup('<div style="font-size:11px;font-family:Inter,sans-serif;"><b>' + window.ArbaUtils.escapeHtml(dName) + '</b><br/>' + window.ArbaUtils.escapeHtml(dAddr) + '</div>');
 
           var corridor = window.ArbaStore.computeCorridorRoadPath
             ? window.ArbaStore.computeCorridorRoadPath(hq, { lat: dLat, lng: dLng })
@@ -1509,8 +1509,8 @@
               <span class="material-symbols-outlined text-[20px]">person</span>
             </div>
             <div class="flex flex-col">
-              <span class="font-bold text-sm text-on-surface">${outlet.picName}</span>
-              <span class="text-xs text-on-surface-variant font-mono">${outlet.picPhone} • ${outlet.name}</span>
+              <span class="font-bold text-sm text-on-surface">${window.ArbaUtils.escapeHtml(outlet.picName)}</span>
+              <span class="text-xs text-on-surface-variant font-mono">${window.ArbaUtils.escapeHtml(outlet.picPhone)} • ${window.ArbaUtils.escapeHtml(outlet.name)}</span>
             </div>
           </div>
 
@@ -1530,7 +1530,7 @@
 
             <div class="mt-2">
               <label class="font-semibold text-on-surface-variant block mb-1">Pratinjau Pesan:</label>
-              <textarea id="wa-msg-preview" rows="4" readonly class="w-full p-2.5 bg-surface-container-low rounded-lg text-xs text-on-surface border border-border-subtle/40 focus:outline-none">${getMessage('delivery')}</textarea>
+              <textarea id="wa-msg-preview" rows="4" readonly class="w-full p-2.5 bg-surface-container-low rounded-lg text-xs text-on-surface border border-border-subtle/40 focus:outline-none">${window.ArbaUtils.escapeHtml(getMessage('delivery'))}</textarea>
             </div>
           </div>
         </div>
@@ -1600,14 +1600,14 @@
           <div class="modal-body text-xs">
             <div class="bg-surface-container-low p-3 rounded-lg space-y-1">
               <span class="text-on-surface-variant block">Outlet Mitra:</span>
-              <span class="font-bold text-sm text-on-surface block">${outlet.name}</span>
-              <span class="text-slate-500">${outlet.address} • Wilayah: ${outlet.cityName}</span>
+              <span class="font-bold text-sm text-on-surface block">${window.ArbaUtils.escapeHtml(outlet.name)}</span>
+              <span class="text-slate-500">${window.ArbaUtils.escapeHtml(outlet.address)} • Wilayah: ${window.ArbaUtils.escapeHtml(outlet.cityName)}</span>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
               <div class="flex flex-col gap-1">
                 <label class="font-semibold text-on-surface-variant">Sales Dedikasi</label>
-                <input type="text" readOnly value="${outlet.salesRep}" class="p-2 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-border-subtle/50" />
+                <input type="text" readOnly value="${window.ArbaUtils.escapeHtml(outlet.salesRep)}" class="p-2 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-border-subtle/50" />
               </div>
               <div class="flex flex-col gap-1">
                 <label class="font-semibold text-on-surface-variant">Tujuan Kunjungan *</label>
@@ -1680,7 +1680,7 @@
             <span class="material-symbols-outlined text-primary text-[24px]">receipt_long</span>
             <div>
               <h3 class="modal-title">Riwayat Transaksi &amp; Audit Faktur</h3>
-              <span class="text-xs text-on-surface-variant">${outlet.name} (${outlet.code})</span>
+              <span class="text-xs text-on-surface-variant">${window.ArbaUtils.escapeHtml(outlet.name)} (${window.ArbaUtils.escapeHtml(outlet.code)})</span>
             </div>
           </div>
           <button class="icon-btn" onclick="window.ArbaApp.closeModal()">
@@ -1723,13 +1723,13 @@
                   ${outletOrders.map(function (ord) {
                     return `
                       <tr class="hover:bg-surface-container-low">
-                        <td class="p-2.5 font-mono font-semibold text-primary">${ord.clientUuid}</td>
-                        <td class="p-2.5 text-slate-500">${ord.orderTime}</td>
+                        <td class="p-2.5 font-mono font-semibold text-primary">${window.ArbaUtils.escapeHtml(ord.clientUuid)}</td>
+                        <td class="p-2.5 text-slate-500">${window.ArbaUtils.escapeHtml(ord.orderTime)}</td>
                         <td class="p-2.5 font-semibold font-mono">${window.ArbaUtils.formatRupiah(ord.totalAmount)}</td>
-                        <td class="p-2.5">${ord.terms}</td>
+                        <td class="p-2.5">${window.ArbaUtils.escapeHtml(ord.terms)}</td>
                         <td class="p-2.5 text-center">
                           <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-status-success-bg text-status-success-text">
-                            ${ord.status}
+                            ${window.ArbaUtils.escapeHtml(ord.status)}
                           </span>
                         </td>
                       </tr>
@@ -1752,7 +1752,8 @@
           <span class="text-xs text-slate-500">Kepatuhan Audit: Sesuai Buku Besar Piutang Solo Raya</span>
           <button
             type="button"
-            onclick="window.ArbaApp.showToast('Mencetak rekening koran mitra ${window.ArbaUtils.escapeHtml(outlet.name)}', 'print'); window.print();"
+            data-outlet-name="${window.ArbaUtils.escapeHtml(outlet.name)}"
+            onclick="window.ArbaApp.showToast('Mencetak rekening koran mitra ' + (this.getAttribute('data-outlet-name') || ''), 'print'); window.print();"
             class="btn btn-outline text-primary text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
           >
             <span class="material-symbols-outlined text-[16px]">print</span>

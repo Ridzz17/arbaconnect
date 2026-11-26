@@ -94,7 +94,7 @@
     if (!user) {
       return {
         ok: false,
-        message: 'Akun tidak ditemukan. Periksa kembali Username atau Email Anda.'
+        message: 'Username/Email atau Kata Sandi tidak sesuai.'
       };
     }
 
@@ -105,13 +105,20 @@
       };
     }
 
-    if (pw === String(user.password) || (user.pin && pw === String(user.pin))) {
+    var hashFn = (window.ArbaData && window.ArbaData.hashCredential) ||
+      (window.ArbaUtils && window.ArbaUtils.hashCredential) ||
+      function (s) { return String(s || ''); };
+    var candidateHash = hashFn(pw);
+    var expectedPwHash = user.passwordHash || (user.password ? hashFn(user.password) : '');
+    var expectedPinHash = user.pinHash || (user.pin ? hashFn(user.pin) : '');
+
+    if (candidateHash === expectedPwHash || (expectedPinHash && candidateHash === expectedPinHash)) {
       return { ok: true, user: user };
     }
 
     return {
       ok: false,
-      message: 'Kata sandi atau PIN tidak sesuai. Silakan coba lagi.'
+      message: 'Username/Email atau Kata Sandi tidak sesuai.'
     };
   }
 
@@ -158,13 +165,17 @@
         var res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
           body: JSON.stringify({ identifier: identifier, password: password })
         });
         if (res.ok) {
           var data = await res.json();
           if (data && data.status === 'ok' && data.user) {
             clearLocalFailure(identifier);
-            return { ok: true, user: data.user, mode: 'ONLINE_SQL' };
+            if (data.token && window.ArbaOfflineSync && typeof window.ArbaOfflineSync.setAuthToken === 'function') {
+              window.ArbaOfflineSync.setAuthToken(data.token);
+            }
+            return { ok: true, user: data.user, token: data.token, mode: 'ONLINE_SQL' };
           }
         } else if (res.status === 401 || res.status === 403 || res.status === 429) {
           recordLocalFailure(identifier);
@@ -403,18 +414,18 @@
         <!-- Header Profil Super Admin -->
         <div class="flex items-start justify-between gap-4 pb-4 border-b border-border-subtle">
           <div class="flex items-center gap-3.5">
-            <div style="width:52px; height:52px; border-radius:14px; background:${user.badgeColor || '#6d28d9'}; color:#ffffff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px; box-shadow:0 6px 14px rgba(109,40,217,0.25);">
-              ${user.avatarInitials || 'SA'}
+            <div style="width:52px; height:52px; border-radius:14px; background:${window.ArbaUtils.safeHexColor(user.badgeColor, '#6d28d9')}; color:#ffffff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px; box-shadow:0 6px 14px rgba(109,40,217,0.25);">
+              ${window.ArbaUtils.escapeHtml(user.avatarInitials || 'SA')}
             </div>
             <div>
               <div class="flex items-center gap-2 flex-wrap">
-                <h3 class="font-bold text-base text-on-surface">${user.name}</h3>
+                <h3 class="font-bold text-base text-on-surface">${window.ArbaUtils.escapeHtml(user.name)}</h3>
                 <span style="padding:2px 8px; border-radius:999px; font-size:10px; font-weight:800; background:${roleMeta.badgeBg}; color:${roleMeta.badgeText};">
-                  ${roleMeta.label.toUpperCase()}
+                  ${window.ArbaUtils.escapeHtml(roleMeta.label.toUpperCase())}
                 </span>
               </div>
-              <div class="text-xs text-on-surface-variant font-medium mt-0.5">${user.title} • ${user.division}</div>
-              <div class="text-[11px] font-mono text-primary mt-0.5">Username: ${user.username} • ${user.email}</div>
+              <div class="text-xs text-on-surface-variant font-medium mt-0.5">${window.ArbaUtils.escapeHtml(user.title)} • ${window.ArbaUtils.escapeHtml(user.division)}</div>
+              <div class="text-[11px] font-mono text-primary mt-0.5">Username: ${window.ArbaUtils.escapeHtml(user.username)} • ${window.ArbaUtils.escapeHtml(user.email)}</div>
             </div>
           </div>
           <button id="profile-modal-close" class="icon-btn" type="button" title="Tutup">

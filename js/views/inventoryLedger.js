@@ -509,14 +509,14 @@
                             <span class="material-symbols-outlined text-[18px]">${p.icon}</span>
                           </div>
                           <div>
-                            <div class="font-semibold text-on-surface">${p.name}</div>
-                            <div class="font-code-table text-code-table text-on-surface-variant font-mono text-[11px]">${p.sku}</div>
+                            <div class="font-semibold text-on-surface">${window.ArbaUtils.escapeHtml(p.name)}</div>
+                            <div class="font-code-table text-code-table text-on-surface-variant font-mono text-[11px]">${window.ArbaUtils.escapeHtml(p.sku)}</div>
                           </div>
                         </div>
                       </td>
                       <td class="py-3 px-3">
                         <span class="px-2 py-0.5 rounded bg-surface-container font-label-sm text-label-sm text-on-surface">
-                          ${p.category}
+                          ${window.ArbaUtils.escapeHtml(p.category)}
                         </span>
                       </td>
                       <td class="py-3 px-3 text-right font-code-table text-code-table font-semibold ${
@@ -678,8 +678,8 @@
                   <div>
                     <div class="flex items-center justify-between gap-2 mb-2">
                       <div>
-                        <div class="font-bold text-sm text-on-surface">${ld.salesRep}</div>
-                        <div class="text-[11px] text-on-surface-variant">${ld.division} · ${ld.routeArea}</div>
+                        <div class="font-bold text-sm text-on-surface">${window.ArbaUtils.escapeHtml(ld.salesRep)}</div>
+                        <div class="text-[11px] text-on-surface-variant">${window.ArbaUtils.escapeHtml(ld.division)} · ${window.ArbaUtils.escapeHtml(ld.routeArea)}</div>
                       </div>
                       <span class="badge ${badgeCls}">
                         ${badgeLabel}
@@ -688,7 +688,7 @@
 
                     ${ld.auditNote ? `
                       <div class="p-2 rounded-lg text-[11px] font-semibold mb-2 bg-status-danger-bg text-status-danger-text">
-                        ${ld.auditNote}
+                        ${window.ArbaUtils.escapeHtml(ld.auditNote)}
                       </div>
                     ` : ''}
 
@@ -702,7 +702,7 @@
                       ${(ld.items || []).map(function (it) {
                         return `
                           <div class="grid grid-cols-12 items-center text-[11px] text-on-surface">
-                            <span class="col-span-5 font-semibold truncate" title="${it.name}">${it.name}</span>
+                            <span class="col-span-5 font-semibold truncate" title="${window.ArbaUtils.escapeHtml(it.name)}">${window.ArbaUtils.escapeHtml(it.name)}</span>
                             <span class="col-span-2 text-center font-mono font-bold">${it.loadedQty}</span>
                             <span class="col-span-2 text-center font-mono text-emerald-600 font-bold">${it.droppedQty}</span>
                             <span class="col-span-3 text-right font-mono font-bold ${it.discrepancy > 0 ? 'text-rose-600' : 'text-on-surface'}">
@@ -816,15 +816,15 @@
                   return `
                     <tr class="hover:bg-surface-container-low/40 transition-colors">
                       <td class="py-3 px-4">
-                        <div class="font-code-table text-code-table font-bold text-on-surface font-mono">${entry.id}</div>
-                        <div class="font-label-sm text-label-sm text-on-surface-variant text-[11px]">${entry.timestamp}</div>
+                        <div class="font-code-table text-code-table font-bold text-on-surface font-mono">${window.ArbaUtils.escapeHtml(entry.id)}</div>
+                        <div class="font-label-sm text-label-sm text-on-surface-variant text-[11px]">${window.ArbaUtils.escapeHtml(entry.timestamp)}</div>
                       </td>
                       <td class="py-3 px-3 font-code-table text-code-table text-secondary font-medium font-mono">
-                        ${entry.docRef}
+                        ${window.ArbaUtils.escapeHtml(entry.docRef)}
                       </td>
                       <td class="py-3 px-3">
-                        <div class="font-label-md text-label-md text-on-surface font-semibold">${entry.skuName}</div>
-                        <div class="font-code-table text-code-table text-on-surface-variant font-mono text-[11px]">${entry.batch}</div>
+                        <div class="font-label-md text-label-md text-on-surface font-semibold">${window.ArbaUtils.escapeHtml(entry.skuName)}</div>
+                        <div class="font-code-table text-code-table text-on-surface-variant font-mono text-[11px]">${window.ArbaUtils.escapeHtml(entry.batch)}</div>
                       </td>
                       <td class="py-3 px-3 text-center">
                         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded font-label-sm text-label-sm font-bold ${badgeClass}">
@@ -838,12 +838,12 @@
                         ${window.ArbaUtils.formatNumber(entry.finalStock)} unit
                       </td>
                       <td class="py-3 px-3">
-                        <div class="font-label-md text-label-md text-on-surface font-semibold">${entry.operator}</div>
-                        <div class="font-label-sm text-label-sm text-on-surface-variant text-[11px]">${entry.operatorRole}</div>
+                        <div class="font-label-md text-label-md text-on-surface font-semibold">${window.ArbaUtils.escapeHtml(entry.operator)}</div>
+                        <div class="font-label-sm text-label-sm text-on-surface-variant text-[11px]">${window.ArbaUtils.escapeHtml(entry.operatorRole)}</div>
                       </td>
                       <td class="py-3 px-4 font-code-table text-code-table text-on-surface-variant">
                         <span class="bg-surface-container px-2 py-0.5 rounded text-[11px] font-mono text-on-surface-variant" title="Verified SHA-256 Ledger Node">
-                          ${entry.hash}
+                          ${window.ArbaUtils.escapeHtml(entry.hash)}
                         </span>
                       </td>
                     </tr>
@@ -1057,7 +1057,7 @@
             <span class="material-symbols-outlined text-primary text-[22px]">fact_check</span>
             <div>
               <h3 class="font-bold text-sm text-on-surface">Formulir Rekonsiliasi Pengembalian Manifest Sales</h3>
-              <p class="text-[11px] text-on-surface-variant">${loadRec.salesRep} (${loadRec.division}) • ${loadRec.id}</p>
+              <p class="text-[11px] text-on-surface-variant">${window.ArbaUtils.escapeHtml(loadRec.salesRep)} (${window.ArbaUtils.escapeHtml(loadRec.division)}) • ${window.ArbaUtils.escapeHtml(loadRec.id)}</p>
             </div>
           </div>
           <button class="icon-btn" onclick="window.ArbaApp.closeModal()">
@@ -1088,8 +1088,8 @@
                     return `
                       <tr>
                         <td class="p-2 font-semibold text-on-surface">
-                          <div>${it.name}</div>
-                          <div class="text-[10px] font-mono text-on-surface-variant">${it.sku} • ${it.batch}</div>
+                          <div>${window.ArbaUtils.escapeHtml(it.name)}</div>
+                          <div class="text-[10px] font-mono text-on-surface-variant">${window.ArbaUtils.escapeHtml(it.sku)} • ${window.ArbaUtils.escapeHtml(it.batch)}</div>
                         </td>
                         <td class="p-2 text-center font-mono font-bold">${it.loadedQty}</td>
                         <td class="p-2 text-center font-mono font-bold text-primary">${it.droppedQty}</td>
@@ -1541,13 +1541,13 @@
                 <div class="p-3 bg-surface-container-low/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                   <div>
                     <div class="flex items-center gap-2">
-                      <span class="font-bold font-mono text-primary">${po.id}</span>
+                      <span class="font-bold font-mono text-primary">${window.ArbaUtils.escapeHtml(po.id)}</span>
                       <span class="px-2 py-0.5 rounded-full ${po.status === 'DITERIMA' ? 'bg-status-success-bg text-status-success-text' : 'bg-status-warning-bg text-status-warning-text'} font-semibold">
-                        ${po.status}
+                        ${window.ArbaUtils.escapeHtml(po.status)}
                       </span>
                     </div>
-                    <div class="font-semibold text-on-surface mt-0.5">${po.productName}</div>
-                    <div class="text-on-surface-variant">Vendor: ${po.vendorName} • Lead time: ${po.leadTimeDays} hari (Est: ${po.expectedDate})</div>
+                    <div class="font-semibold text-on-surface mt-0.5">${window.ArbaUtils.escapeHtml(po.productName)}</div>
+                    <div class="text-on-surface-variant">Vendor: ${window.ArbaUtils.escapeHtml(po.vendorName)} • Lead time: ${po.leadTimeDays} hari (Est: ${window.ArbaUtils.escapeHtml(po.expectedDate)})</div>
                   </div>
                   <div class="text-right">
                     <div class="font-bold text-sm text-on-surface">${po.quantity} Unit</div>
@@ -1632,8 +1632,8 @@
         <form id="form-create-po">
           <div class="modal-body text-xs">
             <div class="p-3 bg-surface-container-low rounded-lg text-xs space-y-1 border border-border-subtle/30">
-              <div class="font-bold text-sm text-on-surface">${product.name}</div>
-              <div class="text-on-surface-variant font-mono">${product.sku} • Saldo Fisik: ${product.stock} unit (ROP: ${product.rop})</div>
+              <div class="font-bold text-sm text-on-surface">${window.ArbaUtils.escapeHtml(product.name)}</div>
+              <div class="text-on-surface-variant font-mono">${window.ArbaUtils.escapeHtml(product.sku)} • Saldo Fisik: ${product.stock} unit (ROP: ${product.rop})</div>
               <div class="text-rose-600 font-semibold">Defisit Buffer: ${Math.max(0, product.rop - product.stock)} unit</div>
             </div>
 
@@ -1764,11 +1764,11 @@
                 ${products.map(function (p) {
                   return `
                     <tr class="border-b border-slate-200">
-                      <td class="border border-slate-300 p-1.5 font-mono">${p.sku}</td>
-                      <td class="border border-slate-300 p-1.5">${p.name}</td>
+                      <td class="border border-slate-300 p-1.5 font-mono">${window.ArbaUtils.escapeHtml(p.sku)}</td>
+                      <td class="border border-slate-300 p-1.5">${window.ArbaUtils.escapeHtml(p.name)}</td>
                       <td class="border border-slate-300 p-1.5 text-right font-bold">${p.stock}</td>
                       <td class="border border-slate-300 p-1.5 text-right">${p.rop}</td>
-                      <td class="border border-slate-300 p-1.5 font-mono">${p.activeBatch}</td>
+                      <td class="border border-slate-300 p-1.5 font-mono">${window.ArbaUtils.escapeHtml(p.activeBatch)}</td>
                       <td class="border border-slate-300 p-1.5">${p.status === 'optimal' ? 'Aman' : 'Perlu PO'}</td>
                     </tr>
                   `;

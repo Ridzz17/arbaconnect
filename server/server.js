@@ -25,6 +25,7 @@
 
 const http = require('node:http');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const vm = require('node:vm');
 const crypto = require('node:crypto');
@@ -32,23 +33,299 @@ const { URL } = require('node:url');
 const { DatabaseSync } = require('node:sqlite');
 
 function hashCredential(raw) {
-  return 'sha256:' + crypto.createHash('sha256').update('ARBA-SALT-2026:' + String(raw || '')).digest('hex');
+  const str = String(raw || '');
+  if (str.startsWith('sha256:') && str.length === 71) return str;
+  return 'sha256:' + crypto.createHash('sha256').update('ARBA-SALT-2026:' + str).digest('hex');
 }
 
-// Rate limiter anti brute-force login (maks 5 percobaan gagal per 30 detik per akun/IP)
+function verifyCredentialHash(inputRaw, storedPlainOrHash, storedHashField) {
+  const candidate = hashCredential(inputRaw);
+  const expected = storedHashField
+    ? String(storedHashField)
+    : (storedPlainOrHash ? hashCredential(storedPlainOrHash) : '');
+  if (!expected || candidate.length !== expected.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(candidate, 'utf8'), Buffer.from(expected, 'utf8'));
+  } catch (e) {
+    return false;
+  }
+}
+
+// Hindari prediktabilitas __dirname (/var/task/server) di lingkungan Serverless/Vercel apabila ARBA_AUTH_SECRET belum disetel
+const IS_SERVERLESS_RUNTIME = Boolean(
+  process.env.VERCEL ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME ||
+  __dirname.startsWith('/var/task')
+);
+const SERVER_BOOT_NONCE = IS_SERVERLESS_RUNTIME ? crypto.randomBytes(32).toString('hex') : '';
+const SERVER_AUTH_SECRET = process.env.ARBA_AUTH_SECRET ||
+  crypto.createHash('sha256').update(
+    'ARBA-SESSION-HMAC-2026:' +
+    (IS_SERVERLESS_RUNTIME
+      ? (process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT_SHA || SERVER_BOOT_NONCE) + ':' + SERVER_BOOT_NONCE
+      : __dirname)
+  ).digest('hex');
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+const revokedTokens = new Set();
+
+const SECURITY_CSP_POLICY = "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com/leaflet@1.9.4/dist/leaflet.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com/leaflet@1.9.4/dist/leaflet.css; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.tile.openstreetmap.org https://unpkg.com; connect-src 'self' https://router.project-osrm.org https://*.tile.openstreetmap.org; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'";
+const SECURITY_PERMISSIONS_POLICY = 'camera=(self), geolocation=(self), microphone=(), payment=(), usb=()';
+const SECURITY_HSTS_POLICY = 'max-age=63072000; includeSubDomains; preload';
+
+function isHttpsRequest(req) {
+  if (process.env.VERCEL === '1' || process.env.VERCEL === 'true') return true;
+  const h = (req && req.headers) || {};
+  const proto = String(h['x-forwarded-proto'] || h['X-Forwarded-Proto'] || '').toLowerCase();
+  if (proto.includes('https')) return true;
+  if (req && req.socket && req.socket.encrypted) return true;
+  return false;
+}
+
+function buildSessionCookieHeader(tokenValue, maxAgeSec, req) {
+  const secureAttr = isHttpsRequest(req) ? '; Secure' : '';
+  return `arba_session=${tokenValue}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAgeSec}${secureAttr}`;
+}
+
+function hashTokenForRevocation(token) {
+  return crypto.createHash('sha256').update(String(token || '')).digest('hex');
+}
+
+function isTokenRevoked(token) {
+  if (!token) return true;
+  if (revokedTokens.has(token)) return true;
+  try {
+    const tokenHash = hashTokenForRevocation(token);
+    const row = db.prepare('SELECT exp_ms FROM revoked_tokens WHERE token_hash = ?').get(tokenHash);
+    if (row) {
+      if (row.exp_ms > Date.now()) {
+        revokedTokens.add(token);
+        return true;
+      }
+      db.prepare('DELETE FROM revoked_tokens WHERE token_hash = ?').run(tokenHash);
+    }
+  } catch (e) {
+    // Table may not be initialized yet during early boot
+  }
+  return false;
+}
+
+function revokeSessionToken(token) {
+  if (!token || typeof token !== 'string') return;
+  revokedTokens.add(token);
+  try {
+    let expMs = Date.now() + SESSION_TTL_MS;
+    const parts = token.split('.');
+    if (parts.length === 2) {
+      const payload = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
+      if (payload && payload.exp) expMs = Number(payload.exp) || expMs;
+    }
+    const tokenHash = hashTokenForRevocation(token);
+    db.prepare('INSERT OR REPLACE INTO revoked_tokens (token_hash, exp_ms) VALUES (?, ?)').run(tokenHash, expMs);
+  } catch (e) {
+    // Ignore malformed token payload on logout
+  }
+}
+
+function getUserPasswordTag(user) {
+  if (!user) return '';
+  const pwHash = user.passwordHash || hashCredential(user.password || '123');
+  return String(pwHash).slice(7, 23);
+}
+
+function issueSessionToken(user) {
+  const payloadObj = {
+    sub: user.id,
+    username: user.username,
+    role: user.role,
+    pwdTag: getUserPasswordTag(user),
+    iat: Date.now(),
+    exp: Date.now() + SESSION_TTL_MS,
+    jti: crypto.randomBytes(12).toString('hex')
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payloadObj), 'utf8').toString('base64url');
+  const sig = crypto.createHmac('sha256', SERVER_AUTH_SECRET).update(payloadB64).digest('base64url');
+  return `${payloadB64}.${sig}`;
+}
+
+function verifySessionToken(token) {
+  if (!token || typeof token !== 'string' || isTokenRevoked(token)) return null;
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const [payloadB64, sig] = parts;
+  const expectedSig = crypto.createHmac('sha256', SERVER_AUTH_SECRET).update(payloadB64).digest('base64url');
+  if (sig.length !== expectedSig.length) return null;
+  try {
+    if (!crypto.timingSafeEqual(Buffer.from(sig, 'utf8'), Buffer.from(expectedSig, 'utf8'))) {
+      return null;
+    }
+    const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+    if (!payload || !payload.sub || !payload.exp || Date.now() > payload.exp) {
+      return null;
+    }
+    return payload;
+  } catch (e) {
+    return null;
+  }
+}
+
+function parseCookies(req) {
+  const list = {};
+  const cookieHeader = req.headers && req.headers.cookie;
+  if (!cookieHeader) return list;
+  cookieHeader.split(';').forEach((cookie) => {
+    const idx = cookie.indexOf('=');
+    if (idx > 0) {
+      const key = cookie.slice(0, idx).trim();
+      const val = cookie.slice(idx + 1).trim();
+      list[key] = decodeURIComponent(val);
+    }
+  });
+  return list;
+}
+
+function extractRequestToken(req, parsedUrl) {
+  const h = (req && req.headers) || {};
+  const authHeader = h.authorization || h.Authorization || h['x-arba-token'] || h['X-Arba-Token'];
+  if (authHeader && typeof authHeader === 'string') {
+    if (authHeader.toLowerCase().startsWith('bearer ')) {
+      return authHeader.slice(7).trim();
+    }
+    return authHeader.trim();
+  }
+  const cookies = parseCookies(req);
+  if (cookies.arba_session) return cookies.arba_session;
+  if (parsedUrl && parsedUrl.searchParams && parsedUrl.searchParams.get('token')) {
+    return parsedUrl.searchParams.get('token');
+  }
+  return null;
+}
+
+function sanitizeHexColor(c, fallback = '#005c55') {
+  if (typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c.trim())) {
+    return c.trim();
+  }
+  return fallback;
+}
+
+function sanitizeUserRecord(u) {
+  if (!u || typeof u !== 'object') return u;
+  const copy = Object.assign({}, u);
+  const pwHash = copy.passwordHash || (copy.password ? hashCredential(copy.password) : undefined);
+  const pnHash = copy.pinHash || (copy.pin ? hashCredential(copy.pin) : undefined);
+  delete copy.password;
+  delete copy.pin;
+  if (pwHash) copy.passwordHash = pwHash;
+  if (pnHash) copy.pinHash = pnHash;
+  copy.badgeColor = sanitizeHexColor(copy.badgeColor, '#005c55');
+  return copy;
+}
+
+function sanitizeUserForPublicList(u) {
+  const copy = sanitizeUserRecord(u);
+  delete copy.passwordHash;
+  delete copy.pinHash;
+  return copy;
+}
+
+function sanitizeStateForClient(state, callerUser) {
+  if (!state || typeof state !== 'object') return state;
+  const copy = Object.assign({}, state);
+  const callerId = callerUser && callerUser.id ? String(callerUser.id) : null;
+  if (Array.isArray(copy.users)) {
+    copy.users = copy.users.map((u) => {
+      const clean = sanitizeUserRecord(u);
+      // Hanya sertakan passwordHash & pinHash milik user yang sedang login (agar offline PIN/password check miliknya tetap berfungsi tanpa membocorkan hash milik Super Admin / user lain)
+      if (!callerId || clean.id !== callerId) {
+        delete clean.passwordHash;
+        delete clean.pinHash;
+      }
+      return clean;
+    });
+  }
+  return copy;
+}
+
+function getClientIp(req) {
+  const h = (req && req.headers) || {};
+  const isVercelEnv = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
+  const isExplicitTrustProxy = process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
+  const isCloudflareTrusted = process.env.TRUST_CLOUDFLARE === '1' || process.env.TRUST_CLOUDFLARE === 'true';
+
+  if (isVercelEnv || isExplicitTrustProxy) {
+    if (isCloudflareTrusted && h['cf-connecting-ip']) {
+      return String(h['cf-connecting-ip']).trim();
+    }
+    const vercelFwd = h['x-vercel-forwarded-for'] || h['X-Vercel-Forwarded-For'];
+    if (vercelFwd) return String(vercelFwd).split(',')[0].trim();
+    const realIp = h['x-real-ip'] || h['X-Real-Ip'];
+    if (realIp) return String(realIp).trim();
+    const xff = h['x-forwarded-for'] || h['X-Forwarded-For'];
+    if (xff) return String(xff).split(',')[0].trim();
+  }
+  return (req && req.socket && req.socket.remoteAddress) || 'local';
+}
+
+// Rate limiter anti brute-force login (per IP+akun dan per akun global)
 const loginAttempts = new Map();
 const MAX_LOGIN_ATTEMPTS = 5;
+const MAX_ACCOUNT_ATTEMPTS = 10;
 const LOCKOUT_MS = 30 * 1000;
+
+function pruneSecurityCaches() {
+  const now = Date.now();
+  for (const [k, v] of loginAttempts.entries()) {
+    if (!v || (now - (v.lastAttempt || 0)) > LOCKOUT_MS * 4) {
+      loginAttempts.delete(k);
+    }
+  }
+  for (const tok of revokedTokens) {
+    const parts = String(tok).split('.');
+    if (parts.length !== 2) {
+      revokedTokens.delete(tok);
+      continue;
+    }
+    try {
+      const payload = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
+      if (!payload || !payload.exp || now > payload.exp) {
+        revokedTokens.delete(tok);
+      }
+    } catch (e) {
+      revokedTokens.delete(tok);
+    }
+  }
+  try {
+    db.prepare('DELETE FROM revoked_tokens WHERE exp_ms <= ?').run(now);
+  } catch (e) {
+    // Ignore if table not ready
+  }
+}
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 const ROOT_DIR = path.resolve(__dirname, '..');
-const DB_DIR = path.join(ROOT_DIR, 'database');
-const DB_FILE = path.join(DB_DIR, 'arbaconnect.sqlite');
 
-if (!fs.existsSync(DB_DIR)) {
-  fs.mkdirSync(DB_DIR, { recursive: true });
+function resolveWritableDbDir() {
+  const preferredDir = path.join(ROOT_DIR, 'database');
+  if (!IS_SERVERLESS_RUNTIME) {
+    try {
+      if (!fs.existsSync(preferredDir)) {
+        fs.mkdirSync(preferredDir, { recursive: true });
+      }
+      fs.accessSync(preferredDir, fs.constants.W_OK);
+      return preferredDir;
+    } catch (e) {
+      // Fall back to os.tmpdir() if preferred directory is read-only
+    }
+  }
+  const tmpDbDir = path.join(os.tmpdir(), 'arbaconnect-db');
+  if (!fs.existsSync(tmpDbDir)) {
+    fs.mkdirSync(tmpDbDir, { recursive: true });
+  }
+  return tmpDbDir;
 }
+
+const DB_DIR = resolveWritableDbDir();
+const DB_FILE = path.join(DB_DIR, 'arbaconnect.sqlite');
 
 // -----------------------------------------------------------------------------
 // 1. Muat Master Data Awal dari `js/data.js` untuk Seeding Database Pusat
@@ -230,6 +507,13 @@ function initRelationalSchema() {
       state_json      TEXT NOT NULL,
       updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    -- 13. Tabel Persistensi Revokasi Token Sesi (Tetap Valid Meski Server Restart)
+    CREATE TABLE IF NOT EXISTS revoked_tokens (
+      token_hash      TEXT PRIMARY KEY,
+      exp_ms          INTEGER NOT NULL,
+      revoked_at      TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 }
 
@@ -271,8 +555,8 @@ function syncStateToRelationalTables(state) {
       u.username || u.id.toLowerCase(),
       u.name,
       u.email,
-      hashCredential(u.password || '123'),
-      hashCredential(u.pin || '123456'),
+      hashCredential(u.passwordHash || u.password || '123'),
+      hashCredential(u.pinHash || u.pin || '123456'),
       u.phone || '-',
       u.title || '-',
       u.division || '-',
@@ -442,21 +726,29 @@ function getCentralState() {
   const row = db.prepare(`SELECT state_json FROM erp_central_state WHERE id = 'main'`).get();
   if (row && row.state_json) {
     const parsed = JSON.parse(row.state_json);
-    // Pastikan daftar users dan Super Admin selalu tersedia
+    let needsSave = false;
+    // Pastikan daftar users dan Super Admin selalu tersedia dan kredensial telah ter-hash
     if (!Array.isArray(parsed.users) || parsed.users.length === 0) {
-      parsed.users = master.users || [];
-      saveCentralState(parsed);
-    } else if (!parsed.users.some((u) => u.role === 'super-admin')) {
-      const superAdmin = (master.users || []).find((u) => u.role === 'super-admin');
-      if (superAdmin) {
-        parsed.users = [superAdmin, ...parsed.users];
-        saveCentralState(parsed);
+      parsed.users = (master.users || []).map((u) => sanitizeUserRecord(u));
+      needsSave = true;
+    } else {
+      if (!parsed.users.some((u) => u.role === 'super-admin')) {
+        const superAdmin = (master.users || []).find((u) => u.role === 'super-admin');
+        if (superAdmin) {
+          parsed.users = [sanitizeUserRecord(superAdmin), ...parsed.users];
+          needsSave = true;
+        }
+      }
+      if (parsed.users.some((u) => u.password !== undefined || u.pin !== undefined)) {
+        parsed.users = parsed.users.map((u) => sanitizeUserRecord(u));
+        needsSave = true;
       }
     }
+    if (needsSave) saveCentralState(parsed);
     return parsed;
   }
   const initialState = {
-    users: master.users || [],
+    users: (master.users || []).map((u) => sanitizeUserRecord(u)),
     products: master.products,
     ledger: master.ledger,
     outlets: master.outlets,
@@ -609,7 +901,7 @@ function applyOutletCredit(state, order, sign) {
 /**
  * Terapkan satu mutasi ke state pusat secara deterministik & idempoten
  */
-function applyMutationOnCentralState(state, mutation) {
+function applyMutationOnCentralState(state, mutation, callerUser) {
   const type = mutation.type;
   const p = mutation.payload || {};
 
@@ -617,8 +909,50 @@ function applyMutationOnCentralState(state, mutation) {
     case 'SUBMIT_ORDER': {
       const incoming = p.order;
       if (!incoming) break;
+
+      const orderCopy = JSON.parse(JSON.stringify(incoming));
+      // Enforce kepemilikan salesRep apabila pemanggil memiliki peran field-sales
+      if (callerUser && callerUser.role === 'field-sales') {
+        orderCopy.salesRep = callerUser.salesRepName || callerUser.name || orderCopy.salesRep;
+        orderCopy.salesRepId = callerUser.salesRepId || callerUser.id || orderCopy.salesRepId;
+      }
+
+      // Validasi dan normalisasi seluruh item pesanan (wajib kuantitas bulat positif >= 1 dan harga resmi dari master produk)
+      const rawItems = Array.isArray(orderCopy.items) ? orderCopy.items : [];
+      const sanitizedItems = [];
+      let recalculatedTotal = 0;
+
+      for (const rawIt of rawItems) {
+        if (!rawIt || typeof rawIt !== 'object') continue;
+        const rawQty = Number(rawIt.quantity);
+        if (!Number.isFinite(rawQty) || rawQty < 1) continue;
+        const safeQty = Math.min(100000, Math.floor(rawQty));
+        const prod = findProduct(state, rawIt.sku || rawIt.productId, rawIt.name);
+        const unitPrice = prod ? Number(prod.unitPrice) : Math.max(0, Math.floor(Number(rawIt.unitPrice) || 0));
+        const subtotal = safeQty * unitPrice;
+        recalculatedTotal += subtotal;
+        sanitizedItems.push(Object.assign({}, rawIt, {
+          sku: prod ? prod.sku : (rawIt.sku || rawIt.productId || 'SKU-UNKNOWN'),
+          name: prod ? prod.name : String(rawIt.name || 'Produk Herbal'),
+          batch: prod ? prod.activeBatch : (rawIt.batch || '-'),
+          expiry: prod ? prod.fefoDate : (rawIt.expiry || '-'),
+          quantity: safeQty,
+          soldAtOutlet: rawIt.soldAtOutlet !== undefined
+            ? Math.max(0, Math.min(safeQty, Math.floor(Number(rawIt.soldAtOutlet) || 0)))
+            : safeQty,
+          unitPrice,
+          subtotal
+        }));
+      }
+
+      if (sanitizedItems.length === 0) {
+        break;
+      }
+      orderCopy.items = sanitizedItems;
+      orderCopy.totalAmount = recalculatedTotal;
+
       // Cek duplikasi clientUuid (Idempotency)
-      const exists = state.orders.find((o) => o.id === incoming.id || o.clientUuid === incoming.clientUuid);
+      const exists = state.orders.find((o) => o.id === orderCopy.id || o.clientUuid === orderCopy.clientUuid);
       if (exists) {
         // Jika sebelumnya masuk sebagai OFFLINE_QUEUED dan belum potong stok, potong sekarang
         if (!exists.stockDeducted) {
@@ -633,7 +967,18 @@ function applyMutationOnCentralState(state, mutation) {
         break;
       }
 
-      const orderCopy = JSON.parse(JSON.stringify(incoming));
+      // Batasi ukuran dan skema data:image/* pada signatureDataUrl & shelfPhotoDataUrl
+      const safeDataUrlRe = /^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/i;
+      if (orderCopy.signatureDataUrl) {
+        if (typeof orderCopy.signatureDataUrl !== 'string' || orderCopy.signatureDataUrl.length > 512 * 1024 || !safeDataUrlRe.test(orderCopy.signatureDataUrl)) {
+          delete orderCopy.signatureDataUrl;
+        }
+      }
+      if (orderCopy.shelfPhotoDataUrl) {
+        if (typeof orderCopy.shelfPhotoDataUrl !== 'string' || orderCopy.shelfPhotoDataUrl.length > 1024 * 1024 || !safeDataUrlRe.test(orderCopy.shelfPhotoDataUrl)) {
+          delete orderCopy.shelfPhotoDataUrl;
+        }
+      }
       orderCopy.stockDeducted = false;
       const shortages = checkStockAvailability(state, orderCopy.items);
       if (shortages.length === 0) {
@@ -696,14 +1041,21 @@ function applyMutationOnCentralState(state, mutation) {
 
       state.orders = [orderCopy, ...state.orders];
       if (p.visitLog && !state.visitLogs.some((v) => v.id === p.visitLog.id)) {
-        state.visitLogs = [p.visitLog, ...state.visitLogs];
+        const vlogCopy = Object.assign({}, p.visitLog);
+        if (callerUser && callerUser.role === 'field-sales') {
+          vlogCopy.salesRep = callerUser.salesRepName || callerUser.name || vlogCopy.salesRep;
+        }
+        state.visitLogs = [vlogCopy, ...state.visitLogs];
       }
       break;
     }
 
     case 'LOG_VISIT': {
-      const vlog = p.visitLog;
+      const vlog = p.visitLog ? Object.assign({}, p.visitLog) : null;
       if (vlog && !state.visitLogs.some((v) => v.id === vlog.id)) {
+        if (callerUser && callerUser.role === 'field-sales') {
+          vlog.salesRep = callerUser.salesRepName || callerUser.name || vlog.salesRep;
+        }
         state.visitLogs = [vlog, ...state.visitLogs];
         const outlet = findOutlet(state, vlog.outletId);
         if (outlet) {
@@ -751,7 +1103,9 @@ function applyMutationOnCentralState(state, mutation) {
 
     case 'ADD_INBOUND_BATCH': {
       const prod = state.products.find((pr) => pr.sku === p.sku);
-      const qty = Number(p.qty) || 0;
+      const rawQty = Number(p.qty);
+      if (!Number.isFinite(rawQty) || rawQty < 1) break;
+      const qty = Math.min(1000000, Math.floor(rawQty));
       const newStock = prod ? prod.stock + qty : qty;
       if (prod) {
         prod.stock = newStock;
@@ -773,6 +1127,8 @@ function applyMutationOnCentralState(state, mutation) {
         operatorRole: 'Warehouse Inbound',
         hash: pseudoHash(p.sku + p.batch)
       };
+      entry.quantity = qty;
+      entry.finalStock = newStock;
       if (!state.ledger.some((l) => l.id === entry.id)) {
         state.ledger = [entry, ...state.ledger];
       }
@@ -825,13 +1181,16 @@ function applyMutationOnCentralState(state, mutation) {
     }
 
     case 'ADJUST_ORDER_QTY': {
+      const rawNewQty = Number(p.newQty);
+      if (!Number.isFinite(rawNewQty) || rawNewQty < 1) break;
+      const safeNewQty = Math.min(100000, Math.floor(rawNewQty));
       const ord = state.orders.find((o) => o.id === p.orderId);
       if (ord) {
         ord.items = (ord.items || []).map((it) => {
           if (it.sku === p.sku || (it.name && it.name.includes(p.sku))) {
             return Object.assign({}, it, {
-              quantity: p.newQty,
-              subtotal: p.newQty * it.unitPrice
+              quantity: safeNewQty,
+              subtotal: safeNewQty * it.unitPrice
             });
           }
           return it;
@@ -843,7 +1202,17 @@ function applyMutationOnCentralState(state, mutation) {
 
     case 'CREATE_SUPPLIER_PO': {
       if (p.po && !state.supplierPOs.some((po) => po.id === p.po.id)) {
-        state.supplierPOs = [p.po, ...state.supplierPOs];
+        const rawQty = Number(p.po.quantity);
+        if (!Number.isFinite(rawQty) || rawQty < 1) break;
+        const safeQty = Math.min(1000000, Math.floor(rawQty));
+        const rawPrice = Number(p.po.unitPrice);
+        const safePrice = Number.isFinite(rawPrice) && rawPrice >= 0 ? Math.floor(rawPrice) : 0;
+        const poCopy = Object.assign({}, p.po, {
+          quantity: safeQty,
+          unitPrice: safePrice,
+          totalCost: safeQty * safePrice
+        });
+        state.supplierPOs = [poCopy, ...state.supplierPOs];
       }
       break;
     }
@@ -926,8 +1295,11 @@ function applyMutationOnCentralState(state, mutation) {
         let totalDiscrepancy = 0;
         (loadRec.items || []).forEach((it) => {
           const expectedReturn = Math.max(0, it.loadedQty - it.droppedQty);
-          const actualReturn = p.actualReturnedMap && p.actualReturnedMap[it.sku] !== undefined
+          const rawReturn = p.actualReturnedMap && p.actualReturnedMap[it.sku] !== undefined
             ? Number(p.actualReturnedMap[it.sku])
+            : expectedReturn;
+          const actualReturn = Number.isFinite(rawReturn)
+            ? Math.max(0, Math.min(it.loadedQty, Math.floor(rawReturn)))
             : expectedReturn;
           it.returnedQty = actualReturn;
           it.discrepancy = Math.max(0, expectedReturn - actualReturn);
@@ -945,10 +1317,31 @@ function applyMutationOnCentralState(state, mutation) {
       if (!Array.isArray(state.users)) state.users = loadInitialMasterData().users || [];
       if (p.user && p.user.id) {
         const idx = state.users.findIndex((u) => u.id === p.user.id);
+        const incoming = Object.assign({}, p.user);
+        const targetId = String(incoming.id);
+        // Cegah kolisi username, email, atau nama dengan akun lain
+        const hasCollision = state.users.some((other) => {
+          if (!other || String(other.id) === targetId) return false;
+          const uCollision = incoming.username && String(other.username || '').toLowerCase() === String(incoming.username).trim().toLowerCase();
+          const eCollision = incoming.email && String(other.email || '').toLowerCase() === String(incoming.email).trim().toLowerCase();
+          const nCollision = incoming.name && String(other.name || '').toLowerCase() === String(incoming.name).trim().toLowerCase();
+          return Boolean(uCollision || eCollision || nCollision);
+        });
+        if (hasCollision) break;
+
+        if (incoming.password) {
+          incoming.passwordHash = hashCredential(incoming.password);
+          delete incoming.password;
+        }
+        if (incoming.pin) {
+          incoming.pinHash = hashCredential(incoming.pin);
+          delete incoming.pin;
+        }
+        incoming.badgeColor = sanitizeHexColor(incoming.badgeColor, idx !== -1 ? state.users[idx].badgeColor : '#005c55');
         if (idx !== -1) {
-          state.users[idx] = Object.assign({}, state.users[idx], p.user);
+          state.users[idx] = sanitizeUserRecord(Object.assign({}, state.users[idx], incoming));
         } else {
-          state.users.push(p.user);
+          state.users.push(sanitizeUserRecord(incoming));
         }
       }
       break;
@@ -959,8 +1352,14 @@ function applyMutationOnCentralState(state, mutation) {
       if (p.userId) {
         const u = state.users.find((usr) => usr.id === p.userId);
         if (u) {
-          if (p.newPassword) u.password = String(p.newPassword);
-          if (p.newPin) u.pin = String(p.newPin);
+          if (p.newPasswordHash || p.newPassword) {
+            u.passwordHash = hashCredential(p.newPasswordHash || p.newPassword);
+            delete u.password;
+          }
+          if (p.newPinHash || p.newPin) {
+            u.pinHash = hashCredential(p.newPinHash || p.newPin);
+            delete u.pin;
+          }
         }
       }
       break;
@@ -969,12 +1368,13 @@ function applyMutationOnCentralState(state, mutation) {
     case 'CREATE_USER': {
       if (!Array.isArray(state.users)) state.users = loadInitialMasterData().users || [];
       if (p.user && p.user.id && !state.users.some((u) => u.id === p.user.id)) {
-        state.users.push(p.user);
-        if (p.user.role === 'field-sales' && Array.isArray(state.salesTeam) && !state.salesTeam.some((s) => s.id === p.user.id)) {
+        const sanitizedNew = sanitizeUserRecord(p.user);
+        state.users.push(sanitizedNew);
+        if (sanitizedNew.role === 'field-sales' && Array.isArray(state.salesTeam) && !state.salesTeam.some((s) => s.id === sanitizedNew.id)) {
           state.salesTeam.push({
-            id: p.user.id,
-            name: p.user.name,
-            division: p.user.division || 'Madu & Herbal',
+            id: sanitizedNew.id,
+            name: sanitizedNew.name,
+            division: sanitizedNew.division || 'Madu & Herbal',
             area: 'Solo Raya',
             dailyVisitTarget: 15,
             monthlyRevenueTarget: 50000000,
@@ -995,7 +1395,8 @@ function applyMutationOnCentralState(state, mutation) {
     }
 
     case 'IMPORT_OUTLETS': {
-      (p.rows || []).forEach((r) => {
+      const safeRows = Array.isArray(p.rows) ? p.rows.slice(0, 500) : [];
+      safeRows.forEach((r) => {
         const name = r.nama_outlet || r.nama;
         if (!name) return;
         let city = String(r.kota || 'Solo').trim();
@@ -1041,7 +1442,8 @@ function applyMutationOnCentralState(state, mutation) {
     }
 
     case 'IMPORT_PRODUCTS': {
-      (p.rows || []).forEach((r) => {
+      const safeRows = Array.isArray(p.rows) ? p.rows.slice(0, 500) : [];
+      safeRows.forEach((r) => {
         const sku = String(r.sku || '').trim().toUpperCase();
         const name = r.nama_produk || r.nama;
         const stock = Number(String(r.stok || '0').replace(/[^0-9]/g, ''));
@@ -1154,10 +1556,20 @@ function applyMutationOnCentralState(state, mutation) {
     case 'UPDATE_OUTLET_CREDIT_POLICY': {
       const target = findOutlet(state, p.outletId);
       if (target) {
-        if (p.creditLimit !== undefined) target.creditLimit = Number(p.creditLimit);
-        if (p.terms !== undefined) target.terms = p.terms;
-        if (p.creditRemaining !== undefined) target.creditRemaining = Number(p.creditRemaining);
-        if (p.creditStatus !== undefined) target.creditStatus = p.creditStatus;
+        if (p.creditLimit !== undefined) {
+          const lim = Number(p.creditLimit);
+          if (!Number.isFinite(lim) || lim < 0) break;
+          target.creditLimit = Math.floor(lim);
+        }
+        if (p.terms !== undefined) target.terms = String(p.terms);
+        if (p.creditRemaining !== undefined) {
+          const rem = Number(p.creditRemaining);
+          if (!Number.isFinite(rem) || rem < 0) break;
+          target.creditRemaining = Math.floor(rem);
+        } else if (p.creditLimit !== undefined) {
+          target.creditRemaining = Math.max(0, target.creditLimit - (target.creditUsed || 0));
+        }
+        if (p.creditStatus !== undefined) target.creditStatus = String(p.creditStatus);
         if (p.aiCreditOptimized !== undefined) target.aiCreditOptimized = Boolean(p.aiCreditOptimized);
       }
       break;
@@ -1196,20 +1608,274 @@ const MIME_TYPES = {
   '.md': 'text/markdown; charset=utf-8'
 };
 
-function sendJson(res, statusCode, body) {
+function isSafeHostHeader(rawHost) {
+  if (!rawHost || typeof rawHost !== 'string') return false;
+  return /^[a-zA-Z0-9.-]+(?::[0-9]{1,5})?$/.test(rawHost.trim());
+}
+
+function getAllowedCorsOrigin(req) {
+  const h = (req && req.headers) || {};
+  const origin = h.origin || h.Origin;
+  if (!origin) return `http://localhost:${PORT}`;
+  try {
+    const u = new URL(origin);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+      return `http://localhost:${PORT}`;
+    }
+    const explicitAllowed = String(process.env.ALLOWED_ORIGINS || '')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    if (explicitAllowed.includes(origin.toLowerCase()) || explicitAllowed.includes(u.host.toLowerCase())) {
+      return origin;
+    }
+    if (process.env.VERCEL_URL && u.host.toLowerCase() === String(process.env.VERCEL_URL).trim().toLowerCase()) {
+      return origin;
+    }
+    if (process.env.VERCEL_PROJECT_PRODUCTION_URL && u.host.toLowerCase() === String(process.env.VERCEL_PROJECT_PRODUCTION_URL).trim().toLowerCase()) {
+      return origin;
+    }
+    if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
+      return origin;
+    }
+    if ((process.env.VERCEL === '1' || process.env.VERCEL === 'true') && u.hostname.endsWith('.vercel.app') && u.host === (h.host || h.Host)) {
+      return origin;
+    }
+  } catch (e) {}
+  return `http://localhost:${PORT}`;
+}
+
+function sendJson(res, statusCode, body, req, extraHeaders) {
   const payload = JSON.stringify(body);
-  res.writeHead(statusCode, {
+  const headers = Object.assign({
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'SAMEORIGIN',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'X-XSS-Protection': '1; mode=block',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
-  });
+    'Strict-Transport-Security': SECURITY_HSTS_POLICY,
+    'Permissions-Policy': SECURITY_PERMISSIONS_POLICY,
+    'Content-Security-Policy': SECURITY_CSP_POLICY,
+    'Access-Control-Allow-Origin': getAllowedCorsOrigin(req),
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Arba-Token',
+    'Vary': 'Origin'
+  }, extraHeaders || {});
+  res.writeHead(statusCode, headers);
+  if (req && req.method === 'HEAD') {
+    return res.end();
+  }
   res.end(payload);
+}
+
+function authenticateRequest(req, parsedUrl) {
+  const token = extractRequestToken(req, parsedUrl);
+  if (!token) {
+    return { ok: false, status: 401, message: 'Akses ditolak: Token autentikasi sesi diperlukan. Silakan login terlebih dahulu.' };
+  }
+  const claims = verifySessionToken(token);
+  if (!claims) {
+    return { ok: false, status: 401, message: 'Sesi tidak valid atau telah kedaluwarsa. Silakan login kembali.' };
+  }
+  const state = getCentralState();
+  const user = (state.users || []).find((u) => u.id === claims.sub);
+  if (!user || user.active === false) {
+    return { ok: false, status: 403, message: 'Akun tidak aktif atau tidak ditemukan.' };
+  }
+  if (claims.pwdTag && claims.pwdTag !== getUserPasswordTag(user)) {
+    return { ok: false, status: 401, message: 'Kredensial akun telah berubah. Silakan login kembali dengan kata sandi terbaru.' };
+  }
+  return { ok: true, user: sanitizeUserRecord(user), rawUser: user, token, claims };
+}
+
+const ROLE_ALLOWED_MUTATIONS = {
+  'super-admin': '*',
+  'executive': new Set([
+    'SUBMIT_ORDER', 'LOG_VISIT', 'APPROVE_ORDER', 'BATCH_APPROVE_ORDERS', 'REJECT_ORDER',
+    'ADD_INBOUND_BATCH', 'ADJUST_STOCK', 'SUBSTITUTE_BATCH', 'ADJUST_ORDER_QTY',
+    'CREATE_SUPPLIER_PO', 'SCHEDULE_VISIT', 'MARK_DELIVERED', 'ADD_OUTLET',
+    'RECORD_WAREHOUSE_LOAD', 'RECONCILE_LOADING', 'IMPORT_OUTLETS', 'IMPORT_PRODUCTS',
+    'REBALANCE_CONSIGNMENT', 'BATCH_REBALANCE_CONSIGNMENT', 'RESOLVE_EXPIRY_ALARM',
+    'UPDATE_OUTLET_CREDIT_POLICY', 'UPDATE_USER', 'CHANGE_USER_PASSWORD'
+  ]),
+  'inventory': new Set([
+    'ADD_INBOUND_BATCH', 'ADJUST_STOCK', 'SUBSTITUTE_BATCH', 'ADJUST_ORDER_QTY',
+    'CREATE_SUPPLIER_PO', 'RECORD_WAREHOUSE_LOAD', 'RECONCILE_LOADING', 'IMPORT_PRODUCTS',
+    'APPROVE_ORDER', 'BATCH_APPROVE_ORDERS', 'MARK_DELIVERED', 'REBALANCE_CONSIGNMENT',
+    'BATCH_REBALANCE_CONSIGNMENT', 'RESOLVE_EXPIRY_ALARM', 'UPDATE_USER', 'CHANGE_USER_PASSWORD'
+  ]),
+  'sales-ops': new Set([
+    'APPROVE_ORDER', 'BATCH_APPROVE_ORDERS', 'REJECT_ORDER', 'SUBSTITUTE_BATCH',
+    'ADJUST_ORDER_QTY', 'MARK_DELIVERED', 'ADD_OUTLET', 'SCHEDULE_VISIT',
+    'IMPORT_OUTLETS', 'UPDATE_OUTLET_CREDIT_POLICY', 'REBALANCE_CONSIGNMENT',
+    'BATCH_REBALANCE_CONSIGNMENT', 'RESOLVE_EXPIRY_ALARM', 'SUBMIT_ORDER', 'LOG_VISIT',
+    'UPDATE_USER', 'CHANGE_USER_PASSWORD'
+  ]),
+  'field-sales': new Set([
+    'SUBMIT_ORDER', 'LOG_VISIT', 'SCHEDULE_VISIT', 'UPDATE_USER', 'CHANGE_USER_PASSWORD'
+  ])
+};
+
+function isMutationAllowedForUser(callerUser, mut, fullState) {
+  if (!callerUser) return { allowed: false, message: 'Tidak terautentikasi.' };
+  const role = callerUser.role;
+  const type = mut && mut.type;
+  const p = (mut && mut.payload) || {};
+
+  if (role === 'super-admin' && !['UPDATE_USER', 'CREATE_USER', 'SUBMIT_ORDER', 'ADD_INBOUND_BATCH', 'ADJUST_ORDER_QTY', 'RECORD_WAREHOUSE_LOAD', 'UPDATE_OUTLET_CREDIT_POLICY', 'CREATE_SUPPLIER_PO', 'IMPORT_OUTLETS', 'IMPORT_PRODUCTS'].includes(type)) {
+    return { allowed: true };
+  }
+
+  const allowedSet = ROLE_ALLOWED_MUTATIONS[role];
+  if (!allowedSet || (allowedSet !== '*' && !allowedSet.has(type))) {
+    return {
+      allowed: false,
+      message: `Akses ditolak (RBAC): Peran "${role}" tidak memiliki otorisasi untuk menjalankan mutasi "${type}".`
+    };
+  }
+
+  if (type === 'UPDATE_USER' || type === 'CREATE_USER') {
+    const targetId = p.userId || (p.user && p.user.id);
+    if (role !== 'super-admin' && targetId !== callerUser.id) {
+      return { allowed: false, message: 'Akses ditolak: Anda hanya dapat memperbarui profil akun Anda sendiri.' };
+    }
+    const st = fullState || getCentralState();
+    if (p.user) {
+      const nextUsername = p.user.username !== undefined ? String(p.user.username).trim() : '';
+      const nextEmail = p.user.email !== undefined ? String(p.user.email).trim() : '';
+      const nextName = p.user.name !== undefined ? String(p.user.name).trim() : '';
+
+      if (nextUsername && !/^[a-zA-Z0-9._-]{3,32}$/.test(nextUsername)) {
+        return { allowed: false, message: 'Username tidak valid: Gunakan 3-32 karakter huruf, angka, titik, garis bawah, atau tanda hubung.' };
+      }
+
+      const duplicate = (st.users || []).find((other) => {
+        if (!other || String(other.id) === String(targetId)) return false;
+        if (nextUsername && String(other.username || '').toLowerCase() === nextUsername.toLowerCase()) return true;
+        if (nextEmail && String(other.email || '').toLowerCase() === nextEmail.toLowerCase()) return true;
+        if (nextName && String(other.name || '').toLowerCase() === nextName.toLowerCase()) return true;
+        return false;
+      });
+      if (duplicate) {
+        return {
+          allowed: false,
+          message: 'Akses ditolak: Username, Email, atau Nama Lengkap tersebut sudah digunakan oleh akun pengguna lain.'
+        };
+      }
+
+      const safeBadgeColor = sanitizeHexColor(p.user.badgeColor, callerUser.badgeColor || '#005c55');
+
+      if (role !== 'super-admin') {
+        // Cegah eskalasi privilege oleh non-Super-Admin
+        p.user = {
+          id: callerUser.id,
+          name: nextName || callerUser.name,
+          username: nextUsername || callerUser.username,
+          email: nextEmail || callerUser.email,
+          phone: p.user.phone !== undefined ? String(p.user.phone).trim() : callerUser.phone,
+          title: p.user.title !== undefined ? String(p.user.title).trim() : callerUser.title,
+          division: p.user.division !== undefined ? String(p.user.division).trim() : callerUser.division,
+          avatarInitials: p.user.avatarInitials !== undefined ? String(p.user.avatarInitials).trim().slice(0, 2).toUpperCase() : callerUser.avatarInitials,
+          badgeColor: safeBadgeColor
+        };
+      } else {
+        p.user.badgeColor = safeBadgeColor;
+      }
+    }
+    return { allowed: true };
+  }
+
+  if (type === 'ADD_INBOUND_BATCH') {
+    const q = Number(p.qty);
+    if (!Number.isFinite(q) || q < 1 || !Number.isInteger(q)) {
+      return { allowed: false, message: 'Mutasi gudang ditolak: Kuantitas penerimaan batch masuk (qty) wajib bilangan bulat positif (>= 1).' };
+    }
+    return { allowed: true };
+  }
+
+  if (type === 'ADJUST_ORDER_QTY') {
+    const q = Number(p.newQty);
+    if (!Number.isFinite(q) || q < 1 || !Number.isInteger(q)) {
+      return { allowed: false, message: 'Koreksi pesanan ditolak: Kuantitas baru pesanan (newQty) wajib bilangan bulat positif (>= 1).' };
+    }
+    return { allowed: true };
+  }
+
+  if (type === 'RECORD_WAREHOUSE_LOAD') {
+    const q = Number(p.loadedQty);
+    if (!Number.isFinite(q) || q < 1 || !Number.isInteger(q)) {
+      return { allowed: false, message: 'Muatan kanvas ditolak: Kuantitas muatan (loadedQty) wajib bilangan bulat positif (>= 1).' };
+    }
+    return { allowed: true };
+  }
+
+  if (type === 'UPDATE_OUTLET_CREDIT_POLICY') {
+    if (p.creditLimit !== undefined) {
+      const lim = Number(p.creditLimit);
+      if (!Number.isFinite(lim) || lim < 0) {
+        return { allowed: false, message: 'Kebijakan kredit ditolak: Plafon kredit (creditLimit) tidak boleh bernilai negatif.' };
+      }
+    }
+    if (p.creditRemaining !== undefined) {
+      const rem = Number(p.creditRemaining);
+      if (!Number.isFinite(rem) || rem < 0) {
+        return { allowed: false, message: 'Kebijakan kredit ditolak: Sisa plafon kredit (creditRemaining) tidak boleh bernilai negatif.' };
+      }
+    }
+    return { allowed: true };
+  }
+
+  if (type === 'CREATE_SUPPLIER_PO') {
+    const po = p.po;
+    const q = Number(po && po.quantity);
+    const price = Number(po && po.unitPrice);
+    if (!po || !Number.isFinite(q) || q < 1 || !Number.isInteger(q) || (po.unitPrice !== undefined && (!Number.isFinite(price) || price < 0))) {
+      return { allowed: false, message: 'PO Supplier ditolak: Kuantitas PO wajib bilangan bulat positif (>= 1) dan harga satuan tidak boleh negatif.' };
+    }
+    return { allowed: true };
+  }
+
+  if (type === 'IMPORT_OUTLETS' || type === 'IMPORT_PRODUCTS') {
+    if (!Array.isArray(p.rows) || p.rows.length === 0 || p.rows.length > 500) {
+      return { allowed: false, message: 'Impor data ditolak: Jumlah baris CSV wajib antara 1 hingga maksimal 500 baris per transaksi.' };
+    }
+    return { allowed: true };
+  }
+
+  if (type === 'CHANGE_USER_PASSWORD') {
+    if (p.userId !== callerUser.id) {
+      return { allowed: false, message: 'Akses ditolak: Anda hanya dapat mengganti kata sandi akun Anda sendiri.' };
+    }
+    const providedCurrent = p.currentPasswordHash || p.currentPassword;
+    if (!providedCurrent) {
+      return { allowed: false, message: 'Akses ditolak: Kata sandi saat ini wajib disertakan untuk verifikasi keamanan.' };
+    }
+    const st = fullState || getCentralState();
+    const storedUser = (st.users || []).find((u) => u.id === callerUser.id) || callerUser;
+    if (!verifyCredentialHash(providedCurrent, storedUser.password, storedUser.passwordHash)) {
+      return { allowed: false, message: 'Akses ditolak: Kata sandi saat ini tidak sesuai.' };
+    }
+    return { allowed: true };
+  }
+
+  if (type === 'SUBMIT_ORDER') {
+    const incomingOrder = p.order;
+    if (!incomingOrder || !Array.isArray(incomingOrder.items) || incomingOrder.items.length === 0) {
+      return { allowed: false, message: 'Pesanan tidak valid: Daftar item pesanan tidak boleh kosong.' };
+    }
+    const hasInvalidQty = incomingOrder.items.some((it) => {
+      const q = Number(it && it.quantity);
+      return !Number.isFinite(q) || q < 1 || !Number.isInteger(q);
+    });
+    if (hasInvalidQty) {
+      return { allowed: false, message: 'Pesanan ditolak: Setiap item pesanan wajib memiliki kuantitas bilangan bulat positif (>= 1).' };
+    }
+    return { allowed: true };
+  }
+
+  return { allowed: true };
 }
 
 function readJsonBody(req) {
@@ -1217,8 +1883,8 @@ function readJsonBody(req) {
     let raw = '';
     req.on('data', (chunk) => {
       raw += chunk;
-      if (raw.length > 10 * 1024 * 1024) {
-        reject(new Error('Payload terlalu besar'));
+      if (raw.length > 2 * 1024 * 1024) {
+        reject(new Error('Payload terlalu besar (maksimal 2 MB)'));
       }
     });
     req.on('end', () => {
@@ -1234,20 +1900,49 @@ function readJsonBody(req) {
 }
 
 const server = http.createServer(async (req, res) => {
-  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const rawHost = req && req.headers && (req.headers.host || req.headers.Host);
+  if (rawHost !== undefined && !isSafeHostHeader(String(rawHost))) {
+    res.writeHead(400, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'X-Content-Type-Options': 'nosniff'
+    });
+    return res.end(req.method === 'HEAD' ? undefined : JSON.stringify({ status: 'error', message: '400 Bad Request: Invalid Host header.' }));
+  }
+
+  let parsedUrl;
+  try {
+    const safeHost = isSafeHostHeader(String(rawHost || '')) ? String(rawHost).trim() : 'localhost';
+    parsedUrl = new URL(req.url || '/', `http://${safeHost}`);
+  } catch (urlErr) {
+    res.writeHead(400, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'X-Content-Type-Options': 'nosniff'
+    });
+    return res.end(req.method === 'HEAD' ? undefined : JSON.stringify({ status: 'error', message: '400 Bad Request: Malformed URL.' }));
+  }
   const pathname = parsedUrl.pathname;
+  const isGetOrHead = req.method === 'GET' || req.method === 'HEAD';
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
+      'Access-Control-Allow-Origin': getAllowedCorsOrigin(req),
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Arba-Token',
+      'Vary': 'Origin'
     });
     return res.end();
   }
 
-  // 1) Health & SQL Relational Table Counts
-  if (pathname === '/api/health' && req.method === 'GET') {
+  // 1) Health & SQL Relational Table Counts (Rincian tabel internal hanya ditampilkan bila pemanggil terautentikasi)
+  if (pathname === '/api/health' && isGetOrHead) {
+    const auth = authenticateRequest(req, parsedUrl);
+    if (!auth.ok) {
+      return sendJson(res, 200, {
+        status: 'ok',
+        timestamp: new Date().toISOString()
+      }, req);
+    }
     const counts = {
       users: db.prepare('SELECT COUNT(*) AS c FROM users').get().c,
       outlets: db.prepare('SELECT COUNT(*) AS c FROM outlets').get().c,
@@ -1268,25 +1963,40 @@ const server = http.createServer(async (req, res) => {
       connectedClients: sseClients.size,
       relationalTables: counts,
       timestamp: new Date().toISOString()
-    });
+    }, req);
   }
 
-  // 2) Ambil State Pusat
-  if (pathname === '/api/state' && req.method === 'GET') {
-    const state = getCentralState();
+  // 2) Ambil State Pusat (Wajib Terautentikasi & Tanpa Plaintext Kredensial)
+  if (pathname === '/api/state' && isGetOrHead) {
+    const auth = authenticateRequest(req, parsedUrl);
+    if (!auth.ok) {
+      return sendJson(res, auth.status, { status: 'error', message: auth.message }, req);
+    }
+    const state = sanitizeStateForClient(getCentralState(), auth.user);
     return sendJson(res, 200, {
       status: 'ok',
       state,
       timestamp: new Date().toISOString()
-    });
+    }, req);
   }
 
-  // 3) Audit Tabel SQL Relasional (10 Tabel `schema.sql`)
-  if (pathname === '/api/sql-audit' && req.method === 'GET') {
+  // 3) Audit Tabel SQL Relasional (10 Tabel `schema.sql` - Khusus Super Admin & Direksi)
+  if (pathname === '/api/sql-audit' && isGetOrHead) {
+    const auth = authenticateRequest(req, parsedUrl);
+    if (!auth.ok) {
+      return sendJson(res, auth.status, { status: 'error', message: auth.message }, req);
+    }
+    if (auth.user.role !== 'super-admin' && auth.user.role !== 'executive') {
+      return sendJson(res, 403, {
+        status: 'error',
+        message: 'Akses ditolak: Endpoint audit SQL hanya diizinkan untuk Super Admin dan Direksi.'
+      }, req);
+    }
+    const rawSqlUsers = db.prepare('SELECT id, username, nama, email, no_telp, jabatan, divisi, peran, aktif, created_at FROM users').all();
     return sendJson(res, 200, {
       status: 'ok',
       tables: {
-        users: db.prepare('SELECT * FROM users').all(),
+        users: rawSqlUsers,
         outlets: db.prepare('SELECT * FROM outlets').all(),
         sales_targets: db.prepare('SELECT * FROM sales_targets').all(),
         visits: db.prepare('SELECT * FROM visits ORDER BY checkin_at DESC LIMIT 25').all(),
@@ -1298,34 +2008,51 @@ const server = http.createServer(async (req, res) => {
         alerts: db.prepare('SELECT * FROM alerts').all(),
         sync_mutations_log: db.prepare('SELECT mutation_id, client_id, mutation_type, summary, synced_at FROM sync_mutations_log ORDER BY synced_at DESC LIMIT 30').all()
       }
-    });
+    }, req);
   }
 
-  // 3B) Endpoint Autentikasi & Daftar Akun Pengguna Per Role (`/api/auth/users` & `/api/auth/login`)
-  if (pathname === '/api/auth/users' && req.method === 'GET') {
+  // 3B) Endpoint Autentikasi & Daftar Akun Pengguna Per Role (`/api/auth/users`, `/api/auth/login`, `/api/auth/logout`)
+  if (pathname === '/api/auth/users' && isGetOrHead) {
+    const auth = authenticateRequest(req, parsedUrl);
+    if (!auth.ok) {
+      return sendJson(res, auth.status, { status: 'error', message: auth.message }, req);
+    }
     const centralState = getCentralState();
-    const safeUsers = (centralState.users || []).map((u) => {
-      const copy = Object.assign({}, u);
-      delete copy.password;
-      return copy;
+    const safeUsers = (centralState.users || []).map((u) => sanitizeUserForPublicList(u));
+    return sendJson(res, 200, { status: 'ok', users: safeUsers }, req);
+  }
+
+  if (pathname === '/api/auth/logout' && req.method === 'POST') {
+    const token = extractRequestToken(req, parsedUrl);
+    if (token) revokeSessionToken(token);
+    pruneSecurityCaches();
+    return sendJson(res, 200, { status: 'ok', message: 'Sesi berhasil diakhiri.' }, req, {
+      'Set-Cookie': buildSessionCookieHeader('', 0, req)
     });
-    return sendJson(res, 200, { status: 'ok', users: safeUsers });
   }
 
   if (pathname === '/api/auth/login' && req.method === 'POST') {
     try {
+      pruneSecurityCaches();
       const body = await readJsonBody(req);
       const q = String(body.identifier || '').trim().toLowerCase();
       const pw = String(body.password || '').trim();
-      const attemptKey = `${req.socket.remoteAddress || 'local'}:${q}`;
+      const clientIp = getClientIp(req);
+      const attemptKey = `${clientIp}:${q}`;
+      const accountKey = `acct:${q}`;
       const attemptInfo = loginAttempts.get(attemptKey);
+      const accountInfo = loginAttempts.get(accountKey);
 
-      if (attemptInfo && attemptInfo.count >= MAX_LOGIN_ATTEMPTS && (Date.now() - attemptInfo.lastAttempt) < LOCKOUT_MS) {
-        const waitSec = Math.ceil((LOCKOUT_MS - (Date.now() - attemptInfo.lastAttempt)) / 1000);
+      if (
+        (attemptInfo && attemptInfo.count >= MAX_LOGIN_ATTEMPTS && (Date.now() - attemptInfo.lastAttempt) < LOCKOUT_MS) ||
+        (accountInfo && accountInfo.count >= MAX_ACCOUNT_ATTEMPTS && (Date.now() - accountInfo.lastAttempt) < LOCKOUT_MS)
+      ) {
+        const activeLock = (attemptInfo && attemptInfo.count >= MAX_LOGIN_ATTEMPTS) ? attemptInfo : accountInfo;
+        const waitSec = Math.max(1, Math.ceil((LOCKOUT_MS - (Date.now() - activeLock.lastAttempt)) / 1000));
         return sendJson(res, 429, {
           status: 'error',
           message: `Terlalu banyak percobaan login gagal. Silakan tunggu ${waitSec} detik lagi.`
-        });
+        }, req);
       }
 
       const centralState = getCentralState();
@@ -1338,55 +2065,90 @@ const server = http.createServer(async (req, res) => {
       );
 
       if (!matched) {
+        // Jalankan verifikasi hash dummy untuk menyamakan waktu eksekusi dan mencegah Username Enumeration (CWE-204)
+        verifyCredentialHash(pw, 'arba_dummy_timing_guard_2026', null);
         const prev = loginAttempts.get(attemptKey) || { count: 0 };
         loginAttempts.set(attemptKey, { count: prev.count + 1, lastAttempt: Date.now() });
+        const prevAcct = loginAttempts.get(accountKey) || { count: 0 };
+        loginAttempts.set(accountKey, { count: prevAcct.count + 1, lastAttempt: Date.now() });
         return sendJson(res, 401, {
           status: 'error',
-          message: 'Akun pengguna tidak ditemukan.'
-        });
+          message: 'Username/Email atau Kata Sandi tidak sesuai.'
+        }, req);
       }
 
       if (matched.active === false) {
         return sendJson(res, 403, {
           status: 'error',
           message: 'Akun ini sedang dinonaktifkan oleh Super Admin.'
-        });
+        }, req);
       }
 
-      if (pw !== String(matched.password) && (!matched.pin || pw !== String(matched.pin))) {
+      // Verifikasi password online secara ketat menggunakan perbandingan hash timing-safe (PIN offline tidak diterima untuk login online)
+      const isPasswordValid = verifyCredentialHash(pw, matched.password, matched.passwordHash);
+      if (!isPasswordValid) {
         const prev = loginAttempts.get(attemptKey) || { count: 0 };
         loginAttempts.set(attemptKey, { count: prev.count + 1, lastAttempt: Date.now() });
+        const prevAcct = loginAttempts.get(accountKey) || { count: 0 };
+        loginAttempts.set(accountKey, { count: prevAcct.count + 1, lastAttempt: Date.now() });
         return sendJson(res, 401, {
           status: 'error',
-          message: 'Kata sandi atau PIN Offline tidak sesuai.'
-        });
+          message: 'Username/Email atau Kata Sandi tidak sesuai.'
+        }, req);
       }
 
       loginAttempts.delete(attemptKey);
+      loginAttempts.delete(accountKey);
+
+      const sessionToken = issueSessionToken(matched);
+      const safeUser = sanitizeUserRecord(matched);
 
       // Pastikan juga user tercatat di tabel SQL `users`
       const sqlUser = db.prepare('SELECT id, username, nama, email, peran, aktif FROM users WHERE email = ? OR id = ?').get(matched.email, matched.id);
 
       return sendJson(res, 200, {
         status: 'ok',
-        user: matched,
+        token: sessionToken,
+        user: safeUser,
         sqlRecord: sqlUser || null,
         timestamp: new Date().toISOString()
+      }, req, {
+        'Set-Cookie': buildSessionCookieHeader(encodeURIComponent(sessionToken), 86400, req)
       });
     } catch (err) {
-      return sendJson(res, 500, { status: 'error', message: err.message });
+      return sendJson(res, 500, { status: 'error', message: err.message }, req);
     }
   }
 
-  // 4) Endpoint Sinkronisasi Batch Offline -> Online (`POST /api/sync`)
+  // 4) Endpoint Sinkronisasi Batch Offline -> Online (`POST /api/sync` - Wajib Terautentikasi & RBAC)
   if (pathname === '/api/sync' && req.method === 'POST') {
+    const auth = authenticateRequest(req, parsedUrl);
+    if (!auth.ok) {
+      return sendJson(res, auth.status, { status: 'error', message: auth.message }, req);
+    }
     try {
       const body = await readJsonBody(req);
       const clientId = body.clientId || 'UNKNOWN';
       const mutations = Array.isArray(body.mutations) ? body.mutations : [];
 
+      const currentStateForPerm = getCentralState();
+      for (const mut of mutations) {
+        const perm = isMutationAllowedForUser(auth.user, mut, currentStateForPerm);
+        if (!perm.allowed) {
+          return sendJson(res, 403, { status: 'error', message: perm.message }, req);
+        }
+      }
+
+      if (mutations.length === 0 && body.clientState && typeof body.clientState === 'object' && auth.user.role !== 'super-admin') {
+        return sendJson(res, 403, {
+          status: 'error',
+          message: 'Akses ditolak: Penimpaan snapshot state penuh hanya diizinkan untuk Super Admin.'
+        }, req);
+      }
+
       let appliedCount = 0;
       let skippedDuplicates = 0;
+      let callerPasswordChanged = false;
       const summaries = [];
 
       db.exec('BEGIN IMMEDIATE;');
@@ -1409,16 +2171,21 @@ const server = http.createServer(async (req, res) => {
             continue;
           }
 
-          applyMutationOnCentralState(state, mut);
+          applyMutationOnCentralState(state, mut, auth.user);
+          if (mut.type === 'CHANGE_USER_PASSWORD' && mut.payload && mut.payload.userId === auth.user.id) {
+            callerPasswordChanged = true;
+          }
           logStmt.run(mid, clientId, mut.type || 'UNKNOWN', mut.summary || '', JSON.stringify(mut.payload || {}));
           if (mut.summary) summaries.push(mut.summary);
           appliedCount++;
         }
 
-        // Sinkronkan juga snapshot state klien bila disertakan agar paritas data 100% terjaga
-        if (body.clientState && typeof body.clientState === 'object') {
+        // Sinkronkan snapshot penuh hanya bila pemanggil adalah Super Admin & tidak ada mutasi eksplisit
+        if (auth.user.role === 'super-admin' && mutations.length === 0 && body.clientState && typeof body.clientState === 'object') {
           const cs = body.clientState;
-          if (Array.isArray(cs.users) && cs.users.length) state.users = cs.users;
+          if (Array.isArray(cs.users) && cs.users.length) {
+            state.users = cs.users.map((u) => sanitizeUserRecord(u));
+          }
           if (Array.isArray(cs.products) && cs.products.length) state.products = cs.products;
           if (Array.isArray(cs.ledger) && cs.ledger.length) state.ledger = cs.ledger;
           if (Array.isArray(cs.outlets) && cs.outlets.length) state.outlets = cs.outlets;
@@ -1429,7 +2196,6 @@ const server = http.createServer(async (req, res) => {
           if (Array.isArray(cs.salesTeam)) state.salesTeam = cs.salesTeam;
           if (Array.isArray(cs.salesLoadings)) state.salesLoadings = cs.salesLoadings;
           if (Array.isArray(cs.visitLogs)) state.visitLogs = cs.visitLogs;
-          if (appliedCount === 0) appliedCount = 1;
         }
 
         if (appliedCount > 0) {
@@ -1437,39 +2203,64 @@ const server = http.createServer(async (req, res) => {
         }
         db.exec('COMMIT;');
 
-        const updatedState = getCentralState();
+        const rawUpdatedState = getCentralState();
+        const callerState = sanitizeStateForClient(rawUpdatedState, auth.user);
+        const broadcastState = sanitizeStateForClient(rawUpdatedState, null);
 
         if (appliedCount > 0) {
           broadcastSSE('state_updated', {
             sourceClientId: clientId,
             appliedCount,
             summary: summaries.join(' • '),
-            state: updatedState,
+            state: broadcastState,
             timestamp: Date.now()
           });
+        }
+
+        let refreshedToken = undefined;
+        let extraHeaders = undefined;
+        if (callerPasswordChanged) {
+          const updatedCaller = (rawUpdatedState.users || []).find((u) => u.id === auth.user.id);
+          if (updatedCaller) {
+            refreshedToken = issueSessionToken(updatedCaller);
+            extraHeaders = {
+              'Set-Cookie': buildSessionCookieHeader(encodeURIComponent(refreshedToken), 86400, req)
+            };
+          }
         }
 
         return sendJson(res, 200, {
           status: 'ok',
           appliedCount,
           skippedDuplicates,
-          state: updatedState,
+          refreshedToken,
+          state: callerState,
           timestamp: new Date().toISOString()
-        });
+        }, req, extraHeaders);
       } catch (txErr) {
         db.exec('ROLLBACK;');
         throw txErr;
       }
     } catch (err) {
-      return sendJson(res, 500, { status: 'error', message: err.message });
+      return sendJson(res, 500, { status: 'error', message: err.message }, req);
     }
   }
 
-  // 5) Reset Database Pusat ke Awal
+  // 5) Reset Database Pusat ke Awal (Khusus Super Admin)
   if (pathname === '/api/reset' && req.method === 'POST') {
+    const auth = authenticateRequest(req, parsedUrl);
+    if (!auth.ok) {
+      return sendJson(res, auth.status, { status: 'error', message: auth.message }, req);
+    }
+    if (auth.user.role !== 'super-admin') {
+      return sendJson(res, 403, {
+        status: 'error',
+        message: 'Akses ditolak: Hanya Super Admin yang diizinkan mereset database pusat.'
+      }, req);
+    }
     const master = loadInitialMasterData();
     const initialState = {
-      users: master.users || [],
+      users: (master.users || []).map((u) => sanitizeUserRecord(u)),
       products: master.products,
       ledger: master.ledger,
       outlets: master.outlets,
@@ -1483,26 +2274,34 @@ const server = http.createServer(async (req, res) => {
     };
     db.exec('DELETE FROM sync_mutations_log;');
     saveCentralState(initialState);
+    const safeBroadcastInitial = sanitizeStateForClient(initialState, null);
+    const safeCallerInitial = sanitizeStateForClient(initialState, auth.user);
     broadcastSSE('state_updated', {
       sourceClientId: 'SYSTEM_RESET',
       appliedCount: 1,
-      summary: 'Database pusat di-reset ke data awal',
-      state: initialState,
+      summary: 'Database pusat di-reset ke data awal oleh Super Admin',
+      state: safeBroadcastInitial,
       timestamp: Date.now()
     });
-    return sendJson(res, 200, { status: 'ok', state: initialState });
+    return sendJson(res, 200, { status: 'ok', state: safeCallerInitial }, req);
   }
 
-  // 6) Real-time Server-Sent Events Stream (`GET /api/events`)
+  // 6) Real-time Server-Sent Events Stream (`GET /api/events` - Wajib Terautentikasi)
   if (pathname === '/api/events' && req.method === 'GET') {
+    const auth = authenticateRequest(req, parsedUrl);
+    if (!auth.ok) {
+      return sendJson(res, auth.status, { status: 'error', message: auth.message }, req);
+    }
     const streamId = (parsedUrl.searchParams.get('clientId') || 'CLI') + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
     res.writeHead(200, {
       'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*'
+      'Access-Control-Allow-Origin': getAllowedCorsOrigin(req),
+      'Access-Control-Allow-Credentials': 'true',
+      'Vary': 'Origin'
     });
-    res.write(`event: connected\ndata: ${JSON.stringify({ streamId, time: Date.now() })}\n\n`);
+    res.write(`event: connected\ndata: ${JSON.stringify({ streamId, userId: auth.user.id, time: Date.now() })}\n\n`);
     sseClients.set(streamId, res);
 
     req.on('close', () => {
@@ -1511,13 +2310,21 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Pastikan seluruh request HEAD pada endpoint selain GET/HEAD API di atas tidak mengeluarkan body (RFC 9110)
+  if (pathname.startsWith('/api/')) {
+    return sendJson(res, req.method === 'HEAD' ? 405 : 404, {
+      status: 'error',
+      message: req.method === 'HEAD' ? '405 Method Not Allowed' : '404 API Endpoint Not Found'
+    }, req);
+  }
+
   // 7) Melayani Berkas Statis PWA (Hanya direktori frontend publik yang diizinkan)
   let relPath = pathname === '/' ? '/index.html' : pathname;
   try {
     relPath = decodeURIComponent(relPath);
   } catch (e) {
     res.writeHead(400);
-    return res.end('Bad Request');
+    return res.end(req.method === 'HEAD' ? undefined : 'Bad Request');
   }
 
   // Blokir akses langsung ke direktori/berkas sensitif server & database SQLite
@@ -1526,10 +2333,14 @@ const server = http.createServer(async (req, res) => {
     normalizedRel.includes('..') ||
     normalizedRel.startsWith('/database') ||
     normalizedRel.startsWith('/server') ||
+    normalizedRel.startsWith('/docs') ||
+    normalizedRel.startsWith('/api') ||
     normalizedRel.startsWith('/.') ||
     normalizedRel.startsWith('/node_modules') ||
     normalizedRel === '/package.json' ||
     normalizedRel === '/package-lock.json' ||
+    normalizedRel === '/vercel.json' ||
+    normalizedRel === '/metadata.json' ||
     normalizedRel.endsWith('.sqlite') ||
     normalizedRel.endsWith('.sqlite-wal') ||
     normalizedRel.endsWith('.sqlite-shm') ||
@@ -1537,16 +2348,18 @@ const server = http.createServer(async (req, res) => {
   ) {
     res.writeHead(403, {
       'Content-Type': 'text/plain; charset=utf-8',
-      'X-Content-Type-Options': 'nosniff'
+      'X-Content-Type-Options': 'nosniff',
+      'Strict-Transport-Security': SECURITY_HSTS_POLICY,
+      'Content-Security-Policy': SECURITY_CSP_POLICY
     });
-    return res.end('403 Forbidden: Access to protected server/database resource is denied.');
+    return res.end(req.method === 'HEAD' ? undefined : '403 Forbidden: Access to protected server/database resource is denied.');
   }
 
   const safePath = path.normalize(path.join(ROOT_DIR, relPath));
 
   if (!safePath.startsWith(ROOT_DIR)) {
     res.writeHead(403);
-    return res.end('Forbidden');
+    return res.end(req.method === 'HEAD' ? undefined : 'Forbidden');
   }
 
   fs.stat(safePath, (err, stat) => {
@@ -1556,15 +2369,18 @@ const server = http.createServer(async (req, res) => {
       fs.readFile(indexHtml, (e2, content) => {
         if (e2) {
           res.writeHead(404);
-          return res.end('Not Found');
+          return res.end(req.method === 'HEAD' ? undefined : 'Not Found');
         }
         res.writeHead(200, {
           'Content-Type': 'text/html; charset=utf-8',
           'X-Content-Type-Options': 'nosniff',
           'X-Frame-Options': 'SAMEORIGIN',
-          'Referrer-Policy': 'strict-origin-when-cross-origin'
+          'Referrer-Policy': 'strict-origin-when-cross-origin',
+          'Strict-Transport-Security': SECURITY_HSTS_POLICY,
+          'Permissions-Policy': SECURITY_PERMISSIONS_POLICY,
+          'Content-Security-Policy': SECURITY_CSP_POLICY
         });
-        res.end(content);
+        res.end(req.method === 'HEAD' ? undefined : content);
       });
       return;
     }
@@ -1578,7 +2394,10 @@ const server = http.createServer(async (req, res) => {
       'Expires': '0',
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'SAMEORIGIN',
-      'Referrer-Policy': 'strict-origin-when-cross-origin'
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'Strict-Transport-Security': SECURITY_HSTS_POLICY,
+      'Permissions-Policy': SECURITY_PERMISSIONS_POLICY,
+      'Content-Security-Policy': SECURITY_CSP_POLICY
     };
     if (safePath.endsWith('sw.js')) {
       headers['Service-Worker-Allowed'] = '/';
@@ -1587,10 +2406,10 @@ const server = http.createServer(async (req, res) => {
     fs.readFile(safePath, (readErr, content) => {
       if (readErr) {
         res.writeHead(500);
-        return res.end('Internal Server Error');
+        return res.end(req.method === 'HEAD' ? undefined : 'Internal Server Error');
       }
       res.writeHead(200, headers);
-      res.end(content);
+      res.end(req.method === 'HEAD' ? undefined : content);
     });
   });
 });
@@ -1615,6 +2434,10 @@ module.exports = {
   db,
   getCentralState,
   saveCentralState,
-  applyMutationOnCentralState
+  applyMutationOnCentralState,
+  hashCredential,
+  issueSessionToken,
+  verifySessionToken,
+  sanitizeStateForClient
 };
 

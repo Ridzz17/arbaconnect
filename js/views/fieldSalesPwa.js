@@ -299,9 +299,9 @@
                 <!-- Outlet Metadata & Status Konsinyasi (Apotek Pasif >90% Titip Jual) -->
                 <div class="flex items-center justify-between text-xs text-slate-600 pt-1 border-t border-slate-200/60" style="border-top:1px solid #e2e8f0; padding-top:0.35rem;">
                   <div class="truncate max-w-[200px]">
-                    <span>PIC: <b>${currentOutlet.picName}</b></span>
+                    <span>PIC: <b>${window.ArbaUtils.escapeHtml(currentOutlet.picName)}</b></span>
                     <span class="text-slate-400 mx-1">·</span>
-                    <span class="text-[11px] font-semibold text-teal-800">${currentOutlet.terms}</span>
+                    <span class="text-[11px] font-semibold text-teal-800">${window.ArbaUtils.escapeHtml(currentOutlet.terms)}</span>
                   </div>
                   <div class="text-right">
                     <span class="text-[10px] text-slate-500 block">Tagihan Barang Laku</span>
@@ -347,7 +347,7 @@
                       <span>Terjual: ${currentOutlet.consignmentItems.reduce(function (s, c) { return s + c.soldQty; }, 0)} unit</span>
                     </div>
                     ${currentOutlet.consignmentItems.filter(function (c) { return c.nearExpiry; }).map(function (c) {
-                      return `<div class="text-[10px] font-semibold" style="color:#be185d;">Peringatan FEFO: <b>${c.name}</b> (${c.remainingQty} unit, ED ${c.expiry}) — Prioritaskan distribusi batch ini.</div>`;
+                      return `<div class="text-[10px] font-semibold" style="color:#be185d;">Peringatan FEFO: <b>${window.ArbaUtils.escapeHtml(c.name)}</b> (${c.remainingQty} unit, ED ${window.ArbaUtils.escapeHtml(c.expiry)}) — Prioritaskan distribusi batch ini.</div>`;
                     }).join('')}
                   </div>
                 ` : ''}
@@ -470,7 +470,7 @@
                       >
                         <div class="min-w-0 flex-1">
                           <div class="font-semibold text-xs text-slate-900 truncate">
-                            ${prod.name}
+                            ${window.ArbaUtils.escapeHtml(prod.name)}
                           </div>
                           <div class="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
                             <span class="font-mono font-semibold text-slate-800">
@@ -608,9 +608,9 @@
                     </button>
                   </div>
                 </div>
-                ${state.shelfPhotoDataUrl ? `
+                ${window.ArbaUtils.safeImageDataUrl(state.shelfPhotoDataUrl) ? `
                   <div class="mt-1 rounded-lg overflow-hidden border border-slate-300">
-                    <img src="${state.shelfPhotoDataUrl}" alt="Bukti Foto Etalase" style="width:100%; height:72px; object-fit:cover; display:block;" />
+                    <img src="${window.ArbaUtils.safeImageDataUrl(state.shelfPhotoDataUrl)}" alt="Bukti Foto Etalase" style="width:100%; height:72px; object-fit:cover; display:block;" />
                   </div>
                 ` : ''}
               </div>
@@ -697,7 +697,7 @@
         });
         window.L.marker([pLat, pLng], { icon: pIcon })
           .addTo(pMap)
-          .bindPopup('<div style="font-size:11px;font-weight:700;">' + pName + '</div>');
+          .bindPopup('<div style="font-size:11px;font-weight:700;">' + window.ArbaUtils.escapeHtml(pName) + '</div>');
         setTimeout(function () { pMap.invalidateSize(); }, 80);
       } catch (err) {}
     }
@@ -1141,8 +1141,8 @@
 
         <div class="modal-body text-xs space-y-3">
           <div class="bg-surface-container-low p-3 rounded-lg border border-border-subtle/60 space-y-1">
-            <div class="font-semibold text-on-surface">${outlet.name} (${outlet.cityName})</div>
-            <div class="text-on-surface-variant">Sales Rep: <b>${salesRep}</b> · GPS: <b>${isCheckedIn ? state.gpsDistance + 'm (Terverifikasi)' : 'Check-in Otomatis'}</b></div>
+            <div class="font-semibold text-on-surface">${window.ArbaUtils.escapeHtml(outlet.name)} (${window.ArbaUtils.escapeHtml(outlet.cityName)})</div>
+            <div class="text-on-surface-variant">Sales Rep: <b>${window.ArbaUtils.escapeHtml(salesRep)}</b> · GPS: <b>${isCheckedIn ? state.gpsDistance + 'm (Terverifikasi)' : 'Check-in Otomatis'}</b></div>
           </div>
 
           <div class="space-y-1">
@@ -1232,17 +1232,17 @@
             </div>
 
             <div class="text-[10px] py-1 border-b border-dashed border-slate-300 space-y-0.5 text-slate-600" style="border-bottom:1px dashed #cbd5e1; padding:0.35rem 0;">
-              <div>Outlet: <b>${outlet.name}</b></div>
-              <div>Sales: ${activeSales} (${state.checkinTime})</div>
+              <div>Outlet: <b>${window.ArbaUtils.escapeHtml(outlet.name)}</b></div>
+              <div>Sales: ${window.ArbaUtils.escapeHtml(activeSales)} (${window.ArbaUtils.escapeHtml(state.checkinTime)})</div>
               <div>Status: ${isOnline ? 'Tersinkron ke Pusat' : 'Tersimpan Offline'}</div>
-              <div>Termin: ${state.selectedTerm}</div>
+              <div>Termin: ${window.ArbaUtils.escapeHtml(state.selectedTerm)}</div>
             </div>
 
             <div class="py-1 space-y-1" style="padding:0.35rem 0;">
               ${items.map(function (it) {
                 return `
                   <div class="flex justify-between" style="display:flex; justify-content:space-between;">
-                    <span class="truncate max-w-[170px]">${it.name} x${it.quantity}</span>
+                    <span class="truncate max-w-[170px]">${window.ArbaUtils.escapeHtml(it.name)} x${it.quantity}</span>
                     <span class="font-semibold">${window.ArbaUtils.formatRupiah(it.subtotal)}</span>
                   </div>
                 `;
@@ -1254,11 +1254,11 @@
               <span>${window.ArbaUtils.formatRupiah(totalAmount)}</span>
             </div>
 
-            ${signatureDataUrl ? `
+            ${window.ArbaUtils.safeImageDataUrl(signatureDataUrl) ? `
               <div class="pt-2 mt-1 border-t border-dashed border-slate-300 text-center">
                 <div class="text-[9px] text-slate-500 uppercase">Tanda Tangan Digital Apoteker / PIC</div>
-                <img src="${signatureDataUrl}" alt="TTD Apoteker" style="max-height:48px; margin:2px auto; display:block;" />
-                <div class="text-[10px] font-bold text-slate-700">${outlet.picName || 'Apoteker APA'}</div>
+                <img src="${window.ArbaUtils.safeImageDataUrl(signatureDataUrl)}" alt="TTD Apoteker" style="max-height:48px; margin:2px auto; display:block;" />
+                <div class="text-[10px] font-bold text-slate-700">${window.ArbaUtils.escapeHtml(outlet.picName || 'Apoteker APA')}</div>
               </div>
             ` : ''}
           </div>

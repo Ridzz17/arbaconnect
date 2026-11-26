@@ -960,31 +960,31 @@
                   return `
                     <tr class="hover:bg-surface-container-lowest transition-colors h-14">
                       <td class="px-4 py-3 font-code-table text-code-table text-primary font-semibold">
-                        ${order.clientUuid}
+                        ${window.ArbaUtils.escapeHtml(order.clientUuid)}
                       </td>
                       <td class="px-4 py-3">
-                        <div class="font-semibold text-on-surface">${order.outletName}</div>
+                        <div class="font-semibold text-on-surface">${window.ArbaUtils.escapeHtml(order.outletName)}</div>
                         <div class="text-label-sm text-on-surface-variant">
-                          ${order.city} • ID: ${order.outletId}
+                          ${window.ArbaUtils.escapeHtml(order.city)} • ID: ${window.ArbaUtils.escapeHtml(order.outletId)}
                         </div>
                       </td>
                       <td class="px-4 py-3">
                         <div class="flex items-center gap-2">
                           <span class="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-label-sm" style="background: rgba(0,92,85,0.1); width:24px; height:24px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;">
-                            ${initials}
+                            ${window.ArbaUtils.escapeHtml(initials)}
                           </span>
-                          <span>${order.salesRep}</span>
+                          <span>${window.ArbaUtils.escapeHtml(order.salesRep)}</span>
                         </div>
                       </td>
                       <td class="px-4 py-3 font-code-table text-code-table text-on-surface-variant">
-                        ${order.orderTime}
+                        ${window.ArbaUtils.escapeHtml(order.orderTime)}
                       </td>
                       <td class="px-4 py-3 text-right font-bold text-on-surface font-code-table text-code-table">
                         ${window.ArbaUtils.formatRupiah(order.totalAmount)}
                       </td>
                       <td class="px-4 py-3">
                         <span class="px-2 py-0.5 rounded bg-surface-container font-label-sm text-label-sm text-secondary font-semibold">
-                          ${order.terms}
+                          ${window.ArbaUtils.escapeHtml(order.terms)}
                         </span>
                       </td>
                       <td class="px-4 py-3">
@@ -1308,8 +1308,8 @@
       <div class="modal-dialog max-w-xl">
         <div class="modal-header">
           <div>
-            <span class="font-code-table text-xs text-primary font-semibold">${order.clientUuid}</span>
-            <h3 class="font-title-sm text-title-sm text-on-surface font-bold">${order.outletName}</h3>
+            <span class="font-code-table text-xs text-primary font-semibold">${window.ArbaUtils.escapeHtml(order.clientUuid)}</span>
+            <h3 class="font-title-sm text-title-sm text-on-surface font-bold">${window.ArbaUtils.escapeHtml(order.outletName)}</h3>
           </div>
           <button class="icon-btn" onclick="window.ArbaApp.closeModal()">
             <span class="material-symbols-outlined text-[20px]">close</span>
@@ -1320,15 +1320,15 @@
           <div class="grid grid-cols-2 gap-2 p-3 bg-surface-container-low rounded-lg text-xs">
             <div>
               <span class="text-on-surface-variant">Sales Rep:</span>
-              <p class="font-semibold text-on-surface">${order.salesRep} (${order.salesRepId})</p>
+              <p class="font-semibold text-on-surface">${window.ArbaUtils.escapeHtml(order.salesRep)} (${window.ArbaUtils.escapeHtml(order.salesRepId)})</p>
             </div>
             <div>
               <span class="text-on-surface-variant">Termin Pembayaran:</span>
-              <p class="font-semibold text-on-surface">${order.terms}</p>
+              <p class="font-semibold text-on-surface">${window.ArbaUtils.escapeHtml(order.terms)}</p>
             </div>
             <div>
               <span class="text-on-surface-variant">Koordinat GPS Outlet:</span>
-              <p class="font-mono text-on-surface">${order.geofenceCoords}</p>
+              <p class="font-mono text-on-surface">${window.ArbaUtils.escapeHtml(order.geofenceCoords)}</p>
             </div>
             <div>
               <span class="text-on-surface-variant">Total Nilai Faktur:</span>
@@ -1345,8 +1345,8 @@
                 return `
                   <div class="p-2.5 flex items-center justify-between text-xs bg-surface-container-lowest">
                     <div>
-                      <div class="font-semibold text-on-surface">${it.name}</div>
-                      <div class="text-[11px] text-on-surface-variant font-mono">${it.batch} • ${it.fefoPriority}</div>
+                      <div class="font-semibold text-on-surface">${window.ArbaUtils.escapeHtml(it.name)}</div>
+                      <div class="text-[11px] text-on-surface-variant font-mono">${window.ArbaUtils.escapeHtml(it.batch)} • ${window.ArbaUtils.escapeHtml(it.fefoPriority)}</div>
                     </div>
                     <div class="text-right">
                       <div class="font-bold text-on-surface">${it.quantity} unit</div>

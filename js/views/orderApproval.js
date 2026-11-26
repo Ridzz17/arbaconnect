@@ -348,8 +348,8 @@
                             return `
                               <div class="p-3 rounded-lg bg-surface-container-low border border-border-subtle/30 flex items-center justify-between text-xs mb-2">
                                 <div>
-                                  <div class="font-bold text-on-surface">${ord.outletName}</div>
-                                  <div class="text-slate-500">${ord.address}</div>
+                                  <div class="font-bold text-on-surface">${window.ArbaUtils.escapeHtml(ord.outletName)}</div>
+                                  <div class="text-slate-500">${window.ArbaUtils.escapeHtml(ord.address)}</div>
                                   <div class="text-[11px] font-mono text-primary font-semibold mt-0.5">
                                     Nilai: ${window.ArbaUtils.formatRupiah(ord.amount)}
                                   </div>
@@ -404,8 +404,8 @@
                     return `
                       <div class="py-3 flex items-center justify-between text-xs">
                         <div>
-                          <div class="font-bold text-on-surface text-sm">${ord.outletName}</div>
-                          <div class="text-slate-500 font-mono">${ord.clientUuid} • ${window.ArbaUtils.formatRupiah(ord.totalAmount)} • ${ord.salesRep}</div>
+                          <div class="font-bold text-on-surface text-sm">${window.ArbaUtils.escapeHtml(ord.outletName)}</div>
+                          <div class="text-slate-500 font-mono">${window.ArbaUtils.escapeHtml(ord.clientUuid)} • ${window.ArbaUtils.formatRupiah(ord.totalAmount)} • ${window.ArbaUtils.escapeHtml(ord.salesRep)}</div>
                         </div>
                         <div class="flex items-center gap-3">
                           <span class="px-2.5 py-1 rounded bg-status-danger-bg text-rose-600 font-semibold">
@@ -453,7 +453,7 @@
                           <div>
                             <div class="flex flex-wrap items-center gap-2 mb-1">
                               <span class="font-code-table text-code-table font-semibold px-2.5 py-0.5 rounded-full bg-surface-container-high text-on-surface font-mono text-xs">
-                                ${order.clientUuid}
+                                ${window.ArbaUtils.escapeHtml(order.clientUuid)}
                               </span>
                               <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-status-success-bg text-status-success-text font-label-sm text-label-sm font-semibold text-xs">
                                 <span class="w-1.5 h-1.5 rounded-full bg-badge-green" style="display:inline-block; width:6px; height:6px;"></span>
@@ -464,16 +464,16 @@
                               </span>
                             </div>
                             <h2 class="font-headline-lg text-headline-lg text-on-surface font-bold text-xl">
-                              ${order.outletName}
+                              ${window.ArbaUtils.escapeHtml(order.outletName)}
                             </h2>
                             <div class="flex flex-wrap items-center gap-y-1 gap-x-space-md mt-1 text-on-surface-variant font-body-sm text-body-sm text-xs gap-3">
                               <span class="flex items-center gap-1">
                                 <span class="material-symbols-outlined text-[16px] text-primary">location_on</span>
-                                ${order.address}
+                                ${window.ArbaUtils.escapeHtml(order.address)}
                               </span>
                               <span class="flex items-center gap-1">
                                 <span class="material-symbols-outlined text-[16px] text-on-surface-variant">schedule</span>
-                                ${order.orderTime}
+                                ${window.ArbaUtils.escapeHtml(order.orderTime)}
                               </span>
                             </div>
                           </div>
@@ -507,25 +507,25 @@
                       </div>
 
                       <!-- Bukti Tanda Tangan Digital Apoteker & Foto Audit Etalase (Bila Ada dari PWA) -->
-                      ${(order.signatureDataUrl || order.shelfPhotoDataUrl) ? `
+                      ${(window.ArbaUtils.safeImageDataUrl(order.signatureDataUrl) || window.ArbaUtils.safeImageDataUrl(order.shelfPhotoDataUrl)) ? `
                         <div class="my-3 p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 flex flex-wrap items-center justify-between gap-3 text-xs">
                           <div class="flex items-center gap-3">
                             <span class="material-symbols-outlined text-emerald-700 text-[22px]">verified</span>
                             <div>
                               <div class="font-bold text-emerald-950">Bukti Serah Terima Digital Terlampir dari PWA Sales</div>
-                              <div class="text-[11px] text-emerald-800">Ditandatangani oleh: <b>${order.signerName || 'Apoteker Penanggung Jawab'}</b></div>
+                              <div class="text-[11px] text-emerald-800">Ditandatangani oleh: <b>${window.ArbaUtils.escapeHtml(order.signerName || 'Apoteker Penanggung Jawab')}</b></div>
                             </div>
                           </div>
                           <div class="flex items-center gap-3">
-                            ${order.signatureDataUrl ? `
+                            ${window.ArbaUtils.safeImageDataUrl(order.signatureDataUrl) ? `
                               <div class="bg-white px-2.5 py-1 rounded-lg border border-emerald-300 text-center">
                                 <div class="text-[9px] uppercase font-bold text-slate-500">E-Signature Apoteker</div>
-                                <img src="${order.signatureDataUrl}" alt="E-Signature" style="height:34px; display:block;" />
+                                <img src="${window.ArbaUtils.safeImageDataUrl(order.signatureDataUrl)}" alt="E-Signature" style="height:34px; display:block;" />
                               </div>
                             ` : ''}
-                            ${order.shelfPhotoDataUrl ? `
+                            ${window.ArbaUtils.safeImageDataUrl(order.shelfPhotoDataUrl) ? `
                               <div class="bg-white p-1 rounded-lg border border-emerald-300 text-center">
-                                <img src="${order.shelfPhotoDataUrl}" alt="Foto Etalase" style="height:42px; width:84px; object-fit:cover; border-radius:4px; display:block;" />
+                                <img src="${window.ArbaUtils.safeImageDataUrl(order.shelfPhotoDataUrl)}" alt="Foto Etalase" style="height:42px; width:84px; object-fit:cover; border-radius:4px; display:block;" />
                               </div>
                             ` : ''}
                           </div>
@@ -618,9 +618,9 @@
                                         </span>
                                       </div>
                                       <div class="flex flex-col">
-                                        <span class="font-semibold">${it.name}</span>
+                                        <span class="font-semibold">${window.ArbaUtils.escapeHtml(it.name)}</span>
                                         <span class="font-code-table text-code-table text-on-surface-variant font-mono text-[11px]">
-                                          SKU: ${it.sku}
+                                          SKU: ${window.ArbaUtils.escapeHtml(it.sku)}
                                         </span>
                                       </div>
                                     </div>
@@ -628,10 +628,10 @@
                                   <td class="py-3 px-4">
                                     <div class="flex flex-col">
                                       <span class="font-code-table text-code-table font-semibold text-primary font-mono">
-                                        ${it.batch}
+                                        ${window.ArbaUtils.escapeHtml(it.batch)}
                                       </span>
                                       <span class="font-label-sm text-label-sm text-on-surface-variant text-[11px]">
-                                        Exp: ${it.expiry} (${it.fefoPriority})
+                                        Exp: ${window.ArbaUtils.escapeHtml(it.expiry)} (${window.ArbaUtils.escapeHtml(it.fefoPriority)})
                                       </span>
                                     </div>
                                   </td>
@@ -772,20 +772,20 @@
                             </span>
                           `}
                           <span class="font-label-sm text-label-sm text-on-surface-variant">
-                            ${order.orderTime} • Sales: ${order.salesRep}
+                            ${window.ArbaUtils.escapeHtml(order.orderTime)} • Sales: ${window.ArbaUtils.escapeHtml(order.salesRep)}
                           </span>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 text-xs">
                           <h3
                             class="btn-focus-order font-title-sm text-title-sm font-bold text-on-surface hover:text-primary cursor-pointer text-sm"
-                            data-order-id="${order.id}"
+                            data-order-id="${window.ArbaUtils.escapeHtml(order.id)}"
                             title="Klik untuk membuka panel inspeksi utama"
                           >
-                            ${order.outletName}
+                            ${window.ArbaUtils.escapeHtml(order.outletName)}
                           </h3>
                           <span class="text-on-surface-variant">•</span>
                           <span class="${isWarningState ? 'text-amber-700 font-semibold' : 'text-on-surface-variant'}">
-                            ${order.stockWarning || `${order.items.length} SKU (${order.items.map(function(i){return i.name;}).join(', ')})`}
+                            ${window.ArbaUtils.escapeHtml(order.stockWarning || `${order.items.length} SKU (${order.items.map(function(i){return i.name;}).join(', ')})`)}
                           </span>
                         </div>
                       </div>
@@ -1201,7 +1201,7 @@
               </div>
               <div class="text-right text-xs">
                 <p class="font-bold text-sm">SURAT JALAN / FAKTUR</p>
-                <p class="font-mono text-primary font-semibold">${order.clientUuid}</p>
+                <p class="font-mono text-primary font-semibold">${window.ArbaUtils.escapeHtml(order.clientUuid)}</p>
                 <p class="text-on-surface-variant">Tanggal: 28 Maret 2026</p>
               </div>
             </div>
@@ -1209,15 +1209,15 @@
             <div class="grid grid-cols-2 gap-4 text-xs bg-white p-3 rounded-lg border border-slate-200 text-slate-800">
               <div>
                 <p class="text-slate-500 font-semibold">Tujuan Pengiriman:</p>
-                <p class="font-bold text-slate-800 text-sm">${order.outletName}</p>
-                <p class="text-slate-600">${order.address}</p>
-                <p class="text-slate-600">Kota: ${order.city}</p>
+                <p class="font-bold text-slate-800 text-sm">${window.ArbaUtils.escapeHtml(order.outletName)}</p>
+                <p class="text-slate-600">${window.ArbaUtils.escapeHtml(order.address)}</p>
+                <p class="text-slate-600">Kota: ${window.ArbaUtils.escapeHtml(order.city)}</p>
               </div>
               <div>
                 <p class="text-slate-500 font-semibold">Ketentuan Pembayaran:</p>
-                <p class="font-bold text-slate-800">${order.terms}</p>
-                <p class="text-slate-600">NPWP: ${order.npwp}</p>
-                <p class="text-slate-600">Sales Lapangan: ${order.salesRep}</p>
+                <p class="font-bold text-slate-800">${window.ArbaUtils.escapeHtml(order.terms)}</p>
+                <p class="text-slate-600">NPWP: ${window.ArbaUtils.escapeHtml(order.npwp)}</p>
+                <p class="text-slate-600">Sales Lapangan: ${window.ArbaUtils.escapeHtml(order.salesRep)}</p>
               </div>
             </div>
 
@@ -1237,8 +1237,8 @@
                   return `
                     <tr class="border-b border-slate-200 bg-white text-slate-800">
                       <td class="border border-slate-300 p-2">${idx + 1}</td>
-                      <td class="border border-slate-300 p-2 font-medium">${it.name}</td>
-                      <td class="border border-slate-300 p-2 font-mono text-[11px]">${it.batch} (${it.expiry})</td>
+                      <td class="border border-slate-300 p-2 font-medium">${window.ArbaUtils.escapeHtml(it.name)}</td>
+                      <td class="border border-slate-300 p-2 font-mono text-[11px]">${window.ArbaUtils.escapeHtml(it.batch)} (${window.ArbaUtils.escapeHtml(it.expiry)})</td>
                       <td class="border border-slate-300 p-2 text-center font-bold">${it.quantity}</td>
                       <td class="border border-slate-300 p-2 text-right font-mono">${window.ArbaUtils.formatRupiah(it.unitPrice)}</td>
                       <td class="border border-slate-300 p-2 text-right font-mono font-bold">${window.ArbaUtils.formatRupiah(it.subtotal)}</td>
@@ -1293,7 +1293,7 @@
 
         <div class="modal-body text-xs">
           <p class="text-on-surface-variant">
-            SKU Madu Hutan Liar di Gudang Utama Kartasura tersisa 25 unit. Anda dapat mengalokasikan 15 unit sisanya dari <b>Gudang B Solo Baru</b> (Batch B-2026-002, Exp Nov 2027) untuk memenuhi pesanan ${order.outletName}.
+            SKU Madu Hutan Liar di Gudang Utama Kartasura tersisa 25 unit. Anda dapat mengalokasikan 15 unit sisanya dari <b>Gudang B Solo Baru</b> (Batch B-2026-002, Exp Nov 2027) untuk memenuhi pesanan ${window.ArbaUtils.escapeHtml(order.outletName)}.
           </p>
 
           <div class="p-3 bg-status-success-bg/40 rounded-lg border border-status-success-bg text-xs">
@@ -1348,15 +1348,15 @@
           <div class="modal-body text-xs">
             <div class="bg-surface-container-low p-3 rounded-lg text-xs space-y-1">
               <span class="text-on-surface-variant">Outlet:</span>
-              <span class="font-bold text-on-surface block">${order.outletName}</span>
-              <span class="text-slate-500 font-mono">Invoice Ref: ${order.clientUuid}</span>
+              <span class="font-bold text-on-surface block">${window.ArbaUtils.escapeHtml(order.outletName)}</span>
+              <span class="text-slate-500 font-mono">Invoice Ref: ${window.ArbaUtils.escapeHtml(order.clientUuid)}</span>
             </div>
 
             <div class="flex flex-col gap-1">
               <label class="font-semibold text-on-surface-variant">Pilih SKU yang Disesuaikan:</label>
               <select id="adj-order-sku" class="p-2 bg-surface-container-low rounded-lg border border-border-subtle/40 text-on-surface cursor-pointer">
                 ${order.items.map(function (it) {
-                  return `<option value="${it.sku}">${it.name} (Saat ini: ${it.quantity} botol)</option>`;
+                  return `<option value="${window.ArbaUtils.escapeHtml(it.sku)}">${window.ArbaUtils.escapeHtml(it.name)} (Saat ini: ${it.quantity} botol)</option>`;
                 }).join('')}
               </select>
             </div>
@@ -1424,8 +1424,8 @@
           <div class="modal-body text-xs">
             <div class="bg-surface-container-low p-3 rounded-lg text-xs space-y-1">
               <span class="text-on-surface-variant">Pesanan:</span>
-              <span class="font-bold text-on-surface block">${order.outletName}</span>
-              <span class="text-slate-500 font-mono">${order.clientUuid} • ${window.ArbaUtils.formatRupiah(order.totalAmount)}</span>
+              <span class="font-bold text-on-surface block">${window.ArbaUtils.escapeHtml(order.outletName)}</span>
+              <span class="text-slate-500 font-mono">${window.ArbaUtils.escapeHtml(order.clientUuid)} • ${window.ArbaUtils.formatRupiah(order.totalAmount)}</span>
             </div>
 
             <div class="flex flex-col gap-1">

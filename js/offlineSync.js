@@ -23,6 +23,7 @@ window.ArbaOfflineSync = (function () {
   const QUEUE_STORE = 'mutation_queue';
   const SNAPSHOT_STORE = 'state_snapshot';
   const CLIENT_ID_KEY = 'arbaconnect_client_device_id';
+  const AUTH_TOKEN_KEY = 'arbaconnect_auth_session_token';
 
   let dbPromise = null;
   let sseConnection = null;
@@ -30,6 +31,64 @@ window.ArbaOfflineSync = (function () {
   let serverAvailable = false;
   let lastSyncTimestamp = null;
   let deferredInstallPrompt = null;
+  let authTokenMemory = null;
+
+  function setAuthToken(token) {
+    authTokenMemory = token || null;
+    try {
+      if (token) {
+        sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+      } else {
+        sessionStorage.removeItem(AUTH_TOKEN_KEY);
+      }
+    } catch (e) {}
+  }
+
+  function getAuthToken() {
+    if (authTokenMemory) return authTokenMemory;
+    try {
+      authTokenMemory = sessionStorage.getItem(AUTH_TOKEN_KEY) || null;
+      return authTokenMemory;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function getAuthHeaders(extra) {
+    const headers = Object.assign({}, extra || {});
+    const token = getAuthToken();
+    if (token) {
+      headers['Authorization'] = 'Bearer ' + token;
+    }
+    return headers;
+  }
+
+  function sanitizeStateForStorage(stateData) {
+    if (!stateData || typeof stateData !== 'object') return stateData;
+    const copy = Object.assign({}, stateData);
+    if (Array.isArray(copy.users)) {
+      copy.users = copy.users.map((u) => {
+        if (!u || typeof u !== 'object') return u;
+        const uc = Object.assign({}, u);
+        if (uc.password && window.ArbaData && typeof window.ArbaData.hashCredential === 'function') {
+          uc.passwordHash = window.ArbaData.hashCredential(uc.password);
+        }
+        if (uc.pin && window.ArbaData && typeof window.ArbaData.hashCredential === 'function') {
+          uc.pinHash = window.ArbaData.hashCredential(uc.pin);
+        }
+        delete uc.password;
+        delete uc.pin;
+        return uc;
+      });
+    }
+    if (copy.currentUser && typeof copy.currentUser === 'object') {
+      const cu = Object.assign({}, copy.currentUser);
+      delete cu.password;
+      delete cu.pin;
+      copy.currentUser = cu;
+    }
+    return copy;
+  }
 
   function getClientId() {
     try {
@@ -144,12 +203,13 @@ window.ArbaOfflineSync = (function () {
   async function saveSnapshotToIDB(stateData) {
     const db = await openDB();
     if (!db) return;
+    const cleanState = sanitizeStateForStorage(stateData);
     return new Promise((resolve) => {
       try {
         const tx = db.transaction(SNAPSHOT_STORE, 'readwrite');
         tx.objectStore(SNAPSHOT_STORE).put({
           id: 'central_snapshot',
-          state: stateData,
+          state: cleanState,
           updatedAt: Date.now()
         });
         tx.oncomplete = () => resolve(true);
@@ -187,7 +247,8 @@ window.ArbaOfflineSync = (function () {
     try {
       const res = await fetch('/api/state', {
         method: 'GET',
-        headers: { 'Accept': 'application/json' },
+        headers: getAuthHeaders({ 'Accept': 'application/json' }),
+        credentials: 'same-origin',
         cache: 'no-store'
       });
       if (!res.ok) return null;
@@ -240,22 +301,25 @@ window.ArbaOfflineSync = (function () {
     // Antrekan request ke server secara berurutan agar tidak saling balapan (race condition)
     const runSync = async () => {
       try {
-        const currentSnapshot = window.ArbaStore ? window.ArbaStore.getState() : null;
+        const currentSnapshot = window.ArbaStore ? sanitizeStateForStorage(window.ArbaStore.getState()) : null;
         if (currentSnapshot) {
           await saveSnapshotToIDB(currentSnapshot);
         }
         const res = await fetch('/api/sync', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+          credentials: 'same-origin',
           body: JSON.stringify({
             clientId,
-            mutations: [mutation],
-            clientState: currentSnapshot
+            mutations: [mutation]
           })
         });
 
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
+        if (data && data.refreshedToken) {
+          setAuthToken(data.refreshedToken);
+        }
         serverAvailable = true;
         lastSyncTimestamp = Date.now();
         return { queuedOffline: false, synced: true, mutationId, serverResponse: data };
@@ -317,7 +381,8 @@ window.ArbaOfflineSync = (function () {
       // Meskipun antrean kosong, saat baru kembali online kita tetap tarik state terbaru dari pusat
       const res = await fetch('/api/sync', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        credentials: 'same-origin',
         body: JSON.stringify({
           clientId,
           mutations: allMutations,
@@ -357,12 +422,15 @@ window.ArbaOfflineSync = (function () {
   // ---------------------------------------------------------------------------
   function connectRealtimeSSE() {
     if (!isHttpOrigin() || typeof EventSource === 'undefined') return;
+    const st = window.ArbaStore ? window.ArbaStore.getState() : null;
+    if (!st || !st.currentUser) return;
     if (sseConnection) {
       try { sseConnection.close(); } catch (e) {}
     }
 
     try {
-      sseConnection = new EventSource('/api/events?clientId=' + encodeURIComponent(clientId));
+      const tokenParam = getAuthToken() ? '&token=' + encodeURIComponent(getAuthToken()) : '';
+      sseConnection = new EventSource('/api/events?clientId=' + encodeURIComponent(clientId) + tokenParam);
 
       sseConnection.addEventListener('connected', () => {
         serverAvailable = true;
@@ -489,9 +557,9 @@ window.ArbaOfflineSync = (function () {
       window.ArbaStore.restoreOfflineQueue(pendingIDB);
     }
 
-    // Jika sedang Online dan terhubung ke server HTTP, sinkronkan antrean & tarik state pusat
+    // Jika sedang Online, sudah login, dan terhubung ke server HTTP, sinkronkan antrean & tarik state pusat
     const st = window.ArbaStore ? window.ArbaStore.getState() : { isOnline: true };
-    if (st.isOnline && isHttpOrigin()) {
+    if (st.isOnline && isHttpOrigin() && st.currentUser) {
       if (pendingIDB.length > 0 || (st.offlineQueue && st.offlineQueue.length > 0)) {
         await flushOfflineQueue();
       } else {
@@ -510,11 +578,50 @@ window.ArbaOfflineSync = (function () {
     }
   }
 
+  async function onAuthenticated() {
+    const st = window.ArbaStore ? window.ArbaStore.getState() : { isOnline: true };
+    if (!st.isOnline || !isHttpOrigin()) return;
+    const pendingIDB = await getAllQueuedMutationsFromIDB();
+    if (pendingIDB.length > 0 || (st.offlineQueue && st.offlineQueue.length > 0)) {
+      await flushOfflineQueue();
+    } else {
+      const centralState = await fetchCentralState();
+      if (centralState && window.ArbaStore && typeof window.ArbaStore.applyServerState === 'function') {
+        window.ArbaStore.applyServerState(centralState, { silent: true });
+      }
+    }
+    connectRealtimeSSE();
+  }
+
+  async function clearAuthSession() {
+    setAuthToken(null);
+    if (sseConnection) {
+      try { sseConnection.close(); } catch (e) {}
+      sseConnection = null;
+    }
+    try {
+      const db = await openDB();
+      if (db) {
+        const tx = db.transaction(SNAPSHOT_STORE, 'readwrite');
+        tx.objectStore(SNAPSHOT_STORE).delete('central_snapshot');
+      }
+    } catch (e) {}
+    if (isHttpOrigin()) {
+      try {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+      } catch (e) {}
+    }
+  }
+
   async function resetCentralServer() {
     await clearIDBQueue();
     if (isHttpOrigin()) {
       try {
-        await fetch('/api/reset', { method: 'POST' });
+        await fetch('/api/reset', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          credentials: 'same-origin'
+        });
       } catch (e) {}
     }
   }
@@ -532,6 +639,10 @@ window.ArbaOfflineSync = (function () {
   return {
     init,
     getClientId: () => clientId,
+    setAuthToken,
+    getAuthToken,
+    onAuthenticated,
+    clearAuthSession,
     recordOrSyncMutation,
     flushOfflineQueue,
     fetchCentralState,

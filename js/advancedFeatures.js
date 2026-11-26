@@ -217,8 +217,8 @@
                             data-sku="${p.sku}"
                           >
                             <div class="truncate pr-2">
-                              <div class="font-semibold truncate">${p.name}</div>
-                              <div class="text-[10px] font-mono text-on-surface-variant">${p.sku} • Batch: ${p.activeBatch}</div>
+                              <div class="font-semibold truncate">${window.ArbaUtils.escapeHtml(p.name)}</div>
+                              <div class="text-[10px] font-mono text-on-surface-variant">${window.ArbaUtils.escapeHtml(p.sku)} • Batch: ${window.ArbaUtils.escapeHtml(p.activeBatch)}</div>
                             </div>
                             <span class="badge badge-success shrink-0">Cek QR</span>
                           </button>
@@ -235,13 +235,13 @@
                           <span class="material-symbols-outlined text-[16px]">verified</span>
                           BATCH TERVERIFIKASI RESMI (BPOM &amp; CDOB)
                         </span>
-                        <span class="badge badge-primary font-mono">${scannedProd.activeBatch}</span>
+                        <span class="badge badge-primary font-mono">${window.ArbaUtils.escapeHtml(scannedProd.activeBatch)}</span>
                       </div>
-                      <div class="font-bold text-sm text-on-surface">${scannedProd.name}</div>
+                      <div class="font-bold text-sm text-on-surface">${window.ArbaUtils.escapeHtml(scannedProd.name)}</div>
                       <div class="grid grid-cols-2 gap-1.5 mt-2 text-[11px] text-on-surface-variant">
-                        <div>Kode SKU: <b class="font-mono text-on-surface">${scannedProd.sku}</b></div>
+                        <div>Kode SKU: <b class="font-mono text-on-surface">${window.ArbaUtils.escapeHtml(scannedProd.sku)}</b></div>
                         <div>Stok Gudang: <b class="text-on-surface">${scannedProd.stock} unit</b></div>
-                        <div>Kedaluwarsa (FEFO): <b class="text-on-surface">${scannedProd.fefoDate}</b></div>
+                        <div>Kedaluwarsa (FEFO): <b class="text-on-surface">${window.ArbaUtils.escapeHtml(scannedProd.fefoDate)}</b></div>
                         <div>Harga Satuan: <b class="text-primary">${window.ArbaUtils.formatRupiah(scannedProd.unitPrice)}</b></div>
                       </div>
                       <div class="mt-3 flex flex-wrap gap-2">
@@ -296,10 +296,10 @@
                         </div>
                         <div class="min-w-0 flex-1 text-xs">
                           <div class="text-[10px] font-bold uppercase tracking-wider text-primary">CV ARBA'IN SOLO RAYA</div>
-                          <div class="font-bold text-on-surface truncate" title="${p.name}">${p.name}</div>
-                          <div class="font-mono text-[10px] text-on-surface-variant mt-0.5">SKU: ${p.sku}</div>
-                          <div class="font-mono text-[11px] font-bold text-emerald-600 mt-0.5">${p.activeBatch}</div>
-                          <div class="text-[11px] text-on-surface-variant mt-0.5">ED: <b class="text-on-surface">${p.fefoDate}</b> • Stok: <b class="text-on-surface">${p.stock}</b></div>
+                          <div class="font-bold text-on-surface truncate" title="${window.ArbaUtils.escapeHtml(p.name)}">${window.ArbaUtils.escapeHtml(p.name)}</div>
+                          <div class="font-mono text-[10px] text-on-surface-variant mt-0.5">SKU: ${window.ArbaUtils.escapeHtml(p.sku)}</div>
+                          <div class="font-mono text-[11px] font-bold text-emerald-600 mt-0.5">${window.ArbaUtils.escapeHtml(p.activeBatch)}</div>
+                          <div class="text-[11px] text-on-surface-variant mt-0.5">ED: <b class="text-on-surface">${window.ArbaUtils.escapeHtml(p.fefoDate)}</b> • Stok: <b class="text-on-surface">${p.stock}</b></div>
                         </div>
                       </div>
                     `;
@@ -481,15 +481,15 @@
                   <div class="p-3.5 rounded-xl border border-border-subtle bg-surface-container-low flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2 flex-wrap mb-1.5">
-                        <span class="font-bold text-xs text-on-surface">${r.productName}</span>
-                        <span class="badge badge-neutral font-mono">Batch: ${r.batch} • ED: ${r.expiry}</span>
+                        <span class="font-bold text-xs text-on-surface">${window.ArbaUtils.escapeHtml(r.productName)}</span>
+                        <span class="badge badge-neutral font-mono">Batch: ${window.ArbaUtils.escapeHtml(r.batch)} • ED: ${window.ArbaUtils.escapeHtml(r.expiry)}</span>
                         ${r.nearExpiry ? '<span class="badge badge-danger">MENDEKATI ED</span>' : '<span class="badge badge-warning">PERPUTARAN LAMBAT</span>'}
                       </div>
 
                       <div class="flex items-center gap-2 flex-wrap text-xs">
                         <div class="px-2.5 py-1.5 rounded-lg bg-surface-container-lowest border border-border-subtle">
                           <div class="text-[10px] uppercase font-bold text-rose-600">MITRA ASAL (PENARIKAN)</div>
-                          <div class="font-semibold text-on-surface">${r.sourceOutletName} (${r.sourceCity})</div>
+                          <div class="font-semibold text-on-surface">${window.ArbaUtils.escapeHtml(r.sourceOutletName)} (${window.ArbaUtils.escapeHtml(r.sourceCity)})</div>
                           <div class="text-[10px] text-on-surface-variant">Saldo: ${r.sourceRemainingQty} unit • Durasi: ${r.daysInOutlet} hari</div>
                         </div>
 
@@ -497,8 +497,8 @@
 
                         <div class="px-2.5 py-1.5 rounded-lg bg-surface-container-lowest border border-border-subtle">
                           <div class="text-[10px] uppercase font-bold text-emerald-600">MITRA TUJUAN (PENEMPATAN)</div>
-                          <div class="font-semibold text-on-surface">${r.targetOutletName} (${r.targetCity})</div>
-                          <div class="text-[10px] text-on-surface-variant">PIC Sales: ${r.targetSalesRep} • Perputaran Cepat</div>
+                          <div class="font-semibold text-on-surface">${window.ArbaUtils.escapeHtml(r.targetOutletName)} (${window.ArbaUtils.escapeHtml(r.targetCity)})</div>
+                          <div class="text-[10px] text-on-surface-variant">PIC Sales: ${window.ArbaUtils.escapeHtml(r.targetSalesRep)} • Perputaran Cepat</div>
                         </div>
                       </div>
                     </div>
@@ -682,12 +682,12 @@
         var cy = toY(s.lat);
         var color = s.creditStatus === 'Overdue' ? '#ef4444' : (s.creditStatus === 'Perhatian' ? '#f59e0b' : '#10b981');
         return `
-          <g class="tsp-map-node" data-code="${s.code}" style="cursor:pointer;">
+          <g class="tsp-map-node" data-code="${window.ArbaUtils.escapeHtml(s.code)}" style="cursor:pointer;">
             <circle cx="${cx}" cy="${cy}" r="15" fill="${color}" fill-opacity="0.2" />
             <circle cx="${cx}" cy="${cy}" r="9.5" fill="${color}" stroke="#ffffff" stroke-width="2" />
             <text x="${cx}" y="${cy + 3.5}" text-anchor="middle" fill="#ffffff" font-size="9.5" font-weight="800">${s.stopNumber}</text>
             <rect x="${cx - 56}" y="${cy - 30}" width="112" height="16" rx="4" fill="#0f172a" fill-opacity="0.9" />
-            <text x="${cx}" y="${cy - 19}" text-anchor="middle" fill="#f8fafc" font-size="9" font-weight="700">${s.name.slice(0, 18)}</text>
+            <text x="${cx}" y="${cy - 19}" text-anchor="middle" fill="#f8fafc" font-size="9" font-weight="700">${window.ArbaUtils.escapeHtml(s.name.slice(0, 18))}</text>
           </g>
         `;
       }).join('');
@@ -824,12 +824,12 @@
                           #${s.stopNumber}
                         </div>
                         <div class="min-w-0">
-                          <div class="font-bold text-xs text-on-surface truncate">${s.name}</div>
+                          <div class="font-bold text-xs text-on-surface truncate">${window.ArbaUtils.escapeHtml(s.name)}</div>
                           <div class="text-[11px] text-on-surface-variant truncate">
-                            <span id="tsp-leg-stat-${s.stopNumber}" class="font-semibold text-primary">+${s.legKm} km (${s.legMin} mnt)</span> • ${s.city}
+                            <span id="tsp-leg-stat-${s.stopNumber}" class="font-semibold text-primary">+${s.legKm} km (${s.legMin} mnt)</span> • ${window.ArbaUtils.escapeHtml(s.city)}
                           </div>
                           <div id="tsp-leg-road-${s.stopNumber}" class="text-[10px] text-on-surface-variant truncate">
-                            Via: ${s.roadCorridor || s.viaCorridor || s.address}
+                            Via: ${window.ArbaUtils.escapeHtml(s.roadCorridor || s.viaCorridor || s.address)}
                           </div>
                         </div>
                       </div>
@@ -846,7 +846,7 @@
                         <button
                           type="button"
                           class="tsp-select-stop-btn px-2.5 py-1.5 rounded-lg bg-surface-container-lowest hover:bg-primary hover:text-white text-on-surface text-[11px] font-semibold cursor-pointer border border-border-subtle shrink-0 transition-colors"
-                          data-code="${s.code}"
+                          data-code="${window.ArbaUtils.escapeHtml(s.code)}"
                         >
                           Pilih Apotek
                         </button>
@@ -964,17 +964,19 @@
               popupAnchor: [0, -14]
             });
 
+            var esc = window.ArbaUtils.escapeHtml;
+            var safeCodeJs = String(s.code || '').replace(/[^A-Za-z0-9_-]/g, '');
             var navUrl = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(legOrigin) + '&destination=' + encodeURIComponent(s.lat + ',' + s.lng) + '&travelmode=driving';
             var popupHtml =
               '<div style="font-family:Inter,sans-serif;font-size:12px;line-height:1.45;min-width:220px;">' +
-                '<div style="font-size:10px;font-weight:800;color:#005c55;text-transform:uppercase;">URUTAN KUNJUNGAN #' + s.stopNumber + ' • ' + s.code + '</div>' +
-                '<div style="font-weight:700;color:#0f172a;font-size:13px;margin-top:2px;">' + s.name + '</div>' +
-                '<div style="font-size:11px;color:#475569;margin-top:1px;">' + (s.address || s.city) + ' (' + s.city + ')</div>' +
-                '<div style="font-size:11px;color:#0f766e;font-weight:600;margin-top:3px;">Jalur: ' + (s.roadCorridor || s.viaCorridor) + '</div>' +
-                '<div style="font-size:11px;color:#334155;margin-top:3px;">Sales: <b>' + s.salesRep + '</b> • Segmen: <b>+' + s.legKm + ' km (' + s.legMin + ' mnt)</b></div>' +
+                '<div style="font-size:10px;font-weight:800;color:#005c55;text-transform:uppercase;">URUTAN KUNJUNGAN #' + Number(s.stopNumber) + ' • ' + esc(s.code) + '</div>' +
+                '<div style="font-weight:700;color:#0f172a;font-size:13px;margin-top:2px;">' + esc(s.name) + '</div>' +
+                '<div style="font-size:11px;color:#475569;margin-top:1px;">' + esc(s.address || s.city) + ' (' + esc(s.city) + ')</div>' +
+                '<div style="font-size:11px;color:#0f766e;font-weight:600;margin-top:3px;">Jalur: ' + esc(s.roadCorridor || s.viaCorridor) + '</div>' +
+                '<div style="font-size:11px;color:#334155;margin-top:3px;">Sales: <b>' + esc(s.salesRep) + '</b> • Segmen: <b>+' + Number(s.legKm) + ' km (' + Number(s.legMin) + ' mnt)</b></div>' +
                 '<div style="font-size:10px;font-family:monospace;color:#64748b;margin-top:2px;">GPS: ' + s.lat.toFixed(4) + ', ' + s.lng.toFixed(4) + '</div>' +
                 '<div style="display:flex;gap:6px;margin-top:8px;">' +
-                  '<button type="button" onclick="window.__arbaSelectMapOutlet(\'' + s.code + '\')" style="flex:1;padding:5px 8px;border-radius:6px;background:#005c55;color:#fff;font-size:11px;font-weight:700;border:0;cursor:pointer;">Buka Nota PWA</button>' +
+                  '<button type="button" onclick="window.__arbaSelectMapOutlet(\'' + safeCodeJs + '\')" style="flex:1;padding:5px 8px;border-radius:6px;background:#005c55;color:#fff;font-size:11px;font-weight:700;border:0;cursor:pointer;">Buka Nota PWA</button>' +
                   '<a href="' + navUrl + '" target="_blank" rel="noreferrer" style="padding:5px 8px;border-radius:6px;background:#e2e8f0;color:#0f172a;font-size:11px;font-weight:700;text-decoration:none;">Google Maps</a>' +
                 '</div>' +
               '</div>';
@@ -1124,14 +1126,14 @@
                     </div>
                     <div class="min-w-0 flex-1">
                       <div class="flex items-center gap-2 flex-wrap">
-                        <span class="font-bold text-xs text-on-surface">${sc.outletName}</span>
-                        <span class="badge ${badgeCls}">${sc.tier}</span>
+                        <span class="font-bold text-xs text-on-surface">${window.ArbaUtils.escapeHtml(sc.outletName)}</span>
+                        <span class="badge ${badgeCls}">${window.ArbaUtils.escapeHtml(sc.tier)}</span>
                       </div>
                       <div class="text-[11px] text-on-surface-variant mt-1">
-                        Pemakaian Plafon: <b class="text-on-surface">${sc.utilizationPct}%</b> • Laku Konsinyasi: <b class="text-on-surface">${sc.sellThroughPct}%</b> • Plafon Saat Ini: <b class="text-on-surface">${window.ArbaUtils.formatRupiah(sc.currentLimit)}</b> (${sc.currentTerms})
+                        Pemakaian Plafon: <b class="text-on-surface">${sc.utilizationPct}%</b> • Laku Konsinyasi: <b class="text-on-surface">${sc.sellThroughPct}%</b> • Plafon Saat Ini: <b class="text-on-surface">${window.ArbaUtils.formatRupiah(sc.currentLimit)}</b> (${window.ArbaUtils.escapeHtml(sc.currentTerms)})
                       </div>
                       <div class="text-[11px] text-primary font-semibold mt-1">
-                        ${sc.recommendation}
+                        ${window.ArbaUtils.escapeHtml(sc.recommendation)}
                       </div>
                     </div>
                   </div>
@@ -1255,12 +1257,12 @@
                     <tr>
                       <td class="font-mono font-bold text-primary">#${b.blockIndex}</td>
                       <td>
-                        <div class="font-bold text-on-surface">${b.docRef}</div>
-                        <div class="text-[10px] text-on-surface-variant">${b.timestamp}</div>
+                        <div class="font-bold text-on-surface">${window.ArbaUtils.escapeHtml(b.docRef)}</div>
+                        <div class="text-[10px] text-on-surface-variant">${window.ArbaUtils.escapeHtml(b.timestamp)}</div>
                       </td>
                       <td>
-                        <div class="font-semibold text-on-surface">${b.skuName}</div>
-                        <div class="font-mono text-[10px] text-on-surface-variant">${b.batch}</div>
+                        <div class="font-semibold text-on-surface">${window.ArbaUtils.escapeHtml(b.skuName)}</div>
+                        <div class="font-mono text-[10px] text-on-surface-variant">${window.ArbaUtils.escapeHtml(b.batch)}</div>
                       </td>
                       <td class="font-bold ${b.quantity >= 0 ? 'text-emerald-600' : 'text-rose-600'}">
                         ${b.type} (${b.quantity >= 0 ? '+' : ''}${b.quantity}) → Saldo: ${b.finalStock}
