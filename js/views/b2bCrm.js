@@ -266,7 +266,7 @@
           <div class="grid grid-cols-1 md:grid-cols-12 gap-space-sm">
             <!-- Search Field -->
             <div class="md:col-span-5 relative flex items-center" style="grid-column: span 5 / span 12; position:relative;">
-              <span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-[20px] pointer-events-none" style="position:absolute; left:0.75rem;">
+              <span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-[20px] pointer-events-none" style="position:absolute; left:0.75rem;" aria-hidden="true">
                 search
               </span>
               <input
@@ -274,6 +274,7 @@
                 value="${window.ArbaUtils.escapeHtml(state.searchQuery)}"
                 class="w-full bg-surface-container-low text-on-surface placeholder:text-on-surface-variant pl-10 pr-4 py-2.5 rounded-lg text-body-md font-body-md focus:outline-none focus:bg-surface-container transition-all text-xs border-0"
                 style="padding-left: 2.25rem;"
+                aria-label="Cari nama apotek, kode outlet, atau nama apoteker"
                 placeholder="Cari nama apotek, kode outlet, atau nama apoteker..."
                 type="text"
               />
@@ -281,11 +282,12 @@
 
             <!-- Filter Wilayah Solo Raya -->
             <div class="md:col-span-3 relative flex items-center" style="grid-column: span 3 / span 12; position:relative;">
-              <span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-[18px] pointer-events-none" style="position:absolute; left:0.75rem;">
+              <span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-[18px] pointer-events-none" style="position:absolute; left:0.75rem;" aria-hidden="true">
                 location_city
               </span>
               <select
                 id="crm-region-select"
+                aria-label="Filter wilayah kota Solo Raya"
                 class="w-full bg-surface-container-low text-on-surface pl-9 pr-8 py-2.5 rounded-lg text-body-md font-body-md appearance-none cursor-pointer focus:outline-none focus:bg-surface-container text-xs border-0"
                 style="padding-left: 2.25rem;"
               >
@@ -303,6 +305,7 @@
             <div class="md:col-span-2 relative flex items-center" style="grid-column: span 2 / span 12; position:relative;">
               <select
                 id="crm-type-select"
+                aria-label="Filter tipe outlet mitra"
                 class="w-full bg-surface-container-low text-on-surface px-3 py-2.5 rounded-lg text-body-md font-body-md appearance-none cursor-pointer focus:outline-none focus:bg-surface-container text-xs border-0"
               >
                 <option value="ALL" ${state.selectedType === 'ALL' ? 'selected' : ''}>Semua Tipe</option>
@@ -316,6 +319,7 @@
             <div class="md:col-span-2 relative flex items-center" style="grid-column: span 2 / span 12; position:relative;">
               <select
                 id="crm-credit-select"
+                aria-label="Filter status plafon kredit"
                 class="w-full bg-surface-container-low text-on-surface px-3 py-2.5 rounded-lg text-body-md font-body-md appearance-none cursor-pointer focus:outline-none focus:bg-surface-container text-xs border-0"
               >
                 <option value="ALL" ${state.selectedCredit === 'ALL' ? 'selected' : ''}>Semua Status Kredit</option>

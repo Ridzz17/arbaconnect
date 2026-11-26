@@ -377,7 +377,7 @@
                     <rect fill="#005c55" height="${isMonth ? 125 : 140}" rx="3" width="26" x="75" y="${isMonth ? 55 : 40}"></rect>
                     <rect fill="#5bb8fe" height="${isMonth ? 132 : 148}" rx="3" width="26" x="105" y="${isMonth ? 48 : 32}"></rect>
                     <text fill="var(--color-on-surface)" font-family="Inter" font-size="11" font-weight="600" text-anchor="middle" x="103" y="198">Madu Herbal</text>
-                    <text fill="var(--color-secondary-container)" font-family="Inter" font-size="10" font-weight="700" text-anchor="middle" x="118" y="${isMonth ? 42 : 26}">${isMonth ? '138M' : '412M'}</text>
+                    <text fill="var(--color-secondary)" font-family="Inter" font-size="10" font-weight="700" text-anchor="middle" x="118" y="${isMonth ? 42 : 26}">${isMonth ? '138M' : '412M'}</text>
                   </g>
 
                   <!-- Group 2: Habbatussauda -->
@@ -385,7 +385,7 @@
                     <rect fill="#005c55" height="${isMonth ? 110 : 125}" rx="3" width="26" x="180" y="${isMonth ? 70 : 55}"></rect>
                     <rect fill="#5bb8fe" height="${isMonth ? 118 : 130}" rx="3" width="26" x="210" y="${isMonth ? 62 : 50}"></rect>
                     <text fill="var(--color-on-surface)" font-family="Inter" font-size="11" font-weight="600" text-anchor="middle" x="208" y="198">Habbatus</text>
-                    <text fill="var(--color-secondary-container)" font-family="Inter" font-size="10" font-weight="700" text-anchor="middle" x="223" y="${isMonth ? 56 : 44}">${isMonth ? '114M' : '340M'}</text>
+                    <text fill="var(--color-secondary)" font-family="Inter" font-size="10" font-weight="700" text-anchor="middle" x="223" y="${isMonth ? 56 : 44}">${isMonth ? '114M' : '340M'}</text>
                   </g>
 
                   <!-- Group 3: Minyak Zaitun -->
@@ -393,7 +393,7 @@
                     <rect fill="#005c55" height="${isMonth ? 90 : 105}" rx="3" width="26" x="285" y="${isMonth ? 90 : 75}"></rect>
                     <rect fill="#5bb8fe" height="${isMonth ? 94 : 108}" rx="3" width="26" x="315" y="${isMonth ? 86 : 72}"></rect>
                     <text fill="var(--color-on-surface)" font-family="Inter" font-size="11" font-weight="600" text-anchor="middle" x="313" y="198">M. Zaitun</text>
-                    <text fill="var(--color-secondary-container)" font-family="Inter" font-size="10" font-weight="700" text-anchor="middle" x="328" y="${isMonth ? 80 : 66}">${isMonth ? '92M' : '275M'}</text>
+                    <text fill="var(--color-secondary)" font-family="Inter" font-size="10" font-weight="700" text-anchor="middle" x="328" y="${isMonth ? 80 : 66}">${isMonth ? '92M' : '275M'}</text>
                   </g>
 
                   <!-- Group 4: Jamu Cair -->
@@ -401,7 +401,7 @@
                     <rect fill="#005c55" height="${isMonth ? 75 : 88}" rx="3" width="26" x="390" y="${isMonth ? 105 : 92}"></rect>
                     <rect fill="#5bb8fe" height="${isMonth ? 80 : 95}" rx="3" width="26" x="420" y="${isMonth ? 100 : 85}"></rect>
                     <text fill="var(--color-on-surface)" font-family="Inter" font-size="11" font-weight="600" text-anchor="middle" x="418" y="198">Jamu Cair</text>
-                    <text fill="var(--color-secondary-container)" font-family="Inter" font-size="10" font-weight="700" text-anchor="middle" x="433" y="${isMonth ? 94 : 79}">${isMonth ? '78M' : '230M'}</text>
+                    <text fill="var(--color-secondary)" font-family="Inter" font-size="10" font-weight="700" text-anchor="middle" x="433" y="${isMonth ? 94 : 79}">${isMonth ? '78M' : '230M'}</text>
                   </g>
 
                   <!-- Group 5: Suplemen Imun -->
@@ -409,7 +409,7 @@
                     <rect fill="#005c55" height="${isMonth ? 55 : 68}" rx="3" width="26" x="495" y="${isMonth ? 125 : 112}"></rect>
                     <rect fill="#5bb8fe" height="${isMonth ? 62 : 75}" rx="3" width="26" x="525" y="${isMonth ? 118 : 105}"></rect>
                     <text fill="var(--color-on-surface)" font-family="Inter" font-size="11" font-weight="600" text-anchor="middle" x="523" y="198">Suplemen</text>
-                    <text fill="var(--color-secondary-container)" font-family="Inter" font-size="10" font-weight="700" text-anchor="middle" x="538" y="${isMonth ? 112 : 99}">${isMonth ? '60M' : '180M'}</text>
+                    <text fill="var(--color-secondary)" font-family="Inter" font-size="10" font-weight="700" text-anchor="middle" x="538" y="${isMonth ? 112 : 99}">${isMonth ? '60M' : '180M'}</text>
                   </g>
                 </svg>
               </div>
@@ -886,10 +886,11 @@
             <!-- Filters & Live Sync Status -->
             <div class="flex flex-wrap items-center gap-space-xs">
               <div class="flex items-center bg-surface-container-low px-2.5 py-1.5 rounded-lg border border-border-subtle/30">
-                <span class="material-symbols-outlined text-on-surface-variant text-[18px] mr-1.5">search</span>
+                <span class="material-symbols-outlined text-on-surface-variant text-[18px] mr-1.5" aria-hidden="true">search</span>
                 <input
                   id="input-stream-search"
                   value="${window.ArbaUtils.escapeHtml(state.streamSearch)}"
+                  aria-label="Cari UUID pesanan atau nama outlet apotek"
                   class="bg-transparent font-body-sm text-body-sm text-on-surface focus:outline-none w-36 sm:w-44 placeholder:text-on-surface-variant border-0"
                   placeholder="Cari UUID / Outlet..."
                   type="text"

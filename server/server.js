@@ -68,7 +68,7 @@ const SERVER_AUTH_SECRET = process.env.ARBA_AUTH_SECRET ||
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const revokedTokens = new Set();
 
-const SECURITY_CSP_POLICY = "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com/leaflet@1.9.4/dist/leaflet.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com/leaflet@1.9.4/dist/leaflet.css; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.tile.openstreetmap.org https://unpkg.com; connect-src 'self' https://router.project-osrm.org https://*.tile.openstreetmap.org; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'";
+const SECURITY_CSP_POLICY = "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com/leaflet@1.9.4/dist/leaflet.js https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com/leaflet@1.9.4/dist/leaflet.css; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.tile.openstreetmap.org https://unpkg.com; connect-src 'self' https://router.project-osrm.org https://*.tile.openstreetmap.org https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com https://vercel.live; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'";
 const SECURITY_PERMISSIONS_POLICY = 'camera=(self), geolocation=(self), microphone=(), payment=(), usb=()';
 const SECURITY_HSTS_POLICY = 'max-age=63072000; includeSubDomains; preload';
 

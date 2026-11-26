@@ -387,15 +387,8 @@
             </p>
           </div>
 
-          <!-- Visual 3: Photo Rich Operational Warehouse Unit -->
-          <div class="relative bg-surface-container-lowest rounded-xl shadow-xs overflow-hidden min-h-[140px] flex items-center border border-border-subtle/40" style="position:relative; min-height:140px;">
-            <img
-              class="absolute inset-0 w-full h-full object-cover"
-              style="position:absolute; width:100%; height:100%; object-fit:cover;"
-              alt="Warehouse CV Arba'in Kartasura"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXSkCCkRfjOjEsxVM3gjkn_FdhuEZVzJw9g39lPyfJZH1wt00Sz6FuthN0pSTVc5I_JKr0X5vakXqjr0q0kC7dvrYCUMRSm6TFMpadVeQXtgQuxGOTWrxKWUPVu9iQvBU7QLOlYwqOiuBCObsnpcZHdh6nHwKBZmKkVmJARgwO6m7eiqRkqqT8aBjveWpwnZZTctEVaKvU2nG1tpuhQRwSL2pq3WuqE1mKp7FOabRUrhf1dAW4BtyA"
-            />
-            <div class="absolute inset-0 bg-gradient-to-r" style="position:absolute; inset:0; background:linear-gradient(to right, rgba(11,28,48,0.92) 0%, rgba(11,28,48,0.65) 60%, transparent 100%);"></div>
+          <!-- Visual 3: Photo Rich Operational Warehouse Unit (Zero External Network Banner) -->
+          <div class="relative bg-surface-container-lowest rounded-xl shadow-xs overflow-hidden min-h-[140px] flex items-center border border-border-subtle/40" style="position:relative; min-height:140px; background:linear-gradient(135deg, #0b1c30 0%, #005c55 100%);">
             <div class="relative p-space-md text-white flex flex-col justify-center" style="position:relative; z-index:2; padding:1.25rem;">
               <span class="font-label-sm text-label-sm uppercase tracking-wider text-teal-200 font-bold text-[10px]">
                 Audit Operasional
@@ -430,12 +423,13 @@
             <!-- Filters -->
             <div class="flex flex-wrap items-center gap-2">
               <div class="relative">
-                <span class="material-symbols-outlined text-on-surface-variant absolute left-2.5 top-2.5 text-[18px]">
+                <span class="material-symbols-outlined text-on-surface-variant absolute left-2.5 top-2.5 text-[18px]" aria-hidden="true">
                   search
                 </span>
                 <input
                   id="catalog-search"
                   value="${window.ArbaUtils.escapeHtml(state.searchQuery)}"
+                  aria-label="Cari SKU atau Nama Produk Herbal"
                   class="pl-8 pr-3 py-2 bg-surface-container-low rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:bg-surface-container w-52 sm:w-60 text-xs border-0"
                   placeholder="Cari SKU / Nama Herbal..."
                   type="text"
@@ -443,6 +437,7 @@
               </div>
               <select
                 id="catalog-category-select"
+                aria-label="Filter Kategori Produk Herbal"
                 class="bg-surface-container-low font-label-md text-label-md text-on-surface px-3 py-2 rounded-lg cursor-pointer focus:outline-none focus:bg-surface-container text-xs border-0"
               >
                 <option value="all" ${state.selectedCategory === 'all' ? 'selected' : ''}>Semua Kategori</option>
@@ -454,6 +449,7 @@
               </select>
               <select
                 id="catalog-rop-select"
+                aria-label="Filter Status Reorder Point (ROP)"
                 class="bg-surface-container-low font-label-md text-label-md text-on-surface px-3 py-2 rounded-lg cursor-pointer focus:outline-none focus:bg-surface-container text-xs border-0"
               >
                 <option value="all" ${state.selectedRopStatus === 'all' ? 'selected' : ''}>Semua Status ROP</option>
