@@ -90,37 +90,10 @@
       <div class="flex flex-col w-full">
         <!-- Top Section: Metric Ribbon & Audit Integrity Indicator -->
         <div class="flex flex-col gap-space-lg mb-space-lg">
-          <!-- Breadcrumb & Status Tracker (Disesuaikan dengan Role Pengguna) -->
-          <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-            <div>
-              <div class="flex items-center gap-2 mb-1 text-on-surface-variant text-xs font-medium">
-                <span>${isWarehouseRole ? 'Divisi Gudang &amp; Pengiriman' : 'Divisi Penjualan &amp; Piutang Apotek'}</span>
-                <span aria-hidden="true">·</span>
-                <span class="text-primary font-semibold">${isWarehouseRole ? 'Penyiapan Barang &amp; Surat Jalan' : 'Pemeriksaan Faktur &amp; Plafon'}</span>
-                <span aria-hidden="true">·</span>
-                <span>Urutan Kedaluwarsa Terdekat (FEFO)</span>
-              </div>
-              <h1 class="text-2xl text-on-surface font-bold tracking-tight">
-                ${pageTitle}
-              </h1>
-              <p class="text-sm text-on-surface-variant mt-0.5 max-w-4xl">
-                ${pageSubtitle}
-              </p>
-            </div>
-
-            <!-- Audit & Compliance Status -->
-            <div class="flex items-center gap-3 bg-surface-container-low px-4 py-2.5 rounded-xl border border-border-subtle/50 self-start xl:self-center">
-              <span class="w-2 h-2 rounded-full bg-emerald-600" style="display:inline-block; width:8px; height:8px;"></span>
-              <div class="flex flex-col">
-                <span class="text-xs text-on-surface font-semibold">
-                  ${isWarehouseRole ? 'Potong Stok Batch FEFO Otomatis' : 'Pemeriksaan Plafon &amp; Stok Aktif'}
-                </span>
-                <span class="text-[11px] text-on-surface-variant">
-                  Terhubung ke Buku Besar Stok Gudang Kartasura
-                </span>
-              </div>
-              <span class="material-symbols-outlined text-primary text-[20px] ml-1">verified_user</span>
-            </div>
+          <div class="flex items-center justify-between gap-4 bg-surface-container-lowest p-5 rounded-xl border border-border-subtle/60">
+            <h1 class="text-xl text-on-surface font-bold tracking-tight">
+              Verifikasi Order
+            </h1>
           </div>
 
           <!-- Status Tabs Grid -->
@@ -164,7 +137,7 @@
               </div>
               <div class="flex items-baseline gap-1.5">
                 <span class="text-2xl font-bold">
-                  ${28 + approvedOrders.length - 1}
+                  ${approvedOrders.length}
                 </span>
                 <span class="text-xs">Faktur</span>
               </div>
@@ -187,8 +160,8 @@
                 <span class="material-symbols-outlined text-[18px]">local_shipping</span>
               </div>
               <div class="flex items-baseline gap-1.5">
-                <span class="text-2xl font-bold">14</span>
-                <span class="text-xs">Faktur</span>
+                <span class="text-2xl font-bold">${(appState.driverManifests || []).length}</span>
+                <span class="text-xs">Armada</span>
               </div>
               <span class="text-xs mt-1 opacity-80">Dibawa Sopir Pengiriman</span>
             </button>
@@ -210,7 +183,7 @@
               </div>
               <div class="flex items-baseline gap-1.5">
                 <span class="text-2xl font-bold">
-                  ${1 + rejectedOrders.length}
+                  ${rejectedOrders.length}
                 </span>
                 <span class="text-xs">Kasus</span>
               </div>
@@ -234,9 +207,10 @@
                 style="padding-left: 2.25rem;"
               >
                 <option value="all" ${state.selectedSalesRep === 'all' ? 'selected' : ''}>Semua Sales Rep (Aktif)</option>
-                <option value="budi" ${state.selectedSalesRep === 'budi' ? 'selected' : ''}>Budi Santoso (Solo Timur &amp; Tengah)</option>
-                <option value="anita" ${state.selectedSalesRep === 'anita' ? 'selected' : ''}>Anita Rahmawati (Sukoharjo)</option>
-                <option value="hadi" ${state.selectedSalesRep === 'hadi' ? 'selected' : ''}>Hadi Kurniawan (Karanganyar)</option>
+                ${(appState.salesTeam || []).map(function (rep) {
+                  var first = (rep.name || '').split(' ')[0].toLowerCase();
+                  return '<option value="' + window.ArbaUtils.escapeHtml(first) + '" ' + (state.selectedSalesRep === first ? 'selected' : '') + '>' + window.ArbaUtils.escapeHtml(rep.name) + ' (' + window.ArbaUtils.escapeHtml(rep.territory || '') + ')</option>';
+                }).join('')}
               </select>
             </div>
 
@@ -844,106 +818,86 @@
 
         <!-- Operational Real-time Logistics & Warehouse Feed Footer Section -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-md gap-4">
-          <!-- Left 7 Cols: Quick Stock Ledger Synchronization Stream -->
+          <!-- Left 7 Cols: Live Stock Ledger Stream -->
           <div class="lg:col-span-7 bg-surface-container-lowest p-space-md rounded-xl shadow-xs border border-border-subtle/40 flex flex-col justify-between p-4">
             <div>
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2">
                   <span class="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">history_edu</span>
                   <h3 class="font-title-sm text-title-sm font-bold text-on-surface text-sm">
-                    Riwayat Alokasi Stok Otomatis Terbaru (FEFO Ledger)
+                    Mutasi Stok Terbaru
                   </h3>
                 </div>
-                <span class="font-code-table text-code-table text-emerald-700 font-medium text-xs font-mono">
-                  Realtime WebSocket Sync
+                <span class="font-code-table text-code-table text-on-surface-variant font-medium text-xs font-mono">
+                  ${(appState.ledger || []).length} Entri
                 </span>
               </div>
               <div class="flex flex-col gap-2">
-                <div class="flex items-center justify-between p-2 rounded-lg bg-surface-container-low text-on-surface font-body-sm text-body-sm text-xs">
-                  <div class="flex items-center gap-2">
-                    <span class="font-code-table text-code-table font-semibold text-primary font-mono">10:12:44</span>
-                    <span>Potong Stok <b>50 Botol</b> SKU: ARB-ZTN-250 (Batch B-2026-031)</span>
-                  </div>
-                  <span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-status-success-bg text-emerald-800 font-semibold text-[10px]">
-                    Faktur ORD-9128 Diterbitkan
-                  </span>
-                </div>
-                <div class="flex items-center justify-between p-2 rounded-lg bg-surface-container-low text-on-surface font-body-sm text-body-sm text-xs">
-                  <div class="flex items-center gap-2">
-                    <span class="font-code-table text-code-table font-semibold text-primary font-mono">10:05:19</span>
-                    <span>Kunci Cadangan <b>24 Botol</b> SKU: ARB-MDR-500 (Batch B-2026-018)</span>
-                  </div>
-                  <span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed font-semibold text-[10px]">
-                    Reservasi Lapangan
-                  </span>
-                </div>
-                <div class="flex items-center justify-between p-2 rounded-lg bg-surface-container-low text-on-surface font-body-sm text-body-sm text-xs">
-                  <div class="flex items-center gap-2">
-                    <span class="font-code-table text-code-table font-semibold text-primary font-mono">09:51:02</span>
-                    <span>Pemulihan Alokasi Void <b>10 Botol</b> SKU: ARB-HBT-100 (Rejeksi)</span>
-                  </div>
-                  <span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-status-danger-bg text-rose-600 font-semibold text-[10px]">
-                    Ledger Reversal OK
-                  </span>
-                </div>
+                ${(appState.ledger || []).slice(0, 3).map(function (entry) {
+                  return `
+                    <div class="flex items-center justify-between p-2 rounded-lg bg-surface-container-low text-on-surface font-body-sm text-body-sm text-xs">
+                      <div class="flex items-center gap-2 min-w-0">
+                        <span class="font-code-table text-code-table font-semibold text-primary font-mono shrink-0">${window.ArbaUtils.escapeHtml(entry.time || entry.date || '-')}</span>
+                        <span class="truncate">${window.ArbaUtils.escapeHtml(entry.type || '')} <b>${entry.qty || 0}</b> ${window.ArbaUtils.escapeHtml(entry.sku || entry.productName || '')}</span>
+                      </div>
+                      <span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-semibold text-[10px] shrink-0">
+                        ${window.ArbaUtils.escapeHtml(entry.batch || entry.ref || '-')}
+                      </span>
+                    </div>
+                  `;
+                }).join('')}
               </div>
             </div>
-            <div class="pt-3 mt-3 flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm border-t border-border-subtle/30 text-xs">
-              <span>Transparansi Audit: Sesuai pedoman CDOB (Cara Distribusi Obat yang Baik)</span>
+            <div class="pt-3 mt-3 flex items-center justify-end text-on-surface-variant font-label-sm text-label-sm border-t border-border-subtle/30 text-xs">
               <button
                 id="btn-goto-stock-ledger"
                 class="text-primary font-semibold hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-0"
                 type="button"
               >
-                Buka Buku Besar Lengkap <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                Buka Buku Besar <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
               </button>
             </div>
           </div>
 
-          <!-- Right 5 Cols: Quick Print Dispatch Summary Widget -->
+          <!-- Right 5 Cols: Live Driver Manifests -->
           <div class="lg:col-span-5 bg-surface-container-lowest p-space-md rounded-xl shadow-xs border border-border-subtle/40 flex flex-col justify-between p-4">
             <div>
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2">
                   <span class="material-symbols-outlined text-secondary text-[20px]" aria-hidden="true">local_shipping</span>
                   <h3 class="font-title-sm text-title-sm font-bold text-on-surface text-sm">
-                    Jadwal Pengiriman Armada CV Arba'in
+                    Armada Pengiriman
                   </h3>
                 </div>
                 <span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container-high text-on-surface font-medium text-xs">
-                  Wave 1 (Siang)
+                  ${(appState.driverManifests || []).length} Armada
                 </span>
               </div>
               <div class="grid grid-cols-2 gap-space-sm gap-2 mb-3 text-xs">
-                <div class="p-space-sm p-2.5 bg-surface-container-low rounded-lg border border-border-subtle/30">
-                  <span class="font-label-sm text-label-sm text-on-surface-variant block text-[11px]">
-                    Armada GranMax AD-8941-KA
-                  </span>
-                  <span class="font-headline-md text-headline-md font-bold text-on-surface text-lg">8 Outlet</span>
-                  <span class="font-body-sm text-body-sm text-primary font-semibold block text-[11px]">
-                    Rute: Solo Tengah &amp; Laweyan
-                  </span>
-                </div>
-                <div class="p-space-sm p-2.5 bg-surface-container-low rounded-lg border border-border-subtle/30">
-                  <span class="font-label-sm text-label-sm text-on-surface-variant block text-[11px]">
-                    Armada BlindVan AD-1044-YB
-                  </span>
-                  <span class="font-headline-md text-headline-md font-bold text-on-surface text-lg">6 Outlet</span>
-                  <span class="font-body-sm text-body-sm text-secondary font-semibold block text-[11px]">
-                    Rute: Sukoharjo &amp; Solo Baru
-                  </span>
-                </div>
+                ${(appState.driverManifests || []).slice(0, 2).map(function (m) {
+                  var cnt = (m.orderIds && m.orderIds.length) || 0;
+                  return `
+                    <div class="p-space-sm p-2.5 bg-surface-container-low rounded-lg border border-border-subtle/30">
+                      <span class="font-label-sm text-label-sm text-on-surface-variant block text-[11px] truncate">
+                        ${window.ArbaUtils.escapeHtml(m.vehicle || m.driverName || 'Armada')}
+                      </span>
+                      <span class="font-headline-md text-headline-md font-bold text-on-surface text-lg">${cnt} Order</span>
+                      <span class="font-body-sm text-body-sm text-primary font-semibold block text-[11px] truncate">
+                        ${window.ArbaUtils.escapeHtml(m.route || m.status || '-')}
+                      </span>
+                    </div>
+                  `;
+                }).join('')}
               </div>
             </div>
-            <div class="flex items-center justify-between gap-space-sm pt-2 border-t border-border-subtle/30 text-xs">
-              <span class="font-body-sm text-body-sm text-on-surface-variant">Surat Jalan Dicetak Otomatis Rangkap 3</span>
+            <div class="flex items-center justify-end gap-space-sm pt-2 border-t border-border-subtle/30 text-xs">
               <button
                 id="btn-manifest-pwa"
                 class="px-space-md py-2 px-3 bg-secondary text-white hover:bg-secondary-container font-label-md text-label-md rounded-lg flex items-center gap-1.5 transition-all cursor-pointer font-semibold shadow-xs border-0 text-xs"
                 type="button"
               >
                 <span class="material-symbols-outlined text-[18px]">share_location</span>
-                <span>Manifest Driver PWA</span>
+                <span>Manifest Driver</span>
               </button>
             </div>
           </div>
@@ -1297,16 +1251,8 @@
 
         <div class="modal-body text-xs">
           <p class="text-on-surface-variant">
-            SKU Madu Hutan Liar di Gudang Utama Kartasura tersisa 25 unit. Anda dapat mengalokasikan 15 unit sisanya dari <b>Gudang B Solo Baru</b> (Batch B-2026-002, Exp Nov 2027) untuk memenuhi pesanan ${window.ArbaUtils.escapeHtml(order.outletName)}.
+            Alihkan pemenuhan pesanan <b>${window.ArbaUtils.escapeHtml(order.id)}</b> untuk <b>${window.ArbaUtils.escapeHtml(order.outletName)}</b> ke batch cadangan Gudang B.
           </p>
-
-          <div class="p-3 bg-status-success-bg/40 rounded-lg border border-status-success-bg text-xs">
-            <div class="flex items-center gap-2 font-bold text-status-success-text mb-1">
-              <span class="material-symbols-outlined text-[16px]">check_circle</span>
-              Tersedia 120 unit di Gudang B
-            </div>
-            <p class="text-slate-600">Alokasi otomatis FEFO tervalidasi. Surat jalan akan memuat keterangan 2 titik penjemputan armada.</p>
-          </div>
         </div>
 
         <div class="modal-footer">

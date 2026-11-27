@@ -84,80 +84,64 @@
 
     var html = `
       <div class="flex flex-col w-full gap-space-lg">
-        <!-- Header Title & Action Toolbar (Disesuaikan dengan Role Pengguna) -->
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div class="flex flex-col">
-            <div class="flex items-center gap-2 text-on-surface-variant text-xs mb-1 font-medium">
-              <span>Distribusi Herbal Solo Raya</span>
-              <span aria-hidden="true">·</span>
-              <span class="text-primary font-semibold">${isSalesRole ? 'Wilayah Tugas Distribusi Sales' : isSalesOpsRole ? 'Administrasi Penjualan &amp; Piutang' : 'Manajemen Kemitraan Apotek'}</span>
-              <span aria-hidden="true">·</span>
-              <span>Kemitraan Konsinyasi B2B</span>
-            </div>
-            <h1 class="text-2xl text-on-surface tracking-tight font-bold">
-              ${crmTitle}
-            </h1>
-            <p class="text-sm text-on-surface-variant max-w-4xl mt-0.5">
-              ${crmSubtitle}
-            </p>
-          </div>
-          <div class="flex items-center gap-2 flex-wrap">
+        <!-- Header Title & Action Toolbar -->
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-surface-container-lowest p-5 rounded-xl border border-border-subtle/60">
+          <h1 class="text-xl text-on-surface tracking-tight font-bold">
+            Mitra Outlet
+          </h1>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <button
+              id="btn-new-outlet"
+              class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-primary text-white hover:bg-primary-container text-xs font-semibold transition-colors shadow-xs cursor-pointer active:scale-95 border-0"
+              type="button"
+            >
+              <span class="material-symbols-outlined text-[16px]">add_business</span>
+              <span>+ Tambah Outlet</span>
+            </button>
             <button
               id="btn-crm-rebalancer"
-              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer border border-border-subtle/50"
+              class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer border border-border-subtle/50"
               type="button"
-              title="Realokasi Inventaris Konsinyasi Berperputaran Lambat / Mendekati Kedaluwarsa Antar-Mitra Apotek"
             >
-              <span class="material-symbols-outlined text-[16px] text-amber-600">swap_driving_apps_wheel</span>
-              <span>Realokasi Stok Konsinyasi</span>
+              <span class="material-symbols-outlined text-[15px] text-amber-600">swap_driving_apps_wheel</span>
+              <span>Realokasi</span>
               <span class="px-1.5 py-0.5 rounded-full bg-primary text-white text-[10px] font-bold">${(window.ArbaStore.getConsignmentRebalanceRecommendations() || []).length}</span>
             </button>
             ${!isSalesRole ? `
               <button
                 id="btn-crm-credit-score"
-                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer border border-border-subtle/50"
+                class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer border border-border-subtle/50"
                 type="button"
-                title="Evaluasi Kelayakan Plafon Kredit & Kolektibilitas Mitra Apotek (Skor 0-100)"
               >
-                <span class="material-symbols-outlined text-[16px] text-primary">analytics</span>
-                <span>Evaluasi Kelayakan Kredit</span>
+                <span class="material-symbols-outlined text-[15px] text-primary">analytics</span>
+                <span>Skor Kredit</span>
               </button>
             ` : ''}
             <button
               id="btn-crm-tsp-map"
-              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer border border-border-subtle/50"
+              class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer border border-border-subtle/50"
               type="button"
-              title="Peta Lokasi Mitra Apotek & Optimasi Rute Kunjungan Distribusi"
             >
-              <span class="material-symbols-outlined text-[16px] text-emerald-600">route</span>
-              <span>${isSalesRole ? 'Optimasi Rute Kunjungan' : 'Peta &amp; Optimasi Rute'}</span>
+              <span class="material-symbols-outlined text-[15px] text-emerald-600">route</span>
+              <span>Rute</span>
             </button>
             ${!isSalesRole ? `
               <button
                 id="btn-import-crm-csv"
-                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low text-primary hover:bg-surface-container text-xs font-semibold transition-colors border border-border-subtle/50 cursor-pointer"
+                class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low text-primary hover:bg-surface-container text-xs font-semibold transition-colors border border-border-subtle/50 cursor-pointer"
                 type="button"
-                title="Impor Data Awal Apotek dari File CSV"
               >
-                <span class="material-symbols-outlined text-[16px]">upload_file</span>
-                <span>Impor Data CSV</span>
+                <span class="material-symbols-outlined text-[15px]">upload_file</span>
+                <span>Impor CSV</span>
               </button>
             ` : ''}
             <button
               id="btn-export-crm-csv"
-              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container text-xs font-semibold transition-colors border border-border-subtle/50 cursor-pointer"
+              class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container text-xs font-semibold transition-colors border border-border-subtle/50 cursor-pointer"
               type="button"
             >
-              <span class="material-symbols-outlined text-[16px]">file_download</span>
-              <span>Unduh Data Apotek</span>
-            </button>
-            <button
-              id="btn-new-outlet"
-              class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-container text-xs font-semibold transition-colors shadow-xs cursor-pointer active:scale-95 border-0"
-              type="button"
-            >
-              <span class="material-symbols-outlined text-[16px]">add_business</span>
-              <span>${isSalesRole ? '+ Usulkan Apotek Baru' : '+ Daftarkan Apotek Baru'}</span>
+              <span class="material-symbols-outlined text-[15px]">file_download</span>
+              <span>Ekspor CSV</span>
             </button>
           </div>
         </div>
@@ -173,7 +157,7 @@
                 </span>
                 <div class="flex items-baseline gap-1.5 mt-1">
                   <span class="text-2xl text-on-surface font-bold">
-                    ${168 + (outlets.length - 6)}
+                    ${outlets.length}
                   </span>
                   <span class="text-xs text-on-surface-variant font-medium">Outlet</span>
                 </div>
@@ -185,9 +169,9 @@
             <div class="mt-4 pt-2.5 flex items-center justify-between text-xs text-on-surface-variant border-t border-border-subtle/40">
               <div class="flex items-center gap-1.5 text-emerald-700 font-semibold">
                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-600" style="display:inline-block; width:6px; height:6px;"></span>
-                <span>148 Aktif</span>
+                <span>${outlets.filter(function (o) { return o.creditStatus === 'Lancar'; }).length} Lancar</span>
               </div>
-              <span class="text-on-surface-variant">20 Baru / Evaluasi</span>
+              <span class="text-on-surface-variant">${outlets.filter(function (o) { return o.creditStatus !== 'Lancar'; }).length} Perhatian</span>
             </div>
           </div>
 
@@ -199,8 +183,8 @@
                   Jaringan Apotek
                 </span>
                 <div class="flex items-baseline gap-1.5 mt-1">
-                  <span class="text-2xl text-primary font-bold">104</span>
-                  <span class="text-xs text-on-surface-variant font-medium">Titik Relasi</span>
+                  <span class="text-2xl text-primary font-bold">${outlets.filter(function (o) { return o.type === 'Apotek'; }).length}</span>
+                  <span class="text-xs text-on-surface-variant font-medium">Outlet</span>
                 </div>
               </div>
               <div class="w-9 h-9 rounded-lg bg-teal-50 flex items-center justify-center text-primary" style="background:#ccfbf1;">
@@ -208,7 +192,7 @@
               </div>
             </div>
             <div class="mt-4 pt-2.5 flex items-center justify-between text-xs border-t border-border-subtle/40 text-on-surface-variant">
-              <span>Rata-rata termin:</span>
+              <span>Termin standar:</span>
               <span class="font-semibold text-primary">Net 30 Hari</span>
             </div>
           </div>
@@ -221,7 +205,7 @@
                   Minimarket &amp; Ritel
                 </span>
                 <div class="flex items-baseline gap-1.5 mt-1">
-                  <span class="text-2xl text-on-surface font-bold">64</span>
+                  <span class="text-2xl text-on-surface font-bold">${outlets.filter(function (o) { return o.type !== 'Apotek'; }).length}</span>
                   <span class="text-xs text-on-surface-variant font-medium">Toko</span>
                 </div>
               </div>
@@ -230,7 +214,7 @@
               </div>
             </div>
             <div class="mt-4 pt-2.5 flex items-center justify-between text-xs border-t border-border-subtle/40 text-on-surface-variant">
-              <span>Rata-rata termin:</span>
+              <span>Termin standar:</span>
               <span class="font-semibold text-on-surface">Net 14 Hari</span>
             </div>
           </div>
@@ -243,8 +227,8 @@
                   Kesehatan Kredit
                 </span>
                 <div class="flex items-baseline gap-1.5 mt-1">
-                  <span class="text-2xl text-emerald-700 font-bold">94.2%</span>
-                  <span class="text-xs font-semibold text-emerald-700">Optimal</span>
+                  <span class="text-2xl text-emerald-700 font-bold">${outlets.length ? Math.round((outlets.filter(function (o) { return o.creditStatus === 'Lancar'; }).length / outlets.length) * 100) : 100}%</span>
+                  <span class="text-xs font-semibold text-emerald-700">Lancar</span>
                 </div>
               </div>
               <div class="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700" style="background:#dcfce7;">
@@ -254,9 +238,9 @@
             <div class="mt-4 pt-2.5 flex items-center justify-between text-xs border-t border-border-subtle/40 text-on-surface-variant">
               <span class="text-amber-700 font-medium flex items-center gap-1">
                 <span class="material-symbols-outlined text-[14px]">warning</span>
-                5.8% Jatuh Tempo &lt;7 hari
+                ${outlets.filter(function (o) { return o.creditStatus === 'Overdue'; }).length} Overdue
               </span>
-              <span class="text-on-surface-variant font-code-table font-mono">0 Bad Debt</span>
+              <span class="text-on-surface-variant font-code-table font-mono">${outlets.filter(function (o) { return o.creditStatus === 'Warning'; }).length} Warning</span>
             </div>
           </div>
         </div>
@@ -360,7 +344,7 @@
               }).join('')}
             </div>
             <div class="text-on-surface-variant font-code-table text-code-table hidden lg:block text-xs font-mono">
-              Menampilkan ${filteredOutlets.length} dari ${168 + (outlets.length - 6)} outlet
+              Menampilkan ${filteredOutlets.length} dari ${outlets.length} outlet
             </div>
           </div>
         </div>
@@ -558,7 +542,7 @@
             <!-- Pagination / Table Footer -->
             <div class="px-space-md py-3 bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-border-subtle/30 text-xs p-3">
               <span class="font-label-sm text-label-sm text-on-surface-variant">
-                Menampilkan ${paginatedOutlets.length} dari ${filteredOutlets.length} outlet terfilter (Total Jaringan: 1.024+ Mitra • Hal ${state.crmPage}/${totalCrmPages})
+                Menampilkan ${paginatedOutlets.length} dari ${filteredOutlets.length} outlet terfilter (Hal ${state.crmPage}/${totalCrmPages})
               </span>
               <div class="flex items-center gap-1">
                 <button
@@ -662,31 +646,6 @@
                     <span class="font-code-table text-code-table font-semibold text-primary font-mono text-xs">
                       ${window.ArbaUtils.formatRupiah(selectedOutlet.ytdTotal)}
                     </span>
-                  </div>
-                  <!-- Mini SVG Trend Sparkline -->
-                  <div class="h-20 w-full flex items-end pt-2" style="height:64px;">
-                    <svg class="w-full h-full text-primary" fill="none" preserveAspectRatio="none" viewBox="0 0 240 60">
-                      <line stroke="var(--color-border-subtle)" stroke-dasharray="2 2" stroke-opacity="0.6" x1="0" x2="240" y1="15" y2="15"></line>
-                      <line stroke="var(--color-border-subtle)" stroke-dasharray="2 2" stroke-opacity="0.6" x1="0" x2="240" y1="35" y2="35"></line>
-                      <line stroke="var(--color-border-subtle)" stroke-opacity="0.4" x1="0" x2="240" y1="55" y2="55"></line>
-                      <path
-                        d="M0,45 C40,48 60,32 90,26 C120,20 150,28 180,12 C210,-2 230,8 240,4 L240,60 L0,60 Z"
-                        fill="currentColor"
-                        fill-opacity="0.15"
-                      ></path>
-                      <path
-                        d="M0,45 C40,48 60,32 90,26 C120,20 150,28 180,12 C210,-2 230,8 240,4"
-                        stroke="currentColor"
-                        stroke-linecap="round"
-                        stroke-width="2.5"
-                      ></path>
-                    </svg>
-                  </div>
-                  <div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant text-[10px]">
-                    <span>Jan: 16.2 Jt</span>
-                    <span>Feb: 19.8 Jt</span>
-                    <span>Mar: 22.5 Jt</span>
-                    <span class="font-semibold text-primary">Apr: 26.0 Jt (▲15%)</span>
                   </div>
                 </div>
 
@@ -858,32 +817,6 @@
             ` : ''}
 
             <!-- Quick Delivery Coverage Indicator (Solo Raya) -->
-            <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-xs border border-border-subtle/40 flex flex-col gap-space-sm p-4 text-xs">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <span class="material-symbols-outlined text-secondary text-[20px]">local_shipping</span>
-                  <span class="font-title-sm text-title-sm text-on-surface font-bold text-sm">
-                    Armada Pengiriman Hari Ini
-                  </span>
-                </div>
-                <span class="font-label-sm text-label-sm text-status-success-text font-semibold bg-status-success-bg px-2 py-0.5 rounded text-[11px]">
-                  Rute Terjadwal
-                </span>
-              </div>
-              <p class="font-body-sm text-body-sm text-on-surface-variant">
-                Pemesanan outlet sebelum pukul 13:00 WIB dikirim pada slot sore (15:00 - 18:00 WIB) armada van gudang Solo Baru.
-              </p>
-              <div class="grid grid-cols-2 gap-2 pt-1 font-label-sm text-label-sm">
-                <div class="bg-surface-container-low p-2 rounded flex flex-col">
-                  <span class="text-on-surface-variant text-[11px]">Slot Pagi (08:00 - 12:00)</span>
-                  <span class="font-semibold text-on-surface mt-0.5">34 Outlet Solo &amp; Sukoharjo</span>
-                </div>
-                <div class="bg-surface-container-low p-2 rounded flex flex-col">
-                  <span class="text-on-surface-variant text-[11px]">Slot Sore (13:00 - 17:00)</span>
-                  <span class="font-semibold text-on-surface mt-0.5">28 Outlet Karanganyar &amp; Klaten</span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

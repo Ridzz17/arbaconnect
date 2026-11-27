@@ -17,6 +17,7 @@
 
   var state = {
     isPhoneFrame: false,
+    activePwaTab: 'outlet',
     selectedOutletCode: 'AP-SLO-001',
     activeCategory: 'all',
     productSearch: '',
@@ -163,14 +164,14 @@
           <div class="flex flex-col min-h-[680px] bg-white text-slate-900 relative rounded-2xl overflow-hidden" style="position:relative; background:#fff; min-height:680px;">
             <!-- Top Bar - Sales Profile & Sync Status -->
             <div class="bg-[#005c55] text-white px-4 py-3 sticky top-0 z-30 shadow-xs flex items-center justify-between" style="background:#005c55; color:#fff;">
-              <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-xs text-white" style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center;">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-xs text-white shrink-0" style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                   ${repInitials}
                 </div>
-                <div class="flex flex-col">
+                <div class="flex flex-col min-w-0">
                   ${isFieldSalesRole ? `
-                    <span class="font-bold text-xs leading-tight text-white">${currentRep}</span>
-                    <span class="text-[11px] text-teal-100 font-medium">${appState.currentUser.division || 'Sales Lapangan'}</span>
+                    <span class="font-bold text-xs leading-tight text-white truncate">${currentRep}</span>
+                    <span class="text-[11px] text-teal-100 font-medium truncate">${appState.currentUser.division || 'Sales Lapangan'}</span>
                   ` : `
                     <select
                       id="pwa-rep-select"
@@ -228,7 +229,7 @@
                 <div class="flex items-center justify-between gap-2">
                   <div class="flex items-center gap-1.5 font-bold text-[11px]" style="color:#92400e;">
                     <span class="material-symbols-outlined text-[16px]">cloud_off</span>
-                    <span>Mode Offline-First (Disimpan di IndexedDB Lokal)</span>
+                    <span>Mode Offline (${offlineQueue.length} antrean lokal)</span>
                   </div>
                   <button
                     type="button"
@@ -254,9 +255,30 @@
               </div>
             ` : ''}
 
+            <!-- 2-Tab Navigation: Outlet | Order -->
+            <div class="grid grid-cols-2 border-b border-slate-200 bg-white text-xs font-bold" style="display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid #e2e8f0; background:#fff;">
+              <button
+                type="button"
+                id="btn-pwa-tab-outlet"
+                class="py-2.5 text-center cursor-pointer border-0 transition-colors ${state.activePwaTab === 'outlet' ? 'text-[#005c55] border-b-2 border-[#005c55] bg-teal-50/40' : 'text-slate-500 bg-white'}"
+                style="padding:0.65rem; border:0; border-bottom:${state.activePwaTab === 'outlet' ? '2px solid #005c55' : '2px solid transparent'}; color:${state.activePwaTab === 'outlet' ? '#005c55' : '#64748b'}; background:${state.activePwaTab === 'outlet' ? '#f0fdfa' : '#fff'};"
+              >
+                Outlet &amp; Lokasi
+              </button>
+              <button
+                type="button"
+                id="btn-pwa-tab-order"
+                class="py-2.5 text-center cursor-pointer border-0 transition-colors ${state.activePwaTab === 'order' ? 'text-[#005c55] border-b-2 border-[#005c55] bg-teal-50/40' : 'text-slate-500 bg-white'}"
+                style="padding:0.65rem; border:0; border-bottom:${state.activePwaTab === 'order' ? '2px solid #005c55' : '2px solid transparent'}; color:${state.activePwaTab === 'order' ? '#005c55' : '#64748b'}; background:${state.activePwaTab === 'order' ? '#f0fdfa' : '#fff'};"
+              >
+                Order (${totalQuantity})
+              </button>
+            </div>
+
             <!-- Main App Body -->
-            <div class="flex-1 p-3.5 space-y-3 pb-24 overflow-y-auto" style="padding: 0.875rem; padding-bottom: 6rem; overflow-y:auto; max-height:580px;">
-              <!-- Step 1: Outdoor GPS Check-In & Outlet Card -->
+            <div class="flex-1 p-3.5 space-y-3 pb-24" style="padding: 0.875rem; padding-bottom: 6rem;">
+              ${state.activePwaTab === 'outlet' ? `
+              <!-- Tab 1: Outdoor GPS Check-In & Outlet Card -->
               <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2.5 mb-3" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:0.75rem;">
                 <div class="flex items-center justify-between mb-2">
                   <label for="pwa-outlet-select" class="text-[11px] uppercase tracking-wider font-bold text-slate-600">
@@ -296,15 +318,15 @@
                   }).join('')}
                 </select>
 
-                <!-- Outlet Metadata & Status Konsinyasi (Apotek Pasif >90% Titip Jual) -->
-                <div class="flex items-center justify-between text-xs text-slate-600 pt-1 border-t border-slate-200/60" style="border-top:1px solid #e2e8f0; padding-top:0.35rem;">
-                  <div class="truncate max-w-[200px]">
-                    <span>PIC: <b>${window.ArbaUtils.escapeHtml(currentOutlet.picName)}</b></span>
-                    <span class="text-slate-400 mx-1">·</span>
-                    <span class="text-[11px] font-semibold text-teal-800">${window.ArbaUtils.escapeHtml(currentOutlet.terms)}</span>
+                <!-- Outlet Metadata & Status Konsinyasi -->
+                <div class="grid grid-cols-2 gap-2 text-xs text-slate-600 pt-1.5 border-t border-slate-200/60" style="border-top:1px solid #e2e8f0; padding-top:0.35rem;">
+                  <div class="min-w-0">
+                    <div class="text-[10px] text-slate-500">PIC</div>
+                    <div class="font-semibold text-slate-800 truncate">${window.ArbaUtils.escapeHtml(currentOutlet.picName)}</div>
+                    <div class="text-[10px] font-semibold text-teal-800">${window.ArbaUtils.escapeHtml(currentOutlet.terms)}</div>
                   </div>
                   <div class="text-right">
-                    <span class="text-[10px] text-slate-500 block">Tagihan Barang Laku</span>
+                    <span class="text-[10px] text-slate-500 block">Tagihan</span>
                     <span class="font-bold text-emerald-700 text-xs">
                       ${window.ArbaUtils.formatRupiah(currentOutlet.consignmentBillableAmount || 0)}
                     </span>
@@ -347,63 +369,60 @@
                       <span>Terjual: ${currentOutlet.consignmentItems.reduce(function (s, c) { return s + c.soldQty; }, 0)} unit</span>
                     </div>
                     ${currentOutlet.consignmentItems.filter(function (c) { return c.nearExpiry; }).map(function (c) {
-                      return `<div class="text-[10px] font-semibold" style="color:#be185d;">Peringatan FEFO: <b>${window.ArbaUtils.escapeHtml(c.name)}</b> (${c.remainingQty} unit, ED ${window.ArbaUtils.escapeHtml(c.expiry)}) — Prioritaskan distribusi batch ini.</div>`;
+                      return `<div class="text-[10px] font-semibold" style="color:#be185d;">ED ${window.ArbaUtils.escapeHtml(c.expiry)}: <b>${window.ArbaUtils.escapeHtml(c.name)}</b> (${c.remainingQty} unit)</div>`;
                     }).join('')}
                   </div>
                 ` : ''}
 
-                <!-- Quick Actions: Rekonsiliasi & Restock Konsinyasi, Optimasi Rute & Log Kunjungan -->
-                <div class="flex flex-wrap gap-1.5" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.5rem;">
+                <!-- Quick Actions: 1-word labels -->
+                <div class="grid grid-cols-3 gap-1.5" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.35rem; margin-top:0.5rem;">
                   <button
                     type="button"
                     id="btn-pwa-repeat-order"
-                    class="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-semibold cursor-pointer border-0"
-                    style="flex:1; background:#e0f2fe; color:#075985; border-radius:8px; padding:0.45rem;"
-                    title="Muat kuantitas produk konsinyasi yang telah terjual di mitra ini untuk penagihan dan pengisian ulang stok"
+                    class="flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-semibold cursor-pointer border-0 whitespace-nowrap"
+                    style="background:#e0f2fe; color:#075985; border-radius:8px; padding:0.45rem;"
                   >
                     <span class="material-symbols-outlined text-[15px]">sync_saved_locally</span>
-                    <span>Rekonsiliasi &amp; Restock</span>
+                    <span>Restock</span>
                   </button>
                   <button
                     type="button"
                     id="btn-pwa-tsp-route"
-                    class="flex items-center justify-center gap-1 py-2 px-2.5 rounded-lg text-[11px] font-bold cursor-pointer border-0"
-                    style="background:#d1fae5; color:#065f46; border-radius:8px; padding:0.45rem 0.6rem;"
-                    title="Buka Peta Lokasi Mitra & Optimasi Rute Kunjungan"
+                    class="flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-bold cursor-pointer border-0 whitespace-nowrap"
+                    style="background:#d1fae5; color:#065f46; border-radius:8px; padding:0.45rem;"
                   >
                     <span class="material-symbols-outlined text-[15px]">route</span>
-                    <span>Optimasi Rute</span>
+                    <span>Rute</span>
                   </button>
                   <button
                     type="button"
                     id="btn-pwa-visit-only"
-                    class="flex items-center justify-center gap-1 py-2 px-2.5 rounded-lg text-[11px] font-semibold cursor-pointer border-0"
-                    style="background:#f1f5f9; color:#334155; border-radius:8px; padding:0.45rem 0.6rem;"
+                    class="flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-semibold cursor-pointer border-0 whitespace-nowrap"
+                    style="background:#f1f5f9; color:#334155; border-radius:8px; padding:0.45rem;"
                   >
                     <span class="material-symbols-outlined text-[15px]">where_to_vote</span>
-                    <span>Log Kunjungan</span>
+                    <span>Kunjungan</span>
                   </button>
                 </div>
               </div>
-
-              <!-- Step 2: Simplified Product Order Catalog -->
+              ` : `
+              <!-- Tab 2: Product Order Catalog -->
               <div class="space-y-2 mb-3">
-                <div class="flex items-center justify-between mb-1.5">
-                  <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                    2. Katalog Pemesanan Produk Herbal
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                  <span class="text-xs font-bold text-slate-800 uppercase tracking-wider whitespace-nowrap">
+                    Katalog Produk
                   </span>
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-2 shrink-0">
                     <button
                       type="button"
                       id="btn-pwa-scan-qr"
-                      class="px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 cursor-pointer border-0"
+                      class="px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 cursor-pointer border-0 whitespace-nowrap"
                       style="background:#005c55; color:#ffffff;"
-                      title="Pindai Kode QR Batch Produk Herbal untuk Memasukkan ke Faktur"
                     >
                       <span class="material-symbols-outlined text-[14px]">qr_code_scanner</span>
-                      <span>Pindai QR Batch</span>
+                      <span>Scan QR</span>
                     </button>
-                    <span class="text-[11px] text-teal-800 font-semibold" style="color:#005c55;">
+                    <span class="text-[11px] text-teal-800 font-semibold whitespace-nowrap" style="color:#005c55;">
                       ${totalQuantity} unit
                     </span>
                   </div>
@@ -453,7 +472,7 @@
                 </div>
 
                 <!-- Product List with Big Touch Steppers -->
-                <div class="space-y-2 max-h-[300px] overflow-y-auto pr-0.5" style="max-height:260px; overflow-y:auto;">
+                <div class="space-y-2">
                   ${filteredProducts.map(function (prod) {
                     var qty = state.cart[prod.sku] || 0;
                     var isLow = prod.stock <= prod.rop;
@@ -481,20 +500,16 @@
                             <span class="font-mono text-slate-500">Gudang: ${prod.stock}</span>
                           </div>
                           ${consItem ? `
-                            <div class="text-[10px] font-semibold mt-0.5" style="color:${consItem.nearExpiry ? '#be185d' : '#0f766e'};">
-                              Konsinyasi Mitra: Kuota ${consItem.consignedQty} · Terjual <b>${consItem.soldQty}</b> · Saldo ${consItem.remainingQty}${consItem.nearExpiry ? ' · Mendekati ED' : ''}
+                            <div class="text-[10px] font-semibold mt-0.5 truncate" style="color:${consItem.nearExpiry ? '#be185d' : '#0f766e'};">
+                              Titipan: ${consItem.soldQty}/${consItem.consignedQty} laku · Sisa ${consItem.remainingQty}${consItem.nearExpiry ? ' · ED' : ''}
                             </div>
                           ` : ''}
                           ${prod.stock === 0 ? `
-                            <div class="text-[10px] font-semibold mt-0.5" style="color:#be123c;">
-                              Persediaan gudang habis — tidak dapat dipesan
-                            </div>
+                            <div class="text-[10px] font-semibold mt-0.5" style="color:#be123c;">Stok Habis</div>
                           ` : isLow ? `
-                            <div class="text-[10px] font-semibold mt-0.5" style="color:#ea580c;">
-                              Peringatan ROP: Persediaan Gudang &le; Ambang Minimum (${prod.rop} unit)${atMax && qty > 0 ? ' · batas stok' : ''}
-                            </div>
+                            <div class="text-[10px] font-semibold mt-0.5" style="color:#ea580c;">ROP (Min ${prod.rop})</div>
                           ` : (atMax && qty > 0 ? `
-                            <div class="text-[10px] text-amber-700 font-medium mt-0.5">Batas stok gudang tercapai</div>
+                            <div class="text-[10px] text-amber-700 font-medium mt-0.5">Maksimal stok</div>
                           ` : '')}
                         </div>
 
@@ -619,6 +634,7 @@
                   </div>
                 ` : ''}
               </div>
+              `}
             </div>
 
             <!-- Sticky Bottom Action Bar - Mobile Friendly -->
@@ -705,6 +721,22 @@
           .bindPopup('<div style="font-size:11px;font-weight:700;">' + window.ArbaUtils.escapeHtml(pName) + '</div>');
         setTimeout(function () { pMap.invalidateSize(); }, 80);
       } catch (err) {}
+    }
+
+    // 2-Tab switcher (Outlet | Order)
+    var btnTabOutlet = container.querySelector('#btn-pwa-tab-outlet');
+    if (btnTabOutlet) {
+      btnTabOutlet.addEventListener('click', function () {
+        state.activePwaTab = 'outlet';
+        renderFieldSalesPwa(container);
+      });
+    }
+    var btnTabOrder = container.querySelector('#btn-pwa-tab-order');
+    if (btnTabOrder) {
+      btnTabOrder.addEventListener('click', function () {
+        state.activePwaTab = 'order';
+        renderFieldSalesPwa(container);
+      });
     }
 
     // Sales rep account switch

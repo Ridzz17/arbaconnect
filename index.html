@@ -119,32 +119,10 @@
             </button>
             <div id="header-notif-menu" class="notification-menu hidden">
               <div class="flex items-center justify-between pb-2 border-b border-border-subtle">
-                <span class="font-semibold text-xs text-on-surface">Notifikasi Sistem</span>
-                <span id="notif-pending-count-label" class="text-xs text-primary font-medium">0 Pesanan Baru</span>
+                <span class="font-semibold text-xs text-on-surface">Notifikasi</span>
+                <span id="notif-pending-count-label" class="text-xs text-primary font-medium">0</span>
               </div>
-              <div class="flex flex-col gap-1.5 py-1 text-xs">
-                <div id="notif-item-order" class="search-item flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-surface-container-low transition-colors">
-                  <span class="material-symbols-outlined text-primary text-[18px] shrink-0">shopping_bag</span>
-                  <div class="flex flex-col">
-                    <span class="font-medium text-on-surface">Pesanan Baru Siap Validasi</span>
-                    <span class="text-[11px] text-on-surface-variant">Klik untuk membuka antrean pesanan</span>
-                  </div>
-                </div>
-                <div id="notif-item-rop" class="search-item flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-surface-container-low transition-colors">
-                  <span class="material-symbols-outlined text-amber-600 text-[18px] shrink-0">warning</span>
-                  <div class="flex flex-col">
-                    <span class="font-medium text-on-surface">Peringatan Reorder Point (ROP)</span>
-                    <span class="text-[11px] text-on-surface-variant">Madu Randu mendekati ambang batas</span>
-                  </div>
-                </div>
-                <div id="notif-item-cdob" class="search-item flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-surface-container-low transition-colors">
-                  <span class="material-symbols-outlined text-emerald-600 text-[18px] shrink-0">verified</span>
-                  <div class="flex flex-col">
-                    <span class="font-medium text-on-surface">Validasi Integritas CDOB &amp; FEFO</span>
-                    <span class="text-[11px] text-on-surface-variant">99.4% Kepatuhan batch tervalidasi</span>
-                  </div>
-                </div>
-              </div>
+              <div id="notif-items-container" class="flex flex-col gap-1.5 py-1 text-xs"></div>
             </div>
           </div>
 
@@ -240,22 +218,8 @@
           </nav>
         </div>
 
-        <!-- Sidebar Bottom Compliance & Fold / Unfold Control -->
+        <!-- Sidebar Bottom Fold / Unfold Control -->
         <div class="sidebar-bottom px-2">
-          <!-- CDOB Compliance Status (Expanded) -->
-          <div class="cdob-full-card cdob-card">
-            <div class="cdob-card-header">
-              <span class="material-symbols-outlined text-[15px]">verified</span>
-              <span>Integritas CDOB &amp; FEFO</span>
-            </div>
-            <p>Penerapan mutasi stok tanggal kedaluwarsa terdekat aktif.</p>
-          </div>
-
-          <!-- CDOB Compliance Icon (Collapsed) -->
-          <div class="cdob-icon-only" title="Integritas CDOB &amp; FEFO Aktif">
-            <span class="material-symbols-outlined text-[18px]">verified</span>
-          </div>
-
           <!-- Static Fold / Unfold Toggle Button -->
           <button id="sidebar-toggle-btn" class="sidebar-toggle-btn" type="button" title="Buka Menu Samping" aria-label="Buka atau Tutup Menu Samping">
             <span class="material-symbols-outlined text-[18px]" aria-hidden="true">chevron_right</span>
@@ -265,21 +229,17 @@
 
       <!-- App Content Wrapper -->
       <div id="app-content-wrapper" class="app-content-wrapper">
-        <!-- Dynamic Role-Specific Context & Guidance Strip -->
-        <div id="role-context-strip" class="px-6 pt-4 pb-0"></div>
         <main id="main-view-container" class="main-view-container"></main>
 
         <!-- Application Footer -->
         <footer class="app-footer">
           <div class="flex items-center gap-2">
-            <span class="footer-version">ArbaConnect ERP v2.5</span>
+            <span class="footer-version">ArbaConnect ERP v3.0.0</span>
             <span>&bull;</span>
-            <span>Sistem Informasi Distribusi &amp; Logistik Herbal CV Arba'in Solo Raya</span>
+            <span>CV Arba'in Solo Raya</span>
           </div>
           <div class="flex items-center gap-4 text-xs">
             <span>Gudang Utama: Kartasura</span>
-            <span>&bull;</span>
-            <span>Standar Kepatuhan: BPOM &amp; CDOB</span>
           </div>
         </footer>
       </div>

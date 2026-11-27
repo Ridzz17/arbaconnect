@@ -1200,7 +1200,7 @@
             <div>
               <div class="flex items-center gap-2 flex-wrap">
                 <h3 class="font-bold text-sm text-on-surface">Pemeriksaan Keaslian Buku Besar Stok Gudang &amp; Sertifikat Audit CDOB</h3>
-                <span class="badge badge-success">ANTI-MANIPULASI STOK</span>
+                <span class="badge badge-success">TERVERIFIKASI</span>
               </div>
               <p class="text-xs text-on-surface-variant mt-0.5">
                 Memastikan seluruh catatan keluar-masuk barang di Gudang Kartasura terkunci secara berantai dan bebas manipulasi.

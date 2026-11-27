@@ -128,40 +128,6 @@
                 </div>
               </div>
             </div>
-
-            <!-- Kartu Halaman yang Bisa Diakses Sesuai Role -->
-            <div class="bg-surface-container-lowest p-5 rounded-xl border border-border-subtle/60">
-              <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                  Halaman yang Dapat Diakses Role Anda
-                </span>
-                <span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-bold">
-                  ${allowedPaths.length} Halaman
-                </span>
-              </div>
-              <div class="space-y-2">
-                ${ALL_MODULES.map(function (mod) {
-                  var isAllowed = allowedPaths.indexOf(mod.path) !== -1;
-                  if (!isAllowed) return '';
-                  return `
-                    <button
-                      type="button"
-                      class="btn-jump-allowed-module w-full p-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container flex items-center justify-between text-left transition-colors cursor-pointer border border-border-subtle/50"
-                      data-path="${mod.path}"
-                    >
-                      <div class="flex items-center gap-2.5">
-                        <span class="material-symbols-outlined text-primary text-[18px]">${mod.icon}</span>
-                        <div>
-                          <div class="text-xs font-bold text-on-surface">${mod.name}</div>
-                          <div class="text-[10px] text-on-surface-variant">${mod.desc}</div>
-                        </div>
-                      </div>
-                      <span class="material-symbols-outlined text-on-surface-variant text-[16px]">chevron_right</span>
-                    </button>
-                  `;
-                }).join('')}
-              </div>
-            </div>
           </div>
 
           <!-- KOLOM KANAN (8 Kolom): Form Edit Detail User & Form Ganti Password -->
@@ -499,36 +465,26 @@
 
     var html = `
       <div class="flex flex-col w-full gap-space-lg pb-space-xl">
-        <!-- Top Banner Super Admin -->
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-surface-container-lowest p-6 rounded-xl border border-border-subtle/60">
-          <div>
-            <div class="flex items-center gap-2 text-xs font-bold text-rose-700 mb-1">
-              <span class="material-symbols-outlined text-[16px]">admin_panel_settings</span>
-              <span>SUPER ADMIN CONTROL CENTER • FULL SYSTEM ACCESS</span>
-            </div>
-            <h1 class="text-2xl font-bold text-on-surface tracking-tight">
-              Manajemen Seluruh Pengguna &amp; Otorisasi Role (RBAC)
-            </h1>
-            <p class="text-xs text-on-surface-variant mt-0.5">
-              Kelola seluruh akun pengguna CV Arba'in, ubah detail profil &amp; password user mana pun, atur hak akses halaman per role, atau masuk sebagai user tertentu.
-            </p>
-          </div>
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-surface-container-lowest p-5 rounded-xl border border-border-subtle/60">
+          <h1 class="text-xl font-bold text-on-surface tracking-tight">
+            Manajemen Pengguna
+          </h1>
           <div class="flex flex-wrap items-center gap-2">
             <button
               id="btn-admin-toggle-pw-col"
               type="button"
-              class="px-3.5 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold flex items-center gap-1.5 cursor-pointer border border-border-subtle"
+              class="px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold flex items-center gap-1.5 cursor-pointer border border-border-subtle"
             >
               <span class="material-symbols-outlined text-[16px]">${adminState.showPasswords ? 'visibility_off' : 'visibility'}</span>
-              <span>${adminState.showPasswords ? 'Sembunyikan Password' : 'Tampilkan Password User'}</span>
+              <span>${adminState.showPasswords ? 'Sembunyikan Password' : 'Tampilkan Password'}</span>
             </button>
             <button
               id="btn-admin-add-user"
               type="button"
-              class="px-4 py-2 rounded-lg bg-primary hover:bg-primary-container text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer border-0 shadow-xs"
+              class="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary-container text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer border-0 shadow-xs"
             >
-              <span class="material-symbols-outlined text-[18px]">person_add</span>
-              <span>+ Tambah Akun User Baru</span>
+              <span class="material-symbols-outlined text-[16px]">person_add</span>
+              <span>+ Tambah User</span>
             </button>
           </div>
         </div>

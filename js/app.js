@@ -237,49 +237,9 @@
     },
 
     renderRoleContextBanner: function (state, activeRole) {
-      var strip = document.getElementById('role-context-strip');
       var subtitleEl = document.getElementById('header-brand-subtitle');
-      var roleSubtitles = {
-        'super-admin': 'Administrasi Sistem & Keamanan',
-        'executive': 'Direksi & Manajemen Operasional',
-        'inventory': 'Divisi Gudang & Logistik FEFO',
-        'sales-ops': 'Divisi Penjualan & Piutang Apotek',
-        'field-sales': 'Operasional Kunjungan Sales Lapangan'
-      };
       if (subtitleEl) {
-        subtitleEl.textContent = roleSubtitles[activeRole] || "Sistem Distribusi & Stok Herbal CV Arba'in";
-      }
-
-      if (!strip) return;
-
-      // Untuk seluruh pengguna selain Super Admin, sembunyikan banner konteks prototipe agar tampilan bersih & siap produksi
-      if (!state.currentUser || state.currentUser.role !== 'super-admin' || activeRole === 'super-admin') {
-        strip.innerHTML = '';
-        strip.style.display = 'none';
-        return;
-      }
-
-      strip.style.display = '';
-      strip.innerHTML = `
-        <div style="background:linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border:1px solid #c4b5fd; border-radius:10px; padding:8px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; font-size:12px;">
-          <div style="display:flex; align-items:center; gap:8px; color:#4c1d95;">
-            <span class="material-symbols-outlined" style="font-size:18px; color:#6d28d9;">visibility</span>
-            <span><b>Mode Pratinjau Super Admin:</b> Anda sedang melihat tampilan untuk role <b>${window.ArbaUtils.escapeHtml(roleSubtitles[activeRole] || activeRole)}</b>.</span>
-          </div>
-          <button
-            id="btn-reset-superadmin-role"
-            type="button"
-            style="background:#6d28d9; color:#ffffff; border:0; border-radius:6px; padding:4px 10px; font-size:11px; font-weight:700; cursor:pointer;"
-          >
-            Kembali ke Tampilan Super Admin
-          </button>
-        </div>
-      `;
-      var btnResetRole = document.getElementById('btn-reset-superadmin-role');
-      if (btnResetRole) {
-        btnResetRole.onclick = function () {
-          window.ArbaStore.setRole('super-admin');
-        };
+        subtitleEl.textContent = "CV Arba'in Solo Raya";
       }
     },
 
@@ -637,20 +597,56 @@
         darkIcon.textContent = state.isDarkMode ? 'light_mode' : 'dark_mode';
       }
 
-      // Notification badge
+      // Notification badge & dynamic items
+      var analytics = window.ArbaStore.getAnalytics ? window.ArbaStore.getAnalytics() : {};
       var pendingCount = state.orders.filter(function (o) { return o.status === 'PENDING'; }).length;
+      var ropCount = (analytics.orangeStockAlarms || []).length;
+      var expCount = (analytics.pinkExpiryAlarms || []).length;
+      var totalNotifs = pendingCount + ropCount + expCount;
+
       var notifBadge = document.getElementById('header-notif-badge');
       var notifCountLabel = document.getElementById('notif-pending-count-label');
+      var notifContainer = document.getElementById('notif-items-container');
 
       if (notifBadge) {
-        if (pendingCount > 0) {
-          notifBadge.classList.remove('hidden');
-        } else {
-          notifBadge.classList.add('hidden');
-        }
+        notifBadge.classList.toggle('hidden', totalNotifs === 0);
       }
       if (notifCountLabel) {
-        notifCountLabel.textContent = `${pendingCount} Pesanan Baru`;
+        notifCountLabel.textContent = totalNotifs + ' Aktif';
+      }
+      if (notifContainer) {
+        var itemsHtml = '';
+        if (pendingCount > 0) {
+          itemsHtml += '<div data-notif-nav="order-approval" class="search-item flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-surface-container-low transition-colors">' +
+            '<span class="material-symbols-outlined text-primary text-[18px] shrink-0">shopping_bag</span>' +
+            '<div class="flex flex-col"><span class="font-medium text-on-surface">' + pendingCount + ' Pesanan Menunggu</span>' +
+            '<span class="text-[11px] text-on-surface-variant">Buka antrean verifikasi order</span></div></div>';
+        }
+        if (ropCount > 0) {
+          itemsHtml += '<div data-notif-nav="inventory-ledger" class="search-item flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-surface-container-low transition-colors">' +
+            '<span class="material-symbols-outlined text-amber-600 text-[18px] shrink-0">warning</span>' +
+            '<div class="flex flex-col"><span class="font-medium text-on-surface">' + ropCount + ' SKU Di Bawah ROP</span>' +
+            '<span class="text-[11px] text-on-surface-variant">Perlu restock gudang</span></div></div>';
+        }
+        if (expCount > 0) {
+          itemsHtml += '<div data-notif-nav="inventory-ledger" class="search-item flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-surface-container-low transition-colors">' +
+            '<span class="material-symbols-outlined text-rose-600 text-[18px] shrink-0">event_busy</span>' +
+            '<div class="flex flex-col"><span class="font-medium text-on-surface">' + expCount + ' Batch Mendekati ED</span>' +
+            '<span class="text-[11px] text-on-surface-variant">Prioritaskan mutasi FEFO</span></div></div>';
+        }
+        if (!itemsHtml) {
+          itemsHtml = '<div class="p-3 text-center text-on-surface-variant text-xs">Tidak ada peringatan aktif</div>';
+        }
+        notifContainer.innerHTML = itemsHtml;
+        var self = this;
+        notifContainer.querySelectorAll('[data-notif-nav]').forEach(function (el) {
+          el.addEventListener('click', function () {
+            var target = el.getAttribute('data-notif-nav');
+            var menu = document.getElementById('header-notif-menu');
+            if (menu) menu.classList.add('hidden');
+            if (target) self.navigate(target);
+          });
+        });
       }
     },
 

@@ -86,113 +86,88 @@
       <div class="flex flex-col w-full gap-space-lg">
         <!-- Top Bar / Action Center (Disesuaikan dengan Role Gudang vs Direksi) -->
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-surface-container-lowest p-5 rounded-xl border border-border-subtle/60">
-          <div class="flex flex-col gap-0.5 min-w-0">
-            <div class="flex items-center gap-2 text-primary text-xs uppercase tracking-wider font-semibold">
-              <span class="material-symbols-outlined text-[15px]">warehouse</span>
-              <span>${isWarehouseRole ? 'Operasional Gudang Utama Kartasura · Urutan Keluar Kedaluwarsa Terdekat (FEFO)' : 'Pengawasan Stok Gudang &amp; Kepatuhan CDOB/BPOM'}</span>
-            </div>
-            <h1 class="text-xl text-on-surface tracking-tight font-bold">
-              ${isWarehouseRole ? 'Stok Fisik Gudang, Kontrol Barang Bawaan Sales &amp; Buku Besar Stok' : 'Pemantauan Stok Gudang, Batas Stok Aman (ROP) &amp; Buku Besar Mutasi'}
-            </h1>
-            <p class="text-xs text-on-surface-variant max-w-xl">
-              ${isWarehouseRole
-                ? 'Catat barang masuk dari pabrik, cetak stiker QR nomor batch, pantau batas stok minimum (ROP), dan hitung fisik barang bawaan sales sore hari.'
-                : 'Pantau ketersediaan stok herbal, status kedaluwarsa batch FEFO, riwayat keluar-masuk barang, dan audit selisih bawaan sales.'}
-            </p>
-          </div>
+          <h1 class="text-xl text-on-surface tracking-tight font-bold">
+            Stok &amp; Buku Besar
+          </h1>
 
           <!-- Compact Action Cluster -->
-          <div class="flex flex-col sm:items-end gap-2 shrink-0">
-            <!-- Primary Operations Row -->
-            <div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
-              <button
-                id="btn-inbound-batch"
-                class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary-container text-white text-xs font-semibold whitespace-nowrap transition-colors shadow-xs active:scale-95 cursor-pointer border-0"
-                type="button"
-                title="Catat barang masuk dari pabrik atau supplier ke Gudang Kartasura"
-              >
-                <span class="material-symbols-outlined text-[16px]">add_box</span>
-                <span>+ Catat Barang Masuk</span>
-              </button>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <button
+              id="btn-inbound-batch"
+              class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary-container text-white text-xs font-semibold whitespace-nowrap transition-colors shadow-xs active:scale-95 cursor-pointer border-0"
+              type="button"
+            >
+              <span class="material-symbols-outlined text-[16px]">add_box</span>
+              <span>+ Barang Masuk</span>
+            </button>
 
-              <button
-                id="btn-qr-batch-modal"
-                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
-                type="button"
-                title="Scan QR Botol/Karton atau Cetak Stiker Nomor Batch Gudang"
-              >
-                <span class="material-symbols-outlined text-[15px] text-primary">qr_code_scanner</span>
-                <span>Scan &amp; Cetak Stiker QR</span>
-              </button>
+            <button
+              id="btn-adjust-opname"
+              class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
+              type="button"
+            >
+              <span class="material-symbols-outlined text-[15px] text-on-surface-variant">tune</span>
+              <span>Opname</span>
+            </button>
 
-              <button
-                id="btn-chain-audit-modal"
-                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
-                type="button"
-                title="Periksa Keaslian Catatan Keluar-Masuk Stok & Cetak Sertifikat Audit CDOB"
-              >
-                <span class="material-symbols-outlined text-[15px] text-emerald-600">verified_user</span>
-                <span>Cek Keaslian Stok (CDOB)</span>
-              </button>
+            <button
+              id="btn-supplier-po-list"
+              class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-primary text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
+              type="button"
+            >
+              <span class="material-symbols-outlined text-[15px]">local_mall</span>
+              <span>PO Supplier</span>
+              ${supplierPOs.length > 0 ? `
+                <span class="px-1.5 py-0.2 rounded-full bg-primary text-white text-[10px] font-bold">
+                  ${supplierPOs.length}
+                </span>
+              ` : ''}
+            </button>
 
-              <button
-                id="btn-adjust-opname"
-                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
-                type="button"
-                title="Koreksi selisih hasil hitung fisik (Stok Opname) di gudang"
-              >
-                <span class="material-symbols-outlined text-[15px] text-on-surface-variant">tune</span>
-                <span>Koreksi Stok Opname</span>
-              </button>
-            </div>
+            <button
+              id="btn-qr-batch-modal"
+              class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
+              type="button"
+            >
+              <span class="material-symbols-outlined text-[15px] text-primary">qr_code_scanner</span>
+              <span>QR Batch</span>
+            </button>
 
-            <!-- Secondary Report & PO Tools Row -->
-            <div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
-              <button
-                id="btn-supplier-po-list"
-                class="flex items-center gap-1 px-2.5 py-1 rounded-md bg-surface-container-low hover:bg-surface-container text-primary text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
-                type="button"
-                title="Daftar Purchase Order ke Supplier Herbal"
-              >
-                <span class="material-symbols-outlined text-[15px]">local_mall</span>
-                <span>PO Supplier</span>
-                ${supplierPOs.length > 0 ? `
-                  <span class="px-1.5 py-0.2 rounded-full bg-primary text-white text-[10px] font-bold">
-                    ${supplierPOs.length}
-                  </span>
-                ` : ''}
-              </button>
+            <button
+              id="btn-chain-audit-modal"
+              class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
+              type="button"
+            >
+              <span class="material-symbols-outlined text-[15px] text-emerald-600">verified_user</span>
+              <span>Audit CDOB</span>
+            </button>
 
-              <button
-                id="btn-import-ledger-csv"
-                class="flex items-center gap-1 px-2.5 py-1 rounded-md bg-surface-container-low hover:bg-surface-container text-primary text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
-                type="button"
-                title="Migrasi / Impor Master SKU & Saldo Stok Awal dari CSV"
-              >
-                <span class="material-symbols-outlined text-[15px]">upload_file</span>
-                <span>Impor CSV</span>
-              </button>
+            <button
+              id="btn-import-ledger-csv"
+              class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-primary text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
+              type="button"
+            >
+              <span class="material-symbols-outlined text-[15px]">upload_file</span>
+              <span>Impor CSV</span>
+            </button>
 
-              <button
-                id="btn-export-ledger-csv"
-                class="flex items-center gap-1 px-2.5 py-1 rounded-md bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
-                type="button"
-                title="Unduh seluruh mutasi Stock Ledger dalam format CSV"
-              >
-                <span class="material-symbols-outlined text-[15px] text-on-surface-variant">table_chart</span>
-                <span>Ekspor CSV</span>
-              </button>
+            <button
+              id="btn-export-ledger-csv"
+              class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
+              type="button"
+            >
+              <span class="material-symbols-outlined text-[15px] text-on-surface-variant">table_chart</span>
+              <span>Ekspor CSV</span>
+            </button>
 
-              <button
-                id="btn-print-opname"
-                class="flex items-center gap-1 px-2.5 py-1 rounded-md bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
-                type="button"
-                title="Cetak lembar formulir opname fisik gudang"
-              >
-                <span class="material-symbols-outlined text-[15px] text-on-surface-variant">print</span>
-                <span>Cetak Opname</span>
-              </button>
-            </div>
+            <button
+              id="btn-print-opname"
+              class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border border-border-subtle/50"
+              type="button"
+            >
+              <span class="material-symbols-outlined text-[15px] text-on-surface-variant">print</span>
+              <span>Cetak</span>
+            </button>
           </div>
         </div>
 
@@ -262,143 +237,28 @@
             </div>
             <div class="mt-4 pt-2.5 border-t border-border-subtle/40 flex items-center justify-between text-xs text-on-surface-variant">
               <span>${warningExpiryCount} Batch &lt;90 Hari</span>
-              <span class="font-semibold text-rose-700">Rp 14.200.000 Nilai Stok</span>
+              <span class="font-semibold text-rose-700">Prioritas FEFO</span>
             </div>
           </div>
 
-          <!-- Card 4: Status Ledger Sync -->
+          <!-- Card 4: Total Mutasi Ledger -->
           <div class="bg-surface-container-lowest p-5 rounded-xl border border-border-subtle/60 flex flex-col justify-between">
             <div class="flex items-start justify-between">
               <div>
                 <span class="text-xs text-primary uppercase tracking-wider font-semibold">
-                  Status Ledger Sync
+                  Mutasi Buku Besar
                 </span>
                 <div class="text-2xl text-primary mt-1 tracking-tight font-bold">
-                  100% <span class="text-xs text-on-surface-variant font-normal">Tersinkronisasi</span>
+                  ${ledger.length} <span class="text-xs text-on-surface-variant font-normal">Entri</span>
                 </div>
               </div>
               <div class="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700" style="background:#dcfce7;">
-                <span class="material-symbols-outlined text-[20px]">enhanced_encryption</span>
+                <span class="material-symbols-outlined text-[20px]">receipt_long</span>
               </div>
             </div>
-            <div class="mt-4 pt-3 bg-status-success-bg/50 rounded-lg p-2.5 flex items-center justify-between text-xs">
-              <span class="font-body-sm text-body-sm text-status-success-text">Idempoten &amp; Anti-Selisih</span>
-              <span class="font-code-table text-code-table font-semibold text-primary">SHA256 OK</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Visual Quick Glance: FEFO Distribution Chart & Warehouse Banner -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-space-md">
-          <!-- Visual 1: Stock Status Distribution SVG Metric Card -->
-          <div class="bg-surface-container-lowest p-space-md rounded-xl shadow-xs border border-border-subtle/40 flex flex-col justify-between">
-            <div class="flex items-center justify-between mb-2">
-              <span class="font-title-sm text-title-sm text-on-surface font-bold text-sm">Sebaran Ketahanan FEFO Batch</span>
-              <span class="font-label-sm text-label-sm text-on-surface-variant text-xs">Batch Aktif</span>
-            </div>
-            <div class="flex items-center gap-space-md">
-              <!-- SVG Donut Chart -->
-              <div class="relative w-28 h-28 flex-shrink-0 flex items-center justify-center" style="position:relative; width:112px; height:112px;">
-                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36" style="transform: rotate(-90deg);">
-                  <path
-                    class="text-surface-container-high"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="#e2e8f0"
-                    stroke-width="3.8"
-                  ></path>
-                  <path
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="#005c55"
-                    stroke-dasharray="70, 100"
-                    stroke-width="3.8"
-                  ></path>
-                  <path
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="#f59e0b"
-                    stroke-dasharray="20, 100"
-                    stroke-dashoffset="-70"
-                    stroke-width="3.8"
-                  ></path>
-                  <path
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="#ef4444"
-                    stroke-dasharray="10, 100"
-                    stroke-dashoffset="-90"
-                    stroke-width="3.8"
-                  ></path>
-                </svg>
-                <div class="absolute flex flex-col items-center" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); text-align:center;">
-                  <span class="font-headline-md text-headline-md text-on-surface font-bold leading-none text-xl">42</span>
-                  <span class="font-label-sm text-label-sm text-on-surface-variant text-[11px]">Batch</span>
-                </div>
-              </div>
-              <div class="flex flex-col gap-2 flex-grow text-xs">
-                <div class="flex items-center justify-between text-on-surface">
-                  <div class="flex items-center gap-1.5 font-label-md text-label-md">
-                    <span class="w-2.5 h-2.5 rounded-full bg-primary" style="display:inline-block; width:10px; height:10px;"></span>
-                    <span>Aman (&gt;6 Bulan)</span>
-                  </div>
-                  <span class="font-code-table text-code-table font-semibold">35 (83%)</span>
-                </div>
-                <div class="flex items-center justify-between text-on-surface">
-                  <div class="flex items-center gap-1.5 font-label-md text-label-md">
-                    <span class="w-2.5 h-2.5 rounded-full bg-badge-amber" style="display:inline-block; width:10px; height:10px; background:#f59e0b;"></span>
-                    <span>Waspada (&lt;90 Hari)</span>
-                  </div>
-                  <span class="font-code-table text-code-table font-semibold">5 (12%)</span>
-                </div>
-                <div class="flex items-center justify-between text-on-surface">
-                  <div class="flex items-center gap-1.5 font-label-md text-label-md">
-                    <span class="w-2.5 h-2.5 rounded-full bg-badge-red" style="display:inline-block; width:10px; height:10px; background:#ef4444;"></span>
-                    <span>Kritis (&lt;30 Hari)</span>
-                  </div>
-                  <span class="font-code-table text-code-table font-semibold text-rose-600">2 (5%)</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Visual 2: Quick ROP Health Indicator -->
-          <div class="bg-surface-container-lowest p-space-md rounded-xl shadow-xs border border-border-subtle/40 flex flex-col justify-between">
-            <div class="flex items-center justify-between">
-              <span class="font-title-sm text-title-sm text-on-surface font-bold text-sm">Progres Safety Stock Keseluruhan</span>
-              <span class="px-2 py-0.5 rounded-full bg-status-success-bg text-status-success-text font-label-sm text-label-sm font-semibold text-xs">
-                Terkendali 91%
-              </span>
-            </div>
-            <div class="my-3 flex flex-col gap-1.5">
-              <div class="w-full bg-surface-container h-3 rounded-full overflow-hidden flex" style="height:12px;">
-                <div class="bg-primary h-full" style="width: 78%;" title="Stok Normal: 78%"></div>
-                <div class="bg-badge-amber h-full" style="width: 13%; background:#f59e0b;" title="Buffer Menipis: 13%"></div>
-                <div class="bg-badge-red h-full" style="width: 9%; background:#ef4444;" title="Kritis ROP: 9%"></div>
-              </div>
-              <div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant text-[11px]">
-                <span>Stok Normal (33 SKU)</span>
-                <span>Buffer Menipis (5 SKU)</span>
-                <span>Kritis ROP (4 SKU)</span>
-              </div>
-            </div>
-            <p class="font-body-sm text-body-sm text-on-surface-variant text-xs">
-              Pemesanan otomatis terintegrasi langsung dengan Purchase Order Vendor CV Arba'in di Kartasura.
-            </p>
-          </div>
-
-          <!-- Visual 3: Photo Rich Operational Warehouse Unit (Zero External Network Banner) -->
-          <div class="relative bg-surface-container-lowest rounded-xl shadow-xs overflow-hidden min-h-[140px] flex items-center border border-border-subtle/40" style="position:relative; min-height:140px; background:linear-gradient(135deg, #0b1c30 0%, #005c55 100%);">
-            <div class="relative p-space-md text-white flex flex-col justify-center" style="position:relative; z-index:2; padding:1.25rem;">
-              <span class="font-label-sm text-label-sm uppercase tracking-wider text-teal-200 font-bold text-[10px]">
-                Audit Operasional
-              </span>
-              <h2 class="font-headline-md text-headline-md text-white font-bold text-lg">
-                Gudang Utama Kartasura
-              </h2>
-              <p class="font-body-sm text-body-sm text-slate-200 mt-1 max-w-[200px] text-xs">
-                SOP FEFO Strict 100% dipatuhi seluruh staff logistik.
-              </p>
+            <div class="mt-4 pt-2.5 border-t border-border-subtle/40 flex items-center justify-between text-xs text-on-surface-variant">
+              <span>Catatan Stok Aktif</span>
+              <span class="font-semibold text-primary">Tersinkronisasi</span>
             </div>
           </div>
         </div>
@@ -865,7 +725,7 @@
               </div>
             </div>
             <div class="mt-2 sm:mt-0 font-code-table text-code-table text-primary font-bold text-xs font-mono">
-              Blok Hash: 9d8f...3e2a1 (Status Sinkron)
+              Total Entri: ${ledger.length}
             </div>
           </div>
         </section>

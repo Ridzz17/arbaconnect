@@ -61,19 +61,9 @@
         <!-- Top Command & Filter Bar -->
         <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-surface-container-lowest p-6 rounded-xl border border-border-subtle/60">
           <div class="flex flex-col gap-1">
-            <div class="flex items-center gap-2 text-xs text-on-surface-variant font-medium">
-              <span class="text-primary font-semibold">Laporan Strategis Direksi</span>
-              <span aria-hidden="true">·</span>
-              <span>Wilayah Distribusi Solo Raya</span>
-              <span aria-hidden="true">·</span>
-              <span>Standar BPOM, CDOB &amp; FEFO</span>
-            </div>
             <h1 class="text-2xl text-on-surface tracking-tight font-bold">
-              Dasbor Direksi &amp; Pemantauan Bisnis CV Arba'in
+              Dasbor Eksekutif
             </h1>
-            <p class="text-sm text-on-surface-variant">
-              Ringkasan Capaian Omset Bulanan, Perkiraan Produksi Pabrik, Peringatan Stok &amp; Kedaluwarsa, serta Kinerja Tim Sales
-            </p>
           </div>
 
           <!-- Actions & Timeline Filter -->
@@ -82,7 +72,7 @@
               <span class="material-symbols-outlined text-primary text-[18px] mr-2">calendar_today</span>
               <div class="flex flex-col text-left">
                 <span class="text-[10px] text-on-surface-variant uppercase tracking-wider font-semibold">
-                  Periode Laporan
+                  Periode
                 </span>
                 <span class="text-xs text-on-surface font-semibold">
                   ${isMonth ? 'Bulan Ini: Maret 2026' : 'Kuartal I: Jan - Mar 2026'}
@@ -97,7 +87,7 @@
                 type="button"
               >
                 <span class="material-symbols-outlined text-[16px]">table_chart</span>
-                <span>Unduh Excel Direksi</span>
+                <span>Ekspor CSV</span>
               </button>
               <button
                 id="btn-download-pdf"
@@ -105,70 +95,9 @@
                 type="button"
               >
                 <span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
-                <span>Cetak Laporan PDF</span>
+                <span>Cetak Laporan</span>
               </button>
             </div>
-          </div>
-        </div>
-
-        <!-- Pusat Kendali Otomasi & Keputusan Direksi -->
-        <div class="bg-surface-container-lowest p-4 rounded-xl border border-primary/25 shadow-2xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
-          <div class="flex items-center gap-2.5">
-            <div class="w-9 h-9 rounded-lg bg-primary text-white flex items-center justify-center shrink-0">
-              <span class="material-symbols-outlined text-[20px]">auto_awesome</span>
-            </div>
-            <div>
-              <div class="text-xs font-extrabold text-on-surface flex items-center gap-2">
-                <span>Pusat Otomasi Operasional &amp; Analisis Keputusan Manajemen</span>
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary">SISTEM TERINTEGRASI</span>
-              </div>
-              <div class="text-[11px] text-on-surface-variant">
-                Akses cepat untuk realokasi inventaris konsinyasi, optimasi rute distribusi, evaluasi kelayakan kredit mitra, dan verifikasi integritas buku besar.
-              </div>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <button
-              id="btn-exec-adv-rebalance"
-              type="button"
-              class="px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold cursor-pointer border border-border-subtle/60 flex items-center gap-1.5 transition-colors"
-            >
-              <span class="material-symbols-outlined text-[16px] text-amber-600">swap_driving_apps_wheel</span>
-              <span>Realokasi Stok Konsinyasi</span>
-              <span class="px-1.5 py-0.5 rounded-full bg-primary text-white text-[10px] font-bold">${(window.ArbaStore.getConsignmentRebalanceRecommendations() || []).length}</span>
-            </button>
-            <button
-              id="btn-exec-adv-tsp"
-              type="button"
-              class="px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold cursor-pointer border border-border-subtle/60 flex items-center gap-1.5 transition-colors"
-            >
-              <span class="material-symbols-outlined text-[16px] text-emerald-600">route</span>
-              <span>Optimasi Rute Distribusi</span>
-            </button>
-            <button
-              id="btn-exec-adv-credit"
-              type="button"
-              class="px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold cursor-pointer border border-border-subtle/60 flex items-center gap-1.5 transition-colors"
-            >
-              <span class="material-symbols-outlined text-[16px] text-primary">analytics</span>
-              <span>Evaluasi Kelayakan Kredit</span>
-            </button>
-            <button
-              id="btn-exec-adv-qr"
-              type="button"
-              class="px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold cursor-pointer border border-border-subtle/60 flex items-center gap-1.5 transition-colors"
-            >
-              <span class="material-symbols-outlined text-[16px] text-primary">qr_code_scanner</span>
-              <span>Manajemen Kode QR Batch</span>
-            </button>
-            <button
-              id="btn-exec-adv-chain"
-              type="button"
-              class="px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold cursor-pointer border border-border-subtle/60 flex items-center gap-1.5 transition-colors"
-            >
-              <span class="material-symbols-outlined text-[16px] text-emerald-600">verified_user</span>
-              <span>Verifikasi Integritas CDOB</span>
-            </button>
           </div>
         </div>
 
@@ -302,279 +231,12 @@
           </div>
         </div>
 
-        <!-- Section 2: Analytics & Insights Section (60% / 40%) -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
-          <!-- Left Panel (60%): Sales Performance & Herbal Categories -->
-          <div class="lg:col-span-7 bg-surface-container-lowest p-space-lg rounded-xl shadow-xs border border-border-subtle/40 flex flex-col justify-between">
-            <div>
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-space-md">
-                <div>
-                  <span class="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold">
-                    Distribusi &amp; Realisasi Q1 2026
-                  </span>
-                  <h2 class="font-title-sm text-title-sm text-on-surface font-bold">
-                    Tren Penjualan B2B Produk Herbal CV Arba'in
-                  </h2>
-                </div>
-                <!-- Segmented Filter View -->
-                <div class="flex items-center bg-surface-container-low p-1 rounded-lg">
-                  <button
-                    id="filter-period-month"
-                    class="px-2.5 py-1 font-label-sm text-label-sm font-bold rounded shadow-xs cursor-pointer transition-all ${
-                      isMonth
-                        ? 'bg-surface-container-lowest text-primary'
-                        : 'text-on-surface-variant hover:text-on-surface'
-                    }"
-                    type="button"
-                  >
-                    Bulan Ini
-                  </button>
-                  <button
-                    id="filter-period-q1"
-                    class="px-2.5 py-1 font-label-sm text-label-sm font-bold rounded shadow-xs cursor-pointer transition-all ${
-                      !isMonth
-                        ? 'bg-surface-container-lowest text-primary'
-                        : 'text-on-surface-variant hover:text-on-surface'
-                    }"
-                    type="button"
-                  >
-                    Kumulatif Q1
-                  </button>
-                </div>
-              </div>
-
-              <!-- High Impact SVG Visualization -->
-              <div class="w-full bg-surface-container-low/40 rounded-xl p-space-md relative mb-space-md border border-border-subtle/30">
-                <div class="flex items-center justify-between text-label-sm font-label-sm text-on-surface-variant mb-2">
-                  <div class="flex items-center gap-4">
-                    <span class="flex items-center gap-1.5">
-                      <span class="w-3 h-3 rounded-xs bg-[#005c55]" style="display:inline-block;"></span> Target (Juta Rp)
-                    </span>
-                    <span class="flex items-center gap-1.5">
-                      <span class="w-3 h-3 rounded-xs bg-[#5bb8fe]" style="display:inline-block;"></span> Realisasi Penjualan
-                    </span>
-                  </div>
-                  <span class="font-code-table text-code-table text-primary font-semibold">
-                    Update: 28 Mar 2026, 17:30 WIB
-                  </span>
-                </div>
-
-                <!-- Dual Bar Chart by Herbal Product Category -->
-                <svg class="w-full h-56" fill="none" preserveAspectRatio="none" viewBox="0 0 600 220">
-                  <!-- Grid Lines -->
-                  <line stroke="var(--color-border-subtle)" stroke-dasharray="4 4" x1="40" x2="580" y1="30" y2="30"></line>
-                  <line stroke="var(--color-border-subtle)" stroke-dasharray="4 4" x1="40" x2="580" y1="80" y2="80"></line>
-                  <line stroke="var(--color-border-subtle)" stroke-dasharray="4 4" x1="40" x2="580" y1="130" y2="130"></line>
-                  <line stroke="var(--color-border-subtle)" x1="40" x2="580" y1="180" y2="180"></line>
-                  <!-- Y Axis Labels -->
-                  <text fill="var(--color-on-surface-variant)" font-family="Inter" font-size="10" text-anchor="end" x="32" y="34">150M</text>
-                  <text fill="var(--color-on-surface-variant)" font-family="Inter" font-size="10" text-anchor="end" x="32" y="84">100M</text>
-                  <text fill="var(--color-on-surface-variant)" font-family="Inter" font-size="10" text-anchor="end" x="32" y="134">50M</text>
-                  <text fill="var(--color-on-surface-variant)" font-family="Inter" font-size="10" text-anchor="end" x="32" y="184">0</text>
-                  
-                  <!-- Group 1: Madu Herbal -->
-                  <g class="transition-all hover:opacity-80 cursor-pointer">
-                    <rect fill="#005c55" height="${isMonth ? 125 : 140}" rx="3" width="26" x="75" y="${isMonth ? 55 : 40}"></rect>
-                    <rect fill="#5bb8fe" height="${isMonth ? 132 : 148}" rx="3" width="26" x="105" y="${isMonth ? 48 : 32}"></rect>
-                    <text fill="var(--color-on-surface)" font-family="Inter" font-size="11" font-weight="600" text-anchor="middle" x="103" y="198">Madu Herbal</text>
-                    <text fill="var(--color-secondary)" font-family="Inter" font-size="10" font-weight="700" text-anchor="middle" x="118" y="${isMonth ? 42 : 26}">${isMonth ? '138M' : '412M'}</text>
-                  </g>
-
-                  <!-- Group 2: Habbatussauda -->
-                  <g class="transition-all hover:opacity-80 cursor-pointer">
-                    <rect fill="#005c55" height="${isMonth ? 110 : 125}" rx="3" width="26" x="180" y="${isMonth ? 70 : 55}"></rect>
-                    <rect fill="#5bb8fe" height="${isMonth ? 118 : 130}" rx="3" width="26" x="210" y="${isMonth ? 62 : 50}"></rect>
-                    <text fill="var(--color-on-surface)" font-family="Inter" font-size="11" font-weight="600" text-anchor="middle" x="208" y="198">Habbatus</text>
-                    <text fill="var(--color-secondary)" font-family="Inter" font-size="10" font-weight="700" text-anchor="middle" x="223" y="${isMonth ? 56 : 44}">${isMonth ? '114M' : '340M'}</text>
-                  </g>
-
-                  <!-- Group 3: Minyak Zaitun -->
-                  <g class="transition-all hover:opacity-80 cursor-pointer">
-                    <rect fill="#005c55" height="${isMonth ? 90 : 105}" rx="3" width="26" x="285" y="${isMonth ? 90 : 75}"></rect>
-                    <rect fill="#5bb8fe" height="${isMonth ? 94 : 108}" rx="3" width="26" x="315" y="${isMonth ? 86 : 72}"></rect>
-                    <text fill="var(--color-on-surface)" font-family="Inter" font-size="11" font-weight="600" text-anchor="middle" x="313" y="198">M. Zaitun</text>
-                    <text fill="var(--color-secondary)" font-family="Inter" font-size="10" font-weight="700" text-anchor="middle" x="328" y="${isMonth ? 80 : 66}">${isMonth ? '92M' : '275M'}</text>
-                  </g>
-
-                  <!-- Group 4: Jamu Cair -->
-                  <g class="transition-all hover:opacity-80 cursor-pointer">
-                    <rect fill="#005c55" height="${isMonth ? 75 : 88}" rx="3" width="26" x="390" y="${isMonth ? 105 : 92}"></rect>
-                    <rect fill="#5bb8fe" height="${isMonth ? 80 : 95}" rx="3" width="26" x="420" y="${isMonth ? 100 : 85}"></rect>
-                    <text fill="var(--color-on-surface)" font-family="Inter" font-size="11" font-weight="600" text-anchor="middle" x="418" y="198">Jamu Cair</text>
-                    <text fill="var(--color-secondary)" font-family="Inter" font-size="10" font-weight="700" text-anchor="middle" x="433" y="${isMonth ? 94 : 79}">${isMonth ? '78M' : '230M'}</text>
-                  </g>
-
-                  <!-- Group 5: Suplemen Imun -->
-                  <g class="transition-all hover:opacity-80 cursor-pointer">
-                    <rect fill="#005c55" height="${isMonth ? 55 : 68}" rx="3" width="26" x="495" y="${isMonth ? 125 : 112}"></rect>
-                    <rect fill="#5bb8fe" height="${isMonth ? 62 : 75}" rx="3" width="26" x="525" y="${isMonth ? 118 : 105}"></rect>
-                    <text fill="var(--color-on-surface)" font-family="Inter" font-size="11" font-weight="600" text-anchor="middle" x="523" y="198">Suplemen</text>
-                    <text fill="var(--color-secondary)" font-family="Inter" font-size="10" font-weight="700" text-anchor="middle" x="538" y="${isMonth ? 112 : 99}">${isMonth ? '60M' : '180M'}</text>
-                  </g>
-                </svg>
-              </div>
-            </div>
-
-            <!-- Footer Micro-Insights -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-space-sm pt-space-xs">
-              <div class="bg-surface-container-low p-2.5 rounded-lg flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-status-success-bg flex items-center justify-center text-status-success-text shadow-xs">
-                  <span class="material-symbols-outlined text-[18px]">verified</span>
-                </div>
-                <div>
-                  <div class="font-label-sm text-label-sm text-on-surface-variant">Top SKU Q1</div>
-                  <div class="font-label-md text-label-md text-on-surface font-bold">Madu Murni Arba 500g</div>
-                </div>
-              </div>
-              <div class="bg-surface-container-low p-2.5 rounded-lg flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-secondary-fixed flex items-center justify-center text-secondary shadow-xs">
-                  <span class="material-symbols-outlined text-[18px]">local_shipping</span>
-                </div>
-                <div>
-                  <div class="font-label-sm text-label-sm text-on-surface-variant">Rata-rata Order</div>
-                  <div class="font-label-md text-label-md text-on-surface font-bold">Rp 3.260.000 / PO</div>
-                </div>
-              </div>
-              <div class="bg-surface-container-low p-2.5 rounded-lg flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-primary shadow-xs">
-                  <span class="material-symbols-outlined text-[18px]">published_with_changes</span>
-                </div>
-                <div>
-                  <div class="font-label-sm text-label-sm text-on-surface-variant">Fulfillment FEFO</div>
-                  <div class="font-label-md text-label-md text-on-surface font-bold">99.4% Kepatuhan</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right Panel (40%): RFM Customer Segmentation -->
-          <div class="lg:col-span-5 bg-surface-container-lowest p-space-lg rounded-xl shadow-xs border border-border-subtle/40 flex flex-col justify-between">
-            <div>
-              <div class="flex items-center justify-between mb-space-md">
-                <div>
-                  <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">
-                    Customer Loyalty Strategy
-                  </span>
-                  <h2 class="font-title-sm text-title-sm text-on-surface font-bold">
-                    Segmentasi Pelanggan RFM
-                  </h2>
-                </div>
-                <span class="material-symbols-outlined text-on-surface-variant">hub</span>
-              </div>
-
-              <!-- RFM Tiers List -->
-              <div class="flex flex-col gap-space-sm mb-space-md">
-                <!-- Champions Tier -->
-                <div class="bg-surface-container-low/70 p-3 rounded-lg hover:bg-surface-container-low transition-colors">
-                  <div class="flex items-center justify-between mb-1">
-                    <div class="flex items-center gap-2">
-                      <span class="material-symbols-outlined text-primary text-[18px]">verified</span>
-                      <span class="font-label-lg text-label-lg text-on-surface font-bold">
-                        Champions (RO &lt;7 Hari)
-                      </span>
-                    </div>
-                    <span class="px-2 py-0.5 rounded bg-primary text-white font-label-sm text-label-sm font-semibold">
-                      34 Apotek
-                    </span>
-                  </div>
-                  <p class="font-body-sm text-body-sm text-on-surface-variant">
-                    Nilai pembelian kuartalan &gt;Rp 25 Juta. Contoh: Apotek Kimia Farma Slamet Riyadi, Apotek K-24 UNS.
-                  </p>
-                </div>
-
-                <!-- Loyal Customers Tier -->
-                <div class="bg-surface-container-low/70 p-3 rounded-lg hover:bg-surface-container-low transition-colors">
-                  <div class="flex items-center justify-between mb-1">
-                    <div class="flex items-center gap-2">
-                      <span class="material-symbols-outlined text-secondary text-[18px]">loyalty</span>
-                      <span class="font-label-lg text-label-lg text-on-surface font-bold">
-                        Loyal Customers (Rutin 2 Minggu)
-                      </span>
-                    </div>
-                    <span class="px-2 py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm font-semibold">
-                      58 Mitra
-                    </span>
-                  </div>
-                  <p class="font-body-sm text-body-sm text-on-surface-variant">
-                    Arus kas stabil dengan kepatuhan pembayaran termin Net 30 tepat waktu.
-                  </p>
-                </div>
-
-                <!-- At-Risk Tier with Direct Action Trigger -->
-                <div class="bg-status-warning-bg/40 p-3 rounded-lg border border-status-warning-bg">
-                  <div class="flex items-center justify-between mb-1">
-                    <div class="flex items-center gap-2">
-                      <span class="material-symbols-outlined text-status-warning-text text-[18px]">alarm_on</span>
-                      <span class="font-label-lg text-label-lg text-status-warning-text font-bold">
-                        At-Risk (&gt;30 Hari Tanpa Order)
-                      </span>
-                    </div>
-                    <span class="px-2 py-0.5 rounded bg-status-warning-bg text-status-warning-text font-label-sm text-label-sm font-bold">
-                      12 Mitra
-                    </span>
-                  </div>
-                  <div class="flex items-center justify-between mt-2">
-                    <p class="font-body-sm text-body-sm text-on-surface-variant leading-tight pr-2">
-                      Mayoritas minimarket klaster Solo Baru &amp; Boyolali.
-                    </p>
-                    <button
-                      id="btn-at-risk-dispatch"
-                      class="whitespace-nowrap flex items-center gap-1 bg-badge-amber hover:bg-status-warning-text text-white font-label-sm text-label-sm px-2.5 py-1.5 rounded-lg shadow-xs font-semibold transition-all cursor-pointer active:scale-95"
-                      type="button"
-                    >
-                      <span class="material-symbols-outlined text-[14px]">send</span>
-                      <span>Kirim Sales Visit</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Proyeksi Repeat Order Otomatis (Mini Table) -->
-              <div class="bg-surface-container-low p-3 rounded-lg border border-border-subtle/30">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface font-bold">
-                    Proyeksi Repeat Order Minggu Ini
-                  </span>
-                  <span class="font-code-table text-code-table text-primary font-semibold">
-                    Algoritma Prediktif
-                  </span>
-                </div>
-                <div class="flex flex-col gap-2">
-                  <div class="flex items-center justify-between text-body-sm font-body-sm bg-surface-container-lowest px-2.5 py-1.5 rounded-sm shadow-2xs">
-                    <div class="flex items-center gap-2">
-                      <span class="w-1.5 h-1.5 rounded-full bg-badge-green" style="display:inline-block;"></span>
-                      <span class="font-medium text-on-surface">Apotek Sehat Mandiri Kartasura</span>
-                    </div>
-                    <span class="font-code-table text-code-table text-on-surface-variant font-semibold">
-                      Besok (Est. Rp 4.5M)
-                    </span>
-                  </div>
-                  <div class="flex items-center justify-between text-body-sm font-body-sm bg-surface-container-lowest px-2.5 py-1.5 rounded-sm shadow-2xs">
-                    <div class="flex items-center gap-2">
-                      <span class="w-1.5 h-1.5 rounded-full bg-badge-green" style="display:inline-block;"></span>
-                      <span class="font-medium text-on-surface">Minimarket Barokah Sukoharjo</span>
-                    </div>
-                    <span class="font-code-table text-code-table text-on-surface-variant font-semibold">
-                      Kamis (Est. Rp 2.8M)
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Section 2A: Sistem Peringatan Dini Inventaris & Pengendalian Masa Kedaluwarsa (FEFO) -->
+        <!-- Section 2A: Peringatan Stok & Kedaluwarsa -->
         <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-xs border border-border-subtle/40 flex flex-col gap-4">
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-2 border-b border-border-subtle/50">
-            <div>
-              <span class="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold">
-                Sistem Peringatan Dini Inventaris &amp; Kepatuhan Kedaluwarsa (FEFO)
-              </span>
-              <h2 class="font-title-sm text-title-sm text-on-surface font-bold">
-                Pemantauan Ambang Stok Minimum (ROP) Gudang &amp; Pengendalian Masa Kedaluwarsa Batch Konsinyasi
-              </h2>
-            </div>
+            <h2 class="font-title-sm text-title-sm text-on-surface font-bold">
+              Peringatan Stok &amp; Kedaluwarsa
+            </h2>
             <div class="flex items-center gap-2 flex-wrap text-[11px] font-semibold">
               <span class="badge badge-warning">
                 Stok di Bawah ROP (${analytics.orangeStockAlarms.length} SKU)
@@ -1030,11 +692,6 @@
           <!-- Table Footer / Stream Pagination & Quick Sync Stats -->
           <div class="flex flex-col sm:flex-row items-center justify-between gap-space-sm pt-space-xs text-on-surface-variant font-label-sm text-label-sm">
             <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-badge-green" style="display:inline-block; width:8px; height:8px;"></span>
-              <span>
-                WebSocket PWA Stream Terhubung: <strong>Latency 42ms</strong>
-              </span>
-              <span>•</span>
               <span>Menampilkan ${paginatedStreamOrders.length} dari ${filteredOrders.length} transaksi (Hal ${state.streamPage}/${totalStreamPages})</span>
             </div>
             <div class="flex items-center gap-1">
@@ -1398,9 +1055,6 @@
                 <p class="text-xs text-slate-500">Periode: Maret 2026 (Kuartal I 2026)</p>
               </div>
               <div class="text-right text-xs">
-                <span class="inline-block px-2.5 py-1 bg-teal-100 text-teal-800 rounded-full font-bold">
-                  VALIDATED TKT 5
-                </span>
                 <p class="text-slate-500 mt-1">Dicetak: ${new Date().toLocaleDateString('id-ID')}</p>
               </div>
             </div>
@@ -1414,34 +1068,12 @@
               <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
                 <span class="text-[11px] text-slate-500 uppercase font-semibold">Mitra B2B Aktif</span>
                 <div class="text-lg font-bold text-slate-800">${analytics.totalOutlets} Outlet</div>
-                <span class="text-[10px] text-slate-500">${outlets.length} Sampel + Jaringan Konsinyasi</span>
+                <span class="text-[10px] text-slate-500">${outlets.length} Terdaftar</span>
               </div>
               <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <span class="text-[11px] text-slate-500 uppercase font-semibold">Kepatuhan FEFO</span>
-                <div class="text-lg font-bold text-emerald-600">99.4%</div>
-                <span class="text-[10px] text-slate-500">Standar Audit CDOB</span>
-              </div>
-            </div>
-
-            <div>
-              <h4 class="text-xs font-bold text-slate-700 mb-2 uppercase">Distribusi Omset Wilayah Solo Raya:</h4>
-              <div class="space-y-1.5 text-xs">
-                <div class="flex justify-between items-center p-2 bg-slate-50 rounded">
-                  <span>1. Kota Surakarta (Solo Tengah &amp; Laweyan)</span>
-                  <span class="font-bold">Rp 195.400.000 (40.5%)</span>
-                </div>
-                <div class="flex justify-between items-center p-2 bg-slate-50 rounded">
-                  <span>2. Kab. Sukoharjo &amp; Solo Baru</span>
-                  <span class="font-bold">Rp 132.800.000 (27.5%)</span>
-                </div>
-                <div class="flex justify-between items-center p-2 bg-slate-50 rounded">
-                  <span>3. Kab. Karanganyar &amp; Sragen</span>
-                  <span class="font-bold">Rp 88.200.000 (18.3%)</span>
-                </div>
-                <div class="flex justify-between items-center p-2 bg-slate-50 rounded">
-                  <span>4. Kab. Klaten &amp; Boyolali</span>
-                  <span class="font-bold">Rp 66.250.000 (13.7%)</span>
-                </div>
+                <span class="text-[11px] text-slate-500 uppercase font-semibold">SKU Kritis</span>
+                <div class="text-lg font-bold text-amber-600">${analytics.orangeStockAlarms.length + analytics.pinkExpiryAlarms.length}</div>
+                <span class="text-[10px] text-slate-500">ROP &amp; Kedaluwarsa</span>
               </div>
             </div>
 

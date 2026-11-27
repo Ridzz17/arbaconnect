@@ -449,30 +449,5 @@
   to { opacity: 1; transform: translateX(0); }
 }
 
-/* Field Sales Smartphone Frame */
-.phone-simulation-frame {
-  max-width: 400px;
-  width: 100%;
-  border-radius: 36px;
-  border: 2px solid var(--color-border-subtle);
-  background-color: #ffffff;
-  box-shadow: var(--shadow-2xl);
-  overflow: hidden;
-  margin: 0 auto;
-  position: relative;
-  /* Preserve 100% smartphone layout ratio inside 90% scaled page */
-  zoom: 1.1111;
-}
-
-.phone-screen {
-  display: flex;
-  flex-direction: column;
-  min-height: 680px;
-  max-height: 750px;
-  overflow-y: auto;
-  background-color: #ffffff;
-  color: #0f172a;
-}
-
 /* Layout & color utilities have been moved to css/utilities.css */
 
