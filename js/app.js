@@ -76,6 +76,8 @@
       } else {
         fullscreenIcon.textContent = 'fullscreen';
         if (fullscreenBtn) fullscreenBtn.setAttribute('title', 'Mode Layar Penuh (Kiosk / F11)');
+        var wrapper = document.querySelector('.app-wrapper');
+        if (wrapper) wrapper.classList.remove('pwa-mobile-only');
       }
     },
 

@@ -613,3 +613,26 @@ html.dark .app-header {
   font-weight: 700;
   color: var(--color-primary);
 }
+
+/* Field Sales PWA Fullscreen / Mobile-Only Shell */
+.app-wrapper.pwa-mobile-only .app-header,
+.app-wrapper.pwa-mobile-only .app-sidebar,
+.app-wrapper.pwa-mobile-only .sidebar-backdrop,
+.app-wrapper.pwa-mobile-only .app-footer {
+  display: none !important;
+}
+
+.app-wrapper.pwa-mobile-only .app-content-wrapper {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  padding-top: 0 !important;
+  width: 100% !important;
+}
+
+.app-wrapper.pwa-mobile-only .main-view-container {
+  padding: 1rem !important;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+}

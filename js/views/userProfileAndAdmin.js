@@ -471,14 +471,6 @@
           </h1>
           <div class="flex flex-wrap items-center gap-2">
             <button
-              id="btn-admin-toggle-pw-col"
-              type="button"
-              class="px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold flex items-center gap-1.5 cursor-pointer border border-border-subtle"
-            >
-              <span class="material-symbols-outlined text-[16px]">${adminState.showPasswords ? 'visibility_off' : 'visibility'}</span>
-              <span>${adminState.showPasswords ? 'Sembunyikan Password' : 'Tampilkan Password'}</span>
-            </button>
-            <button
               id="btn-admin-add-user"
               type="button"
               class="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary-container text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer border-0 shadow-xs"
@@ -555,7 +547,6 @@
                   <th class="py-3 px-4">Nama &amp; ID Pengguna</th>
                   <th class="py-3 px-3">Username &amp; Email</th>
                   <th class="py-3 px-3">Role &amp; Divisi</th>
-                  <th class="py-3 px-3">Password &amp; PIN</th>
                   <th class="py-3 px-3">Hak Akses Halaman</th>
                   <th class="py-3 px-3 text-center">Status</th>
                   <th class="py-3 px-4 text-right">Aksi Super Admin</th>
@@ -588,10 +579,6 @@
                           ${rMeta.label}
                         </span>
                         <div class="text-[11px] text-on-surface-variant mt-1">${window.ArbaUtils.escapeHtml(u.title)} · ${window.ArbaUtils.escapeHtml(u.division)}</div>
-                      </td>
-                      <td class="py-3 px-3 font-mono">
-                        <div>PW: <b class="text-primary">${adminState.showPasswords ? window.ArbaUtils.escapeHtml((u.passwordHash || 'sha256:protected').slice(0, 19) + '...') : '•••••••• (SHA-256)'}</b></div>
-                        <div class="text-[10px] text-on-surface-variant">PIN: ${adminState.showPasswords ? window.ArbaUtils.escapeHtml((u.pinHash || 'sha256:protected').slice(0, 19) + '...') : '•••••• (SHA-256)'}</div>
                       </td>
                       <td class="py-3 px-3">
                         <div class="flex flex-wrap gap-1 max-w-[230px]">

@@ -113,52 +113,34 @@
     var isCreditTerm = /Net|Jatuh Tempo/i.test(state.selectedTerm);
     var overCredit = isCreditTerm && totalAmount > (currentOutlet.creditRemaining || 0);
     var isSuperAdminUser = appState.currentUser && appState.currentUser.role === 'super-admin';
-    var usePhoneFrame = isSuperAdminUser && state.isPhoneFrame;
+    var wrapperEl = document.querySelector('.app-wrapper');
+    var isFullscreenMode = Boolean(wrapperEl && wrapperEl.classList.contains('pwa-mobile-only'));
 
     var html = `
       <div class="flex flex-col items-center w-full pb-12">
-        ${isSuperAdminUser ? `
+        ${isSuperAdminUser && !isFullscreenMode ? `
           <!-- Viewport Control Bar (Khusus Super Admin) -->
-          <div class="w-full max-w-2xl flex items-center justify-between mb-4 bg-surface-container-lowest p-3 rounded-xl border border-border-subtle/50 text-xs text-on-surface-variant">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary text-[18px]">smartphone</span>
-              <span class="font-semibold text-on-surface">Pratinjau Responsif Aplikasi Sales (Super Admin)</span>
-            </div>
+          <div class="w-full max-w-[420px] flex items-center justify-between mb-3 bg-surface-container-lowest p-2.5 rounded-xl border border-border-subtle/50 text-xs text-on-surface-variant">
             <div class="flex items-center gap-1.5">
-              <button
-                id="btn-viewport-phone"
-                class="px-2.5 py-1 rounded-md font-medium cursor-pointer transition-colors border-0 text-xs ${
-                  state.isPhoneFrame
-                    ? 'bg-primary text-white font-semibold'
-                    : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
-                }"
-                type="button"
-              >
-                Ukuran HP (390px)
-              </button>
-              <button
-                id="btn-viewport-full"
-                class="px-2.5 py-1 rounded-md font-medium cursor-pointer transition-colors border-0 text-xs ${
-                  !state.isPhoneFrame
-                    ? 'bg-primary text-white font-semibold'
-                    : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
-                }"
-                type="button"
-              >
-                Layar Penuh
-              </button>
+              <span class="material-symbols-outlined text-primary text-[18px]">smartphone</span>
+              <span class="font-semibold text-on-surface">Tampilan Mobile (420px)</span>
             </div>
+            <button
+              id="btn-viewport-full"
+              class="px-2.5 py-1 rounded-md font-semibold cursor-pointer transition-colors border-0 text-xs bg-primary text-white flex items-center gap-1"
+              type="button"
+            >
+              <span class="material-symbols-outlined text-[14px]">fullscreen</span>
+              <span>Layar Penuh</span>
+            </button>
           </div>
         ` : ''}
 
         <!-- Field Sales Main Application Container -->
         <div
-          class="w-full transition-all duration-200 ${
-            usePhoneFrame
-              ? 'max-w-[420px] rounded-3xl border border-border-subtle/70 bg-surface shadow-xl overflow-hidden'
-              : 'max-w-3xl bg-surface rounded-2xl border border-border-subtle/60 shadow-xs overflow-hidden'
-          }"
-          style="${usePhoneFrame ? 'max-width: 420px; border-radius: 28px;' : ''}"
+          id="field-sales-pwa-preview"
+          class="w-full transition-all duration-200 max-w-[420px] rounded-3xl border border-border-subtle/70 bg-surface shadow-xl overflow-hidden"
+          style="max-width: 420px; border-radius: 28px;"
         >
           <!-- App Frame -->
           <div class="flex flex-col min-h-[680px] bg-white text-slate-900 relative rounded-2xl overflow-hidden" style="position:relative; background:#fff; min-height:680px;">
@@ -211,6 +193,17 @@
                   </span>
                 ` : ''}
               </button>
+              ${isFullscreenMode ? `
+                <button
+                  id="btn-pwa-exit-fullscreen"
+                  type="button"
+                  title="Keluar Layar Penuh"
+                  class="flex items-center justify-center p-1.5 rounded-lg cursor-pointer border-0"
+                  style="background:rgba(255,255,255,0.18); color:#fff;"
+                >
+                  <span class="material-symbols-outlined text-[16px]">fullscreen_exit</span>
+                </button>
+              ` : ''}
             </div>
 
             <!-- Daily Target Progress Strip (live dari log kunjungan) -->
@@ -920,19 +913,26 @@
         reader.readAsDataURL(file);
       });
     }
-    // Viewport Toggle
-    var btnPhone = container.querySelector('#btn-viewport-phone');
+    // Fullscreen Mobile-Only Mode (hides header, aside, footer)
     var btnFull = container.querySelector('#btn-viewport-full');
-
-    if (btnPhone) {
-      btnPhone.addEventListener('click', function () {
-        state.isPhoneFrame = true;
+    if (btnFull) {
+      btnFull.addEventListener('click', function () {
+        var wrapper = document.querySelector('.app-wrapper');
+        if (wrapper) wrapper.classList.add('pwa-mobile-only');
+        if (window.ArbaApp && window.ArbaApp.toggleFullscreen && !document.fullscreenElement) {
+          window.ArbaApp.toggleFullscreen();
+        }
         renderFieldSalesPwa(container);
       });
     }
-    if (btnFull) {
-      btnFull.addEventListener('click', function () {
-        state.isPhoneFrame = false;
+    var btnExitFull = container.querySelector('#btn-pwa-exit-fullscreen');
+    if (btnExitFull) {
+      btnExitFull.addEventListener('click', function () {
+        var wrapper = document.querySelector('.app-wrapper');
+        if (wrapper) wrapper.classList.remove('pwa-mobile-only');
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen().catch(function () {});
+        }
         renderFieldSalesPwa(container);
       });
     }
